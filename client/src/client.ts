@@ -1,24 +1,20 @@
 import { isArray, isNull, type Class } from '@alloc/is'
 import { Exclusive } from '@alloc/types'
 import type {
-  PathTemplate,
   RpcEndpoint,
   RpcEndpointType,
   RpcPagination,
   TParams,
   TReturnValue,
 } from 'alien-rpc'
+import type { JsonValue, Static, TSchema } from 'alien-rpc/typebox'
 import { juri } from 'juri'
 import ky, { Options } from 'ky'
 import { parse, tokensToFunction } from 'path-to-regexp'
-import type {
-  JsonValue,
-  Static,
-  TSchema,
-} from '../../alien-rpc-service/typebox'
+import type { PathTemplate } from 'path-types'
 
-export type { InferParams, PathTemplate } from 'alien-rpc'
-export type { JsonValue } from '../../alien-rpc-service/typebox'
+export type { JsonValue } from 'alien-rpc/typebox'
+export type { InferParams, PathTemplate } from 'path-types'
 
 type StaticArgs<Args extends TSchema[]> = {
   [Index in keyof Args]: Static<Args[Index]> extends infer Arg
@@ -252,12 +248,12 @@ export function defineClient<API extends object>(
   })
 }
 
-function isPagination(object: any): object is RpcPagination {
+function isPagination(object: object): object is RpcPagination {
   // The server ensures both `prev` and `next` are defined, even though the
   // RpcPagination type says otherwise.
   return (
-    object.prev !== undefined &&
-    object.next !== undefined &&
+    (object as any).prev !== undefined &&
+    (object as any).next !== undefined &&
     Object.keys(object).length === 2
   )
 }
@@ -284,7 +280,7 @@ function encodeJsonSearch(params: Record<string, any> | undefined) {
   return searchParams
 }
 
-function getRequiredParams(params: any[]) {
+function getRequiredParams(params: readonly any[]) {
   for (let i = params.length - 1; i >= 0; i--) {
     const param = params[i]
     if (!isOptional(param)) {

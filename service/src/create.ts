@@ -6,33 +6,35 @@ import { compileEndpoints, encodeAsyncIterable, toArray } from './util'
 
 export interface ServiceHandlerOptions {}
 
+export interface Service<API extends object> {
+  /**
+   * If you want to split out RPC functions into logical groups, this function is useful for type
+   * inference.
+   */
+  defineFunctions: <T extends { [P in keyof API]?: RpcFunction<API[P]> }>(
+    functions: T
+  ) => T
+  /**
+   * Returns a `@hattip/compose` handler.
+   */
+  defineHandler: <P = unknown>(
+    functions: { [P in keyof API]: RpcFunction<API[P]> },
+    options?: ServiceHandlerOptions
+  ) => (context: RequestContext<P>) => Promise<Response | undefined>
+}
+
 /**
  * Create the RPC function context.
  */
-export function createService<API extends object>(API: API) {
+export function createService<API extends object>(API: API): Service<API> {
   return {
-    /**
-     * If you want to split out RPC functions into logical groups, this function is useful for type
-     * inference.
-     */
-    defineFunctions<
-      T extends {
-        [P in keyof API]?: RpcFunction<API[P]>
-      },
-    >(functions: T) {
+    defineFunctions(functions) {
       return functions
     },
-
-    /**
-     * Returns a `@hattip/compose` handler.
-     */
-    defineHandler<P = unknown>(
-      functions: { [P in keyof API]: RpcFunction<API[P]> },
-      options?: ServiceHandlerOptions
-    ) {
+    defineHandler(functions, options) {
       const endpoints = compileEndpoints(API)
 
-      return async (context: RequestContext<P>) => {
+      return async context => {
         const { request } = context
         const isOptions = request.method === 'OPTIONS'
         const url = new URL(request.url)

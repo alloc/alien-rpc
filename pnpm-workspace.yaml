@@ -4,3 +4,4 @@ packages:
   - ./client
   - ./service
   - ./src/juri
+  - ./generators

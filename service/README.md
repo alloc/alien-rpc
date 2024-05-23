@@ -1,4 +1,4 @@
-# alien-rpc-service
+# @alien-rpc/service
 
 This packages provides type inference for the implementation of your RPC endpoints. It assumes you're using [Hattip](https://github.com/hattipjs/hattip), so `this` is typed as a Hattip request context.
 
@@ -7,7 +7,7 @@ This packages provides type inference for the implementation of your RPC endpoin
 Import your RPC endpoints and pass them to `createService`. Export the members of the returned service object for easy consumption. It's recommended you create a `context.ts` module for this step. Each module containing server functions will import this.
 
 ```ts
-import { createService } from 'alien-rpc-service'
+import { createService } from '@alien-rpc/service'
 import * as API from './api'
 
 export const { defineFunctions } = createService<typeof API>()

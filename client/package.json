@@ -1,16 +1,16 @@
 {
-  "name": "alien-rpc-client",
+  "name": "@alien-rpc/client",
   "version": "0.1.0",
-  "private": true,
   "main": "dist/client.js",
   "types": "dist/client.d.ts",
   "scripts": {
-    "dev": "rimraf dist && concurrently -n js,dts 'tsup --watch --sourcemap' 'pnpm -s dev:types'",
+    "dev": "sleep 2 && rimraf dist && concurrently -n js,dts 'tsup --watch --sourcemap' 'pnpm -s dev:types'",
     "dev:types": "pnpm -s build:types --watch --declarationMap --preserveWatchOutput",
     "build": "rimraf dist && concurrently -n js,dts 'tsup' 'pnpm -s build:types'",
     "build:types": "tsc -p . --emitDeclarationOnly"
   },
   "dependencies": {
+    "@aleclarson/json-stream": "^0.1.22",
     "@alloc/is": "^3.1.3",
     "@alloc/types": "^2.3.0",
     "alien-rpc": "workspace:^",

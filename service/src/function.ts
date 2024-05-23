@@ -1,6 +1,6 @@
 import { RequestContext } from '@hattip/compose'
+import { RpcEndpoint, TParams } from 'alien-rpc'
 import { TString } from 'typebox'
-import { RpcEndpoint, TParams } from '../../alien-rpc/src/endpoint'
 import { Promisable, StaticArgs, StaticReturn } from './types'
 
 export type RpcFunction<T> =

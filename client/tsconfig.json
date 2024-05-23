@@ -5,6 +5,9 @@
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "node",
+    "outDir": "dist",
+    "declaration": true,
+    "skipLibCheck": true,
     "strict": true
   }
 }

@@ -1,11 +1,13 @@
 {
   "compilerOptions": {
+    "esModuleInterop": true,
     "lib": ["esnext"],
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true,
-    "sourceMap": true,
+    "outDir": "dist",
+    "declaration": true,
+    "skipLibCheck": true,
     "strict": true
   }
 }

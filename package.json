@@ -1,0 +1,29 @@
+{
+  "name": "alien-rpc",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "prettier": "@alloc/prettier-config",
+  "scripts": {
+    "dev": "pnpm --parallel run dev",
+    "build": "pnpm m run build"
+  },
+  "dependencies": {
+    "path-types": "npm:@alloc/path-types@^0.1.0",
+    "typebox": "npm:@alloc/typebox@^0.32.16"
+  },
+  "devDependencies": {
+    "@alloc/fast-rimraf": "^1.0.8",
+    "@alloc/prettier-config": "^1.0.0",
+    "concurrently": "^8.2.2",
+    "prettier": "^3.2.5",
+    "tsup": "^8.0.2",
+    "typescript": "^5.4.3"
+  },
+  "files": [
+    "dist",
+    "typebox",
+    "generators"
+  ]
+}

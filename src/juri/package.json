@@ -1,0 +1,6 @@
+{
+  "name": "juri",
+  "version": "0.1.0",
+  "private": true,
+  "main": "juri.ts"
+}

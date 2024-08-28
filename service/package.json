@@ -4,9 +4,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "dev": "sleep 2 && rimraf dist && concurrently -n js,dts 'tsup --watch --sourcemap' 'pnpm -s dev:types'",
+    "dev": "sleep 2 && rimraf dist && tinyrun --names js,dts 'tsup --watch --sourcemap' 'pnpm -s dev:types'",
     "dev:types": "pnpm -s build:types --watch --declarationMap --preserveWatchOutput",
-    "build": "rimraf dist && concurrently -n js,dts 'tsup' 'pnpm -s build:types'",
+    "build": "rimraf dist && tinyrun --names js,dts 'tsup' 'pnpm -s build:types'",
     "build:types": "tsc -p . --emitDeclarationOnly"
   },
   "dependencies": {

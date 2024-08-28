@@ -1,5 +1,6 @@
 /**
  * Taken from https://github.com/scrollback/juri
+ * @license MIT
  *
  *	Use of other URL-safe characters
  *

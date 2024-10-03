@@ -4,12 +4,6 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "prettier": "@alloc/prettier-config",
-  "scripts": {
-    "dev": "pnpm --parallel run dev",
-    "build": "pnpm m run build",
-    "prepare": "indo"
-  },
   "dependencies": {
     "path-types": "npm:@alloc/path-types@^0.1.0",
     "typebox": "npm:@alloc/typebox@^0.32.16"
@@ -26,5 +20,11 @@
     "dist",
     "typebox",
     "generators/*.ts"
-  ]
+  ],
+  "prettier": "@alloc/prettier-config",
+  "scripts": {
+    "dev": "pnpm --parallel run dev",
+    "build": "pnpm m run build",
+    "prepare": "indo"
+  }
 }

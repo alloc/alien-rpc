@@ -13,12 +13,15 @@
   },
   "dependencies": {
     "@ts-morph/bootstrap": "^0.24.0",
+    "debug": "^4.3.7",
     "jumpgen": "0.1.0-beta.3"
   },
   "peerDependencies": {
     "typescript": "*"
   },
   "devDependencies": {
+    "@types/debug": "^4.1.12",
+    "radashi": "^12.1.0",
     "typescript": "^5.6.2"
   }
 }

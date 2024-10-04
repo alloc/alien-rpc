@@ -1,19 +1,21 @@
-import { InferParams } from 'path-types'
-import * as Type from './typebox/type'
 import {
   Static,
   TFunction,
-  TJsonObject,
-  TJsonProperties,
-  TJsonValue,
   TNull,
-  TNullable,
   TObject,
-  TOptions,
-  TRpcPagination,
   TSchema,
   TUint8Array,
   TUnion,
+} from '@sinclair/typebox/type'
+import { InferParams } from 'path-types'
+import { Type } from './typebox'
+import {
+  TJsonObject,
+  TJsonProperties,
+  TJsonValue,
+  TNullable,
+  TOptions,
+  TRpcPagination,
 } from './typebox/type'
 
 export type RpcEndpointType = 'json' | 'ndjson' | 'text' | 'blob'

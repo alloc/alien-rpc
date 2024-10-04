@@ -1,0 +1,21 @@
+{
+  "name": "@alien-rpc/service",
+  "type": "module",
+  "version": "0.0.0",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "lint": "tsc -p . --outDir node_modules/.tmp"
+  },
+  "dependencies": {
+    "@alloc/path-types": "^0.1.0",
+    "@hattip/compose": "^0.0.48"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4"
+  }
+}

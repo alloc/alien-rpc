@@ -1,6 +1,13 @@
 {
-  "private": true,
+  "name": "alien-rpc",
+  "version": "0.0.0",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "dependencies": {
     "path-types": "npm:@alloc/path-types@^0.1.0"
   },
@@ -10,7 +17,7 @@
   "devDependencies": {
     "@alloc/fast-rimraf": "^1.0.8",
     "@alloc/prettier-config": "^1.0.0",
-    "esbuild-plugin-copy": "^2.1.1",
+    "@sinclair/typebox": "^0.33.13",
     "prettier": "^3.2.5",
     "tinyrun": "^1.0.1",
     "tsup": "^8.0.2",

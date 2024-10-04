@@ -1,3 +1,5 @@
 # alien-rpc
 
-This package contains only what's necessary to declare API endpoints. It's platform-agnostic, so Node.js types won't leak into the frontend application code.
+## Development
+
+- It's recommended to run your server with [vite-node](https://www.npmjs.com/package/vite-node) during development, so that you can hot reload your server.

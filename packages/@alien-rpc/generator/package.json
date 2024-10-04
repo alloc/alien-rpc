@@ -1,0 +1,23 @@
+{
+  "name": "@alien-rpc/generator",
+  "type": "module",
+  "version": "0.0.0",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "lint": "tsc -p . --outDir node_modules/.tmp"
+  },
+  "dependencies": {
+    "jumpgen": "0.1.0-beta.3"
+  },
+  "peerDependencies": {
+    "typescript": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2"
+  }
+}

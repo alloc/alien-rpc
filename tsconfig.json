@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "lib": ["esnext"],
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "allowSyntheticDefaultImports": true,
+    "paths": {
+      "@alien-rpc/*": ["./packages/@alien-rpc/*/mod.ts"]
+    }
+  }
+}

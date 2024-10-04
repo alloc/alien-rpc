@@ -14,7 +14,8 @@
     "prettier": "^3.2.5",
     "tinyrun": "^1.0.1",
     "tsup": "^8.0.2",
-    "typescript": "^5.4.3"
+    "typescript": "^5.4.3",
+    "vitest": "^2.1.2"
   },
   "files": [
     "dist",

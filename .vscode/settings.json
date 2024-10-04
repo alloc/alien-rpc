@@ -1,7 +1,9 @@
 {
   "rewrap.wrappingColumn": 75,
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit"
   }

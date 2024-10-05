@@ -1,5 +1,6 @@
 import { createProject, ts } from '@ts-morph/bootstrap'
 import { debug } from './debug'
+import { getFullyQualifiedType } from './util/ts-ast'
 
 export async function extractRoutes(sourceCode: string, fileName: string) {
   const tsConfigFilePath = ts.findConfigFile(fileName, ts.sys.fileExists)
@@ -144,39 +145,4 @@ function getNodeLocation(node: ts.Node) {
   )
 
   return `${sourceFile.fileName}:${line + 1}:${character + 1}`
-}
-
-function getFullyQualifiedType(
-  type: ts.Type,
-  typeChecker: ts.TypeChecker
-): string {
-  if (type.isUnion()) {
-    return type.types
-      .map(variantType => getFullyQualifiedType(variantType, typeChecker))
-      .join(' | ')
-  }
-  if (type.isIntersection()) {
-    return type.types
-      .map(intersectedType =>
-        getFullyQualifiedType(intersectedType, typeChecker)
-      )
-      .join(' & ')
-  }
-  if (type.symbol && type.symbol.flags & ts.SymbolFlags.Interface) {
-    const properties = type.getProperties().map(prop => {
-      const propType = typeChecker.getTypeOfSymbolAtLocation(
-        prop,
-        prop.valueDeclaration!
-      )
-      return `${prop.name}${prop.flags & ts.SymbolFlags.Optional ? '?' : ''}: ${getFullyQualifiedType(propType, typeChecker)}`
-    })
-    return `{ ${properties.join('; ')} }`
-  }
-  if (type.symbol && type.symbol.flags & ts.SymbolFlags.TypeAlias) {
-    const aliasedType = typeChecker.getTypeAtLocation(
-      type.symbol.declarations![0]
-    )
-    return getFullyQualifiedType(aliasedType, typeChecker)
-  }
-  return typeChecker.typeToString(type)
 }

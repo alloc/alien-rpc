@@ -3,7 +3,7 @@ if [ -d "typebox-codegen" ]; then
   git fetch origin main
   git reset --hard origin/main
 else
-  git clone https://github.com/sinclairzx81/typebox-codegen.git --depth 1 --single-branch
+  git clone https://github.com/aleclarson/typebox-codegen.git --depth 1 --single-branch
   cd typebox-codegen
 fi
 

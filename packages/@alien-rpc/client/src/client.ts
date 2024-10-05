@@ -1,19 +1,8 @@
-import { isArray, isNull, type Class } from '@alloc/is'
-import { Exclusive } from '@alloc/types'
-import type {
-  RpcEndpoint,
-  RpcEndpointType,
-  RpcPagination,
-  TParams,
-  TReturnValue,
-} from 'alien-rpc'
-import type { JsonValue, Static, TSchema } from 'alien-rpc/typebox'
-import { juri } from 'juri'
-import ky, { Options } from 'ky'
-import { parse, tokensToFunction } from 'path-to-regexp'
-import type { PathTemplate } from 'path-types'
+import { juri } from '@alien-rpc/juri'
+import ky, { Options as RequestOptions } from 'ky'
+import { parse, Token as PathToken, tokensToFunction } from 'path-to-regexp'
+import { RpcEndpoint, RpcEndpointPath, RpcResponseByPath } from './types'
 
-export type { JsonValue } from 'alien-rpc/typebox'
 export type { InferParams, PathTemplate } from 'path-types'
 
 type StaticArgs<Args extends TSchema[]> = {
@@ -57,67 +46,22 @@ export interface ResponseStream<T> extends AsyncIterable<T> {
   previousPage?: () => ResponseStream<T>
 }
 
-type StaticReturn<T extends TReturnValue> =
-  | (T extends AsyncIterable<infer TChunk extends TSchema>
-      ? ResponseStream<Static<TChunk>>
-      : never)
-  | (Extract<T, TSchema> extends infer TResult
-      ? TResult extends TSchema
-        ? Promise<Static<TResult>>
-        : never
-      : never)
-
-type RpcFunction<T> =
-  T extends RpcEndpoint<infer Path, infer TArgs, infer TReturn>
-    ? [
-        ...TParams<Path, JsonValue>,
-        ...StaticArgs<TArgs>,
-      ] extends infer Args extends any[]
-      ? <T extends Args>(
-          ...args: Args | ArrayConcat<T, [requestOptions: RequestOptions]>
-        ) => StaticReturn<TReturn>
-      : never
-    : never
-
-/** To avoid bundling `typebox` on the frontend, you should process the endpoint schemas into generated JSON of this kind. */
-export type Endpoint = {
-  method: string
-  path: string
-  type: string
-  schema: {
-    type: string
-    parameters: readonly any[]
-  }
-}
-
-type RpcEndpointPath<API extends object> =
-  API[keyof API] extends RpcEndpoint<infer Path, any, any>
-    ? PathTemplate<Path>
-    : never
-
-type RpcResponseByPath<API extends object, P extends string> = {
-  [Key in keyof API]: API[Key] extends infer Endpoint
-    ? Endpoint extends RpcEndpoint<infer Path, any, infer TReturn>
-      ? P extends PathTemplate<Path>
-        ? Awaited<StaticReturn<TReturn>>
-        : never
-      : never
-    : never
-}[keyof API]
-
-export type Client<API extends object> = {
-  extend: (defaults: Options) => Client<API>
-  setResponse: <P extends RpcEndpointPath<API>>(
+export type Client<TRouteInterface extends object> = {
+  extend: (defaults: RequestOptions) => Client<TRouteInterface>
+  setResponse: <P extends RpcEndpointPath<TRouteInterface>>(
     path: P,
-    response: RpcResponseByPath<API, P>
+    response: Awaited<RpcResponseByPath<TRouteInterface, P>>
   ) => void
 } & {
-  [P in keyof API]: RpcFunction<API[P]>
+  [TRouteName in keyof TRouteInterface]: Extract<
+    TRouteInterface[TRouteName],
+    RpcEndpoint
+  >['callee']
 }
 
 export function defineClient<API extends object>(
   endpoints: Record<string, Endpoint>,
-  { prefixUrl, ...options }: Options & { prefixUrl: string }
+  { prefixUrl, ...options }: RequestOptions & { prefixUrl: string }
 ): Client<API> {
   const request = ky.create(options)
   const responses: any = {}
@@ -132,13 +76,14 @@ export function defineClient<API extends object>(
         const endpoint = endpoints[prop as string]
         const requiredParams = getRequiredParams(endpoint.schema.parameters)
         const pathTokens = parse(endpoint.path)
+        const firstParamName = pathTokenToName(pathTokens[0])
         const path = pathTokens.length > 1 && tokensToFunction(pathTokens)
         const type = endpoint.type as RpcEndpointType
 
         const endpointRequest = (
           method: string,
           url: string,
-          options: Options | undefined,
+          options: RequestOptions | undefined,
           body?: { json: any } | false
         ) => {
           const promise = request(url, {
@@ -192,20 +137,7 @@ export function defineClient<API extends object>(
           })())
         }
 
-        return (...args: any[]) => {
-          // Request options
-          let options =
-            args.length > requiredParams.length &&
-            isRequestOptions(args[args.length - 1])
-              ? (args.pop() as RequestOptions)
-              : undefined
-
-          // Path parameters
-          const params = path && args[0]
-          if (params) {
-            args = args.slice(1)
-          }
-
+        return (params: unknown, options?: RequestOptions) => {
           // Pathname
           const pathname = params ? path(params) : endpoint.path
 
@@ -297,67 +229,7 @@ function isOptional(param: any) {
   return param.type === 'null'
 }
 
-export type RequestOptions = Pick<Options, keyof typeof requestOptionTypes>
-
-type OptionType = Exclusive<
-  | { typeof: string | string[] }
-  | { instanceof: Class }
-  | { is: (value: unknown) => boolean }
->
-
-const requestOptionTypes = {
-  headers: { typeof: 'object' },
-  searchParams: { instanceof: URLSearchParams },
-  timeout: { typeof: 'number' },
-  retry: { typeof: ['number', 'object'] },
-  hooks: { typeof: 'object' },
-  throwHttpErrors: { typeof: 'boolean' },
-  onDownloadProgress: { typeof: 'function' },
-  cache: { typeof: 'string' },
-  credentials: { typeof: 'string' },
-  integrity: { typeof: 'string' },
-  mode: { typeof: 'string' },
-  priority: { typeof: 'string' },
-  redirect: { typeof: 'string' },
-  referrer: { typeof: 'string' },
-  keepalive: { typeof: 'boolean' },
-  signal: { instanceof: AbortSignal },
-  window: { is: isNull },
-} satisfies Record<string, OptionType>
-
-function isRequestOptions(options: any): options is RequestOptions {
-  if (!options || typeof options !== 'object' || Array.isArray(options)) {
-    return false
-  }
-  for (const key in options) {
-    const type: OptionType = (requestOptionTypes as any)[key]
-    if (!type) {
-      return false
-    }
-    const value = options[key]
-    if (value === undefined) {
-      continue
-    }
-    if (isArray(type.typeof)) {
-      if (!type.typeof.includes(typeof value)) {
-        return false
-      }
-    } else if (type.typeof) {
-      if (type.typeof !== typeof value) {
-        return false
-      }
-    } else if (type.instanceof) {
-      if (!(value instanceof type.instanceof)) {
-        return false
-      }
-    } else if (type.is) {
-      if (!type.is(value)) {
-        return false
-      }
-    }
-  }
-  return true
-}
+export type RequestOptions = Options
 
 declare global {
   interface URLSearchParams {
@@ -371,4 +243,8 @@ function sortSearchParams(searchParams: URLSearchParams) {
     sorted.append(key, searchParams.get(key)!)
   }
   return sorted
+}
+
+function pathTokenToName(token: PathToken) {
+  return typeof token === 'string' ? token : token.name
 }

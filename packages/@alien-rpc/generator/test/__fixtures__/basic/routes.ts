@@ -15,3 +15,12 @@ export const createUser = post(
     return { id: 1 }
   }
 )
+
+// Streamed get route
+export const getPostsByUser = get(
+  '/users/:id/posts',
+  function* ({ id }, { sort }: { sort?: 'title' | 'date' }, request) {
+    yield { id: 1, title: 'Post 1' }
+    yield { id: 2, title: 'Post 2' }
+  }
+)

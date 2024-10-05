@@ -1,66 +1,27 @@
 import { juri } from '@alien-rpc/juri'
-import ky, { Options as RequestOptions } from 'ky'
+import ky from 'ky'
 import { parse, Token as PathToken, tokensToFunction } from 'path-to-regexp'
-import { RpcEndpoint, RpcEndpointPath, RpcResponseByPath } from './types'
+import {
+  RequestOptions,
+  ResponseStream,
+  RpcPagination,
+  RpcPathname,
+  RpcResponseByPath,
+  RpcRoute,
+} from './types.js'
 
-export type { InferParams, PathTemplate } from 'path-types'
-
-type StaticArgs<Args extends TSchema[]> = {
-  [Index in keyof Args]: Static<Args[Index]> extends infer Arg
-    ? Arg extends (infer Item)[]
-      ? Optional<Item>[]
-      : Arg extends object
-        ? { [Key in keyof Arg]: Optional<Arg[Key]> }
-        : Optional<Arg>
-    : never
-} extends infer Args extends any[]
-  ? OptionalArgs<Args>
-  : never
-
-/** Add `null` as a valid type if `undefined` is valid. */
-type Optional<T> = undefined extends T ? T | null : T
-
-/** Treat nullable arguments as optional. */
-type OptionalArgs<Args extends any[]> = Args extends [...infer Rest, infer Last]
-  ? null extends Last
-    ? OptionalArgs<Rest> | [...Required<Rest>, Last]
-    : Args
-  : Args extends [infer Last | null]
-    ? [] | [Last]
-    : Args
-
-type ArrayConcat<T extends any[], U extends any[]> = T extends any[]
-  ? [...T, ...U]
-  : never
-
-export interface ResponseStream<T> extends AsyncIterable<T> {
-  /**
-   * Fetch the next page of results. Exists only if there is a next page and
-   * after the current stream has been fully consumed.
-   */
-  nextPage?: () => ResponseStream<T>
-  /**
-   * Fetch the previous page of results. Exists only if there is a previous page
-   * and after the current stream has been fully consumed.
-   */
-  previousPage?: () => ResponseStream<T>
-}
-
-export type Client<TRouteInterface extends object> = {
-  extend: (defaults: RequestOptions) => Client<TRouteInterface>
-  setResponse: <P extends RpcEndpointPath<TRouteInterface>>(
+export type Client<API extends Record<string, RpcRoute>> = {
+  extend: (defaults: RequestOptions) => Client<API>
+  setResponse: <P extends RpcPathname<API>>(
     path: P,
-    response: Awaited<RpcResponseByPath<TRouteInterface, P>>
+    response: Awaited<RpcResponseByPath<API, P>>
   ) => void
 } & {
-  [TRouteName in keyof TRouteInterface]: Extract<
-    TRouteInterface[TRouteName],
-    RpcEndpoint
-  >['callee']
+  [TKey in keyof API]: Extract<API[TKey], RpcRoute>['callee']
 }
 
-export function defineClient<API extends object>(
-  endpoints: Record<string, Endpoint>,
+export function defineClient<API extends Record<string, RpcRoute>>(
+  endpoints: API,
   { prefixUrl, ...options }: RequestOptions & { prefixUrl: string }
 ): Client<API> {
   const request = ky.create(options)
@@ -74,11 +35,10 @@ export function defineClient<API extends object>(
     get(target, prop) {
       if (prop in endpoints) {
         const endpoint = endpoints[prop as string]
-        const requiredParams = getRequiredParams(endpoint.schema.parameters)
         const pathTokens = parse(endpoint.path)
         const firstParamName = pathTokenToName(pathTokens[0])
         const path = pathTokens.length > 1 && tokensToFunction(pathTokens)
-        const type = endpoint.type as RpcEndpointType
+        const type = endpoint.type
 
         const endpointRequest = (
           method: string,
@@ -141,8 +101,8 @@ export function defineClient<API extends object>(
           // Pathname
           const pathname = params ? path(params) : endpoint.path
 
-          if (endpoint.method === 'GET') {
-            const searchParams = encodeJsonSearch(args[0])
+          if (endpoint.method === 'get') {
+            const searchParams = encodeJsonSearch(params as Record<string, any>)
             if (searchParams) {
               options ||= {}
               options.searchParams = searchParams
@@ -162,10 +122,8 @@ export function defineClient<API extends object>(
             endpoint.method,
             prefixUrl + pathname,
             options,
-            endpoint.method !== 'GET' && {
-              // Send single arguments without an array wrapper.
-              json:
-                args.length !== 1 || Array.isArray(args[0]) ? args : args[0],
+            endpoint.method !== 'get' && {
+              json: params,
             }
           )
         }
@@ -180,14 +138,24 @@ export function defineClient<API extends object>(
   })
 }
 
-function isPagination(object: object): object is RpcPagination {
+function isPagination(arg: object): arg is RpcPagination {
   // The server ensures both `prev` and `next` are defined, even though the
   // RpcPagination type says otherwise.
   return (
-    (object as any).prev !== undefined &&
-    (object as any).next !== undefined &&
-    Object.keys(object).length === 2
+    Object.prototype.hasOwnProperty.call(arg, 'prev') &&
+    Object.prototype.hasOwnProperty.call(arg, 'next') &&
+    checkKeyCount(arg, 2)
   )
+}
+
+function checkKeyCount(object: object, count: number) {
+  let i = 0
+  for (const _ in object) {
+    if (++i > count) {
+      break
+    }
+  }
+  return i === count
 }
 
 function encodeJsonSearch(params: Record<string, any> | undefined) {
@@ -228,8 +196,6 @@ function isOptional(param: any) {
   }
   return param.type === 'null'
 }
-
-export type RequestOptions = Options
 
 declare global {
   interface URLSearchParams {

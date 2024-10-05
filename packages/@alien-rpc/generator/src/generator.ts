@@ -21,12 +21,6 @@ type Options = {
    * @default 'client/api.ts'
    */
   clientOutFile?: string
-  /**
-   * Whether to write the generated files to the output directory.
-   *
-   * @default true
-   */
-  write?: boolean
 }
 
 export default (options: Options) =>
@@ -87,7 +81,9 @@ export default (options: Options) =>
       const clientReturn =
         responseType === 'ndjson'
           ? `ResponseStream<${parseAsyncGeneratorYieldType(resolvedReturn)}>`
-          : `Promise<${responseType === 'blob' ? 'Blob' : resolvedReturn}>`
+          : responseType === 'json'
+            ? `Promise<${resolvedReturn}>`
+            : `AsyncIterable<${responseType === 'blob' ? 'Uint8Array' : 'string'}>`
 
       clientInterface.push(
         dedent`

@@ -19,6 +19,7 @@
     "path-to-regexp": "^6.2.1"
   },
   "devDependencies": {
-    "juri": "workspace:^"
+    "juri": "workspace:^",
+    "radashi": "12.2.0-beta.af825f4"
   }
 }

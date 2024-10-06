@@ -1,1 +1,1 @@
-export * from './juri.js';
+export * from './src/juri.js'

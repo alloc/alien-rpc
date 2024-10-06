@@ -53,12 +53,6 @@ importers:
       '@alien-rpc/juri':
         specifier: workspace:^
         version: link:../juri
-      '@alloc/types':
-        specifier: ^2.3.0
-        version: 2.3.0
-      alien-rpc:
-        specifier: workspace:^
-        version: link:../runtime
       ky:
         specifier: ^1.2.2
         version: 1.2.2
@@ -143,6 +137,9 @@ importers:
       '@types/node':
         specifier: ^22.7.4
         version: 22.7.4
+      radashi:
+        specifier: ^12.1.0
+        version: 12.1.0
 
   packages/@alien-rpc/typebox:
     dependencies:
@@ -168,9 +165,6 @@ packages:
 
   '@alloc/prettier-config@1.0.0':
     resolution: {integrity: sha512-xm50V1qxSdTh1O1fKA+gqcU605YSnxfq6HwtYSFU3fRsKMFnUSuSOxqSAPI7y2sRxqPed2EIuGmNn107LVQM6g==}
-
-  '@alloc/types@2.3.0':
-    resolution: {integrity: sha512-20Az/TTgHkLG7qF6Y+0CPdv+RnKruv8TXgqX4qUcHYf8Qk6ZJykWhEpfybpiR51DyCQbQUuSbXpdnah+SamJ9w==}
 
   '@esbuild/aix-ppc64@0.19.12':
     resolution: {integrity: sha512-bmoCYyWdEL3wDQIVbcyzRyeKLgk2WtWLTWz1ZIAZF/EGbNOwSA6ew3PftJ1PqMiOOGu0OyFMzG53L0zqIpPeNA==}
@@ -1290,8 +1284,6 @@ snapshots:
   '@alloc/path-types@0.1.0': {}
 
   '@alloc/prettier-config@1.0.0': {}
-
-  '@alloc/types@2.3.0': {}
 
   '@esbuild/aix-ppc64@0.19.12':
     optional: true

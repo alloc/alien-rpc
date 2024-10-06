@@ -1,5 +1,7 @@
+import type { TObject, TSchema } from '@sinclair/typebox'
 import { jumpgen } from 'jumpgen'
 import path from 'path'
+import { isString } from 'radashi'
 import ts from 'typescript'
 import { extractRoutes } from './extract-routes.js'
 import { TypeScriptToTypeBox } from './typebox-codegen/typescript/generator.js'
@@ -35,15 +37,56 @@ export default (options: Options) =>
     const clientInterface: string[] = []
 
     for (const route of routes) {
-      const requestSchema = generateRuntimeValidator(
+      const requestSchemaDecl = generateRuntimeValidator(
         `type Request = ${route.resolvedHandlerParams[1]}`
       )
-      const responseSchema = generateRuntimeValidator(
+      const responseSchemaDecl = generateRuntimeValidator(
         `type Response = ${route.resolvedHandlerReturnType}`
       )
 
+      let jsonEncodedParams: string[] | undefined
+
+      if (route.httpMethod === 'get') {
+        const { Type, KindGuard } = await import('@sinclair/typebox')
+
+        /**
+         * Find a schema that matches the predicate. Recurse into any
+         * encountered union schemas.
+         */
+        const findTypeInSchema = (
+          schema: TSchema,
+          match: (schema: TSchema) => boolean
+        ): TSchema | undefined =>
+          KindGuard.IsUnion(schema)
+            ? schema.anyOf.find(variant => findTypeInSchema(variant, match))
+            : match(schema)
+              ? schema
+              : undefined
+
+        const isStringType = (schema: TSchema): boolean =>
+          isString(schema.type) && schema.type === 'string'
+
+        const requestSchema = new Function(
+          'return ' + requestSchemaDecl,
+          'Type'
+        )(Type) as TObject
+
+        jsonEncodedParams = []
+
+        for (const key in requestSchema.properties) {
+          const propertySchema = requestSchema.properties[key]
+          if (isStringType(propertySchema)) {
+            // Simple string types don't need JSON encoding.
+            continue
+          }
+          if (findTypeInSchema(propertySchema, isStringType)) {
+            jsonEncodedParams.push(key)
+          }
+        }
+      }
+
       serverDefinitions.push(
-        `{...routes.${route.exportedName}, requestSchema: ${requestSchema}, responseSchema: ${responseSchema}}`
+        `{...routes.${route.exportedName}, requestSchema: ${requestSchemaDecl}, responseSchema: ${responseSchemaDecl}}`
       )
 
       const resolvedPathParams = route.resolvedHandlerParams[0]
@@ -69,7 +112,7 @@ export default (options: Options) =>
               : 'json'
 
       clientDefinitions.push(
-        `${route.exportedName}: {method: "${route.httpMethod}", path: ${route.resolvedPathLiteral}, arity: ${expectsParams ? 2 : 1}, type: "${responseType}"}`
+        `${route.exportedName}: {method: "${route.httpMethod}", path: ${route.resolvedPathLiteral}, arity: ${expectsParams ? 2 : 1},${jsonEncodedParams ? ` jsonParams: ${JSON.stringify(jsonEncodedParams)},` : ''} type: "${responseType}"}`
       )
 
       const clientArgs: string[] = ['requestOptions?: RequestOptions']

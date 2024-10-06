@@ -1,5 +1,5 @@
 import { RequestContext } from '@hattip/compose'
-import { TSchema } from '@sinclair/typebox'
+import { TObject } from '@sinclair/typebox'
 
 export interface RouteContext extends RequestContext {
   /**
@@ -28,6 +28,6 @@ export interface RouteDefinition {
   method: 'get' | 'post'
   path: string
   handler: (pathParams: object, data: object, context: RouteContext) => any
-  requestSchema: TSchema
-  responseSchema: TSchema
+  requestSchema: TObject
+  responseSchema: TObject
 }

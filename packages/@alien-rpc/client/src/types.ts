@@ -13,6 +13,7 @@ export type RpcRoute<
   method: RpcMethod
   path: Path
   arity: 1 | 2
+  jsonParams?: string[]
   type: RpcResponseType
   callee: Callee
 }

@@ -1,7 +1,7 @@
 import { RpcEndpoint, TReturnValue } from 'alien-rpc'
 import { JsonValue, TSchema, Type, Value } from 'alien-rpc/typebox'
 import { match } from 'path-to-regexp'
-import { transformGetParams } from '../get'
+import { transformRequestSchema } from '../get'
 import { RpcContext, RpcPaginationResult } from './function'
 
 export function toArray(value: any): any[] {
@@ -16,7 +16,7 @@ export function compileEndpoints(API: any) {
     const { method, path, type, schema } = endpoint.toJSON()
     if (method === 'GET' && schema.parameters.length > 0) {
       // Only the first argument type is used by GET endpoints.
-      schema.parameters = [transformGetParams(schema.parameters[0]!) as any]
+      schema.parameters = [transformRequestSchema(schema.parameters[0]!) as any]
     }
     return {
       name: name as string & keyof typeof API,

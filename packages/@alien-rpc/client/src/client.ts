@@ -1,7 +1,7 @@
 import { juri } from '@alien-rpc/juri'
 import ky from 'ky'
 import { parse, tokensToFunction } from 'path-to-regexp'
-import { isString } from 'radashi'
+import { isArray, isString } from 'radashi'
 import {
   RequestOptions,
   ResponseCache,
@@ -168,7 +168,8 @@ function createRouteFunction(
 
       const searchParams = encodeJsonSearch(
         params as Record<string, any>,
-        pathParams
+        pathParams,
+        route.jsonParams!
       )
       if (searchParams) {
         options ||= {}
@@ -217,7 +218,8 @@ function checkKeyCount(object: object, count: number) {
 
 function encodeJsonSearch(
   params: Record<string, any> | undefined,
-  pathParams: string[]
+  pathParams: string[],
+  jsonParams: string[]
 ) {
   if (!params) {
     return
@@ -234,8 +236,8 @@ function encodeJsonSearch(
     searchParams ||= new URLSearchParams()
     searchParams.append(
       key,
-      typeof value !== 'string'
-        ? typeof value === 'object'
+      !isString(value) || jsonParams.includes(key)
+        ? isArray(value) || isObject(value)
           ? juri.encode(value)
           : JSON.stringify(value)
         : value

@@ -1,6 +1,0 @@
-{
-  "devDependencies": {
-    "@types/node": "^20.12.7",
-    "codegentool": "npm:@alloc/codegentool@^1.3.0"
-  }
-}

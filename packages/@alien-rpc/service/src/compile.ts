@@ -1,6 +1,7 @@
 import { RequestContext } from '@hattip/compose'
 import { Errors, ValueError } from '@sinclair/typebox/errors'
 import { match } from 'path-to-regexp'
+import { ndjson } from './ndjson'
 import { RouteContext, RouteDefinition } from './types'
 
 export function compileRoutes(routes: RouteDefinition[]) {
@@ -71,7 +72,7 @@ export function compileRoutes(routes: RouteDefinition[]) {
               'Content-Type',
               'text/plain; charset=utf-8'
             )
-            result = encodeAsyncIterable(result, route, ctx)
+            result = ndjson(result, route, ctx)
           } else if (route.type === 'text') {
             ctx.response.headers.set(
               'Content-Type',

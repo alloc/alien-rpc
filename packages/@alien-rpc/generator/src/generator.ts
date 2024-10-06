@@ -1,12 +1,16 @@
 import type { TObject, TSchema } from '@sinclair/typebox'
+import { ts } from '@ts-morph/bootstrap'
 import { jumpgen } from 'jumpgen'
 import path from 'path'
 import { isString } from 'radashi'
-import ts from 'typescript'
 import { extractRoutes } from './extract-routes.js'
 import { TypeScriptToTypeBox } from './typebox-codegen/typescript/generator.js'
 
 type Options = {
+  /**
+   * The API version.
+   */
+  apiVersion: string
   /**
    * The file that contains the routes.
    */
@@ -37,11 +41,13 @@ export default (options: Options) =>
     const clientInterface: string[] = []
 
     for (const route of routes) {
+      console.log(route)
+
       const requestSchemaDecl = generateRuntimeValidator(
-        `type Request = ${route.resolvedHandlerParams[1]}`
+        `type Request = ${route.resolvedArguments[1]}`
       )
       const responseSchemaDecl = generateRuntimeValidator(
-        `type Response = ${route.resolvedHandlerReturnType}`
+        `type Response = ${route.resolvedResponse}`
       )
 
       let jsonEncodedParams: string[] | undefined
@@ -67,8 +73,8 @@ export default (options: Options) =>
           isString(schema.type) && schema.type === 'string'
 
         const requestSchema = new Function(
-          'return ' + requestSchemaDecl,
-          'Type'
+          'Type',
+          'return ' + requestSchemaDecl
         )(Type) as TObject
 
         jsonEncodedParams = []
@@ -86,11 +92,11 @@ export default (options: Options) =>
       }
 
       serverDefinitions.push(
-        `{...routes.${route.exportedName}, requestSchema: ${requestSchemaDecl}, responseSchema: ${responseSchemaDecl}}`
+        `{...routes.${route.exportedName}, type: "${responseType}", requestSchema: ${requestSchemaDecl}, responseSchema: ${responseSchemaDecl}}`
       )
 
-      const resolvedPathParams = route.resolvedHandlerParams[0]
-      const resolvedExtraParams = route.resolvedHandlerParams[1]
+      const resolvedPathParams = route.resolvedArguments[0]
+      const resolvedExtraParams = route.resolvedArguments[1]
 
       const expectsParams =
         resolvedPathParams !== '{}' || resolvedExtraParams !== '{}'
@@ -99,17 +105,6 @@ export default (options: Options) =>
         !expectsParams ||
         (arePropertiesOptional(resolvedPathParams) &&
           arePropertiesOptional(resolvedExtraParams))
-
-      const resolvedReturn = route.resolvedHandlerReturnType
-      const responseType =
-        resolvedReturn === 'string'
-          ? 'text'
-          : resolvedReturn === 'Buffer' ||
-              resolvedReturn.startsWith('ReadableStream<')
-            ? 'blob'
-            : resolvedReturn.startsWith('AsyncGenerator<')
-              ? 'ndjson'
-              : 'json'
 
       clientDefinitions.push(
         `${route.exportedName}: {method: "${route.httpMethod}", path: ${route.resolvedPathLiteral}, arity: ${expectsParams ? 2 : 1},${jsonEncodedParams ? ` jsonParams: ${JSON.stringify(jsonEncodedParams)},` : ''} type: "${responseType}"}`

@@ -31,3 +31,5 @@ export interface RouteDefinition {
   requestSchema: TObject
   responseSchema: TObject
 }
+
+export type BlobResponse = Buffer | NodeJS.ReadableStream | NodeJS.TypedArray

@@ -1,11 +1,14 @@
+import type { RpcResponseType } from '@alien-rpc/client'
 import { createProject, ts } from '@ts-morph/bootstrap'
 import { debug } from './debug'
-import { getFullyQualifiedType } from './util/ts-ast'
+import {
+  getFullyQualifiedType,
+  isAsyncGeneratorType,
+  isGeneratorType,
+} from './util/ts-ast'
 
 export async function extractRoutes(sourceCode: string, fileName: string) {
   const tsConfigFilePath = ts.findConfigFile(fileName, ts.sys.fileExists)
-  console.log('tsConfigFilePath', tsConfigFilePath)
-
   const project = await createProject({
     tsConfigFilePath,
     skipAddingFilesFromTsConfig: true,
@@ -37,14 +40,15 @@ export async function extractRoutes(sourceCode: string, fileName: string) {
     })
   }
 
-  const validRouteTypes = ['get', 'post']
+  const validRouteMethods = ['get', 'post']
 
   const routes: {
     httpMethod: string
     exportedName: string
     resolvedPathLiteral: string
-    resolvedHandlerParams: string[]
-    resolvedHandlerReturnType: string
+    resolvedArguments: string[]
+    resolvedResponse: string
+    responseType: RpcResponseType
   }[] = []
 
   ts.forEachChild(sourceFile, node => {
@@ -58,11 +62,6 @@ export async function extractRoutes(sourceCode: string, fileName: string) {
       if (ts.isVariableDeclaration(declaration) && declaration.name) {
         const symbol = typeChecker.getSymbolAtLocation(declaration.name)
         if (symbol) {
-          const type = typeChecker.getTypeOfSymbolAtLocation(
-            symbol,
-            declaration
-          )
-
           const callExpression =
             declaration.initializer &&
             ts.isCallExpression(declaration.initializer) &&
@@ -81,7 +80,7 @@ export async function extractRoutes(sourceCode: string, fileName: string) {
           }
 
           const calleeName = calleeIdentifier.text
-          if (!validRouteTypes.includes(calleeName)) {
+          if (!validRouteMethods.includes(calleeName)) {
             return
           }
 
@@ -109,26 +108,55 @@ export async function extractRoutes(sourceCode: string, fileName: string) {
           const handlerSignature =
             typeChecker.getSignatureFromDeclaration(handlerArgument)!
 
-          const resolvedHandlerParams = handlerSignature.parameters
+          const resolvedArguments = handlerSignature.parameters
             .slice(0, 2)
             .map(param => {
               const paramType = typeChecker.getTypeAtLocation(
                 param.valueDeclaration!
               )
-              return getFullyQualifiedType(paramType, typeChecker)
+              return getFullyQualifiedType(paramType, typeChecker, {
+                omitUndefinedLiteral: true,
+              })
             })
 
-          const resolvedHandlerReturnType = getFullyQualifiedType(
-            handlerSignature.getReturnType(),
+          const handlerResultType = typeChecker.getAwaitedType(
+            handlerSignature.getReturnType()
+          )
+          if (!handlerResultType) {
+            console.error(
+              `handler return type could not be resolved (${getNodeLocation(
+                handlerArgument
+              )})`
+            )
+            return
+          }
+
+          const resolvedResponse = resolveResponseType(
+            handlerResultType,
             typeChecker
           )
+
+          type A = NodeJS.TypedArray | Buffer | NodeJS.ReadableStream
+
+          const responseType = typeChecker.isTypeAssignableTo(
+            handlerResultType,
+            typeChecker.getStringType()
+          )
+            ? 'text'
+            : resolvedReturn === 'Buffer' ||
+                resolvedReturn.startsWith('ReadableStream<')
+              ? 'blob'
+              : resolvedReturn.startsWith('AsyncGenerator<')
+                ? 'ndjson'
+                : 'json'
 
           routes.push({
             httpMethod: calleeName,
             exportedName,
             resolvedPathLiteral,
-            resolvedHandlerParams,
-            resolvedHandlerReturnType,
+            resolvedArguments,
+            resolvedResponse,
+            responseType,
           })
         }
       }
@@ -145,4 +173,36 @@ function getNodeLocation(node: ts.Node) {
   )
 
   return `${sourceFile.fileName}:${line + 1}:${character + 1}`
+}
+
+function resolveResponseType(type: ts.Type, typeChecker: ts.TypeChecker) {
+  if (hasTypeArguments(type)) {
+    const iteratorType = isAsyncGeneratorType(type)
+      ? 'AsyncIterableIterator'
+      : isGeneratorType(type)
+        ? 'IterableIterator'
+        : undefined
+
+    if (iteratorType) {
+      const yieldType = getFullyQualifiedType(
+        type.typeArguments[0],
+        typeChecker
+      )
+      return `${iteratorType}<${yieldType}>`
+    }
+  }
+  return getFullyQualifiedType(type, typeChecker)
+}
+
+function inferGeneratorType(
+  type: ts.Type,
+  typeChecker: ts.TypeChecker
+): string | undefined {
+  return undefined
+}
+
+function hasTypeArguments(
+  type: ts.Type
+): type is ts.Type & { typeArguments: readonly ts.Type[] } {
+  return (type as ts.TypeReference).typeArguments !== undefined
 }

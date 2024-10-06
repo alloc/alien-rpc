@@ -36,7 +36,7 @@ export default (options: Options) =>
 
     for (const route of routes) {
       const requestSchema = generateRuntimeValidator(
-        `type Request = { pathParams: ${route.resolvedHandlerParams[0]}; ${route.httpMethod === 'get' ? 'searchParams' : 'body'}: ${route.resolvedHandlerParams[1]} }`
+        `type Request = ${route.resolvedHandlerParams[1]}`
       )
       const responseSchema = generateRuntimeValidator(
         `type Response = ${route.resolvedHandlerReturnType}`
@@ -45,6 +45,17 @@ export default (options: Options) =>
       serverDefinitions.push(
         `{...routes.${route.exportedName}, requestSchema: ${requestSchema}, responseSchema: ${responseSchema}}`
       )
+
+      const resolvedPathParams = route.resolvedHandlerParams[0]
+      const resolvedExtraParams = route.resolvedHandlerParams[1]
+
+      const expectsParams =
+        resolvedPathParams !== '{}' || resolvedExtraParams !== '{}'
+
+      const optionalParams =
+        !expectsParams ||
+        (arePropertiesOptional(resolvedPathParams) &&
+          arePropertiesOptional(resolvedExtraParams))
 
       const resolvedReturn = route.resolvedHandlerReturnType
       const responseType =
@@ -58,23 +69,13 @@ export default (options: Options) =>
               : 'json'
 
       clientDefinitions.push(
-        `${route.exportedName}: {method: "${route.httpMethod}", path: ${route.resolvedPathLiteral}, type: "${responseType}"}`
+        `${route.exportedName}: {method: "${route.httpMethod}", path: ${route.resolvedPathLiteral}, arity: ${expectsParams ? 2 : 1}, type: "${responseType}"}`
       )
-
-      const resolvedPathParams = route.resolvedHandlerParams[0]
-      const resolvedExtraParams = route.resolvedHandlerParams[1]
-
-      const expectsParams =
-        resolvedPathParams !== '{}' || resolvedExtraParams !== '{}'
 
       const clientArgs: string[] = ['requestOptions?: RequestOptions']
       if (expectsParams) {
-        const optionalParams =
-          arePropertiesOptional(resolvedPathParams) &&
-          arePropertiesOptional(resolvedExtraParams)
-
         clientArgs.unshift(
-          `params${optionalParams ? '?' : ''}: RequestParams<${resolvedPathParams}, ${resolvedExtraParams}>`
+          `params${optionalParams ? '?' : ''}: RequestParams<${resolvedPathParams}, ${resolvedExtraParams}>${optionalParams ? ' | null' : ''}`
         )
       }
 

@@ -12,6 +12,7 @@ export type RpcRoute<
 > = {
   method: RpcMethod
   path: Path
+  arity: 1 | 2
   type: RpcResponseType
   callee: Callee
 }
@@ -49,7 +50,10 @@ export type RpcPagination = {
 
 export type { InferParams, PathTemplate } from 'path-types'
 
-export type { Options as RequestOptions } from 'ky'
+export type RequestOptions = Omit<
+  import('ky').Options,
+  'method' | 'body' | 'json' | 'searchParams' | 'prefixUrl'
+>
 
 export type RequestParams<
   TPathParams extends object,
@@ -83,4 +87,9 @@ export interface ResponseStream<T> extends AsyncIterable<T> {
    * and after the current stream has been fully consumed.
    */
   previousPage?: () => ResponseStream<T>
+}
+
+export interface ResponseCache {
+  get: (path: string) => unknown | undefined
+  set: (path: string, response: unknown) => void
 }

@@ -13,13 +13,11 @@
   },
   "dependencies": {
     "@aleclarson/json-stream": "^0.1.22",
-    "@alloc/types": "^2.3.0",
-    "alien-rpc": "workspace:^",
+    "@alien-rpc/juri": "workspace:^",
     "ky": "^1.2.2",
-    "path-to-regexp": "^6.2.1"
+    "path-to-regexp": "npm:@alloc/path-to-regexp@^8.2.0"
   },
   "devDependencies": {
-    "juri": "workspace:^",
     "radashi": "12.2.0-beta.af825f4"
   }
 }

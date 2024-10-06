@@ -1,33 +1,6 @@
 import { InferParams } from '@alloc/path-types'
 import { RequestContext } from '@hattip/compose'
 
-export type Route<
-  Path extends string,
-  Handler extends (...args: any[]) => any,
-> = {
-  method: 'get' | 'post'
-  path: Path
-  handler: Handler
-}
-
-type GetHandler<
-  PathParams extends object,
-  SearchParams extends object,
-  Result,
-> = object extends PathParams
-  ? PathParams extends Required<PathParams>
-    ? (searchParams: SearchParams, request: RequestContext) => Result
-    : (
-        pathParams: PathParams,
-        searchParams: SearchParams,
-        request: RequestContext
-      ) => Result
-  : (
-      pathParams: PathParams,
-      searchParams: SearchParams,
-      request: RequestContext
-    ) => Result
-
 export function get<
   Path extends string,
   SearchParams extends object = {},

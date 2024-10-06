@@ -1,34 +1,20 @@
-import { Type, TypeGuard } from '@sinclair/typebox'
-import { Hint } from '@sinclair/typebox/type/symbols'
+import { juri } from '@alien-rpc/juri'
+import { TSchema, Type, TypeGuard } from '@alien-rpc/typebox'
+import { Hint } from '@sinclair/typebox/type'
 import { Value } from '@sinclair/typebox/value'
-import type {
-  StringOptions,
-  TEnum,
-  TJsonProperties,
-  TSchema,
-} from 'alien-rpc/typebox'
-import { juri } from 'juri'
 
 export function transformGetParams(params: TSchema): TSchema {
-  if (TypeGuard.IsUnion(params)) {
-    // Support nullable objects.
-    return Type.Union(
-      params.anyOf.map(param =>
-        TypeGuard.IsObject(param) ? transformGetParams(param) : param
-      )
-    )
-  }
   return Type.Object(
     Object.fromEntries(
       Object.entries<TSchema>(params.properties).map(([name, param]) => {
         return [name, transformGetParam(param) || param]
       })
-    ) as TJsonProperties,
+    ) as Type.TJsonProperties,
     params
   )
 }
 
-function IsEnum(param: TSchema): param is TEnum {
+function IsEnum(param: TSchema): param is Type.TEnum {
   return TypeGuard.IsUnion(param) && param[Hint] === 'Enum'
 }
 
@@ -98,7 +84,7 @@ function JuriObjectTransform(param: TSchema) {
 }
 
 function JsonTransform(param: TSchema) {
-  const options: StringOptions = {}
+  const options: Type.StringOptions = {}
   if (TypeGuard.IsNull(param)) {
     options.pattern = '^null$'
   } else if (TypeGuard.IsNumber(param)) {

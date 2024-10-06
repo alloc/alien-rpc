@@ -12,10 +12,16 @@
     "lint": "tsc -p . --outDir node_modules/.tmp"
   },
   "dependencies": {
+    "@alien-rpc/juri": "workspace:^",
     "@alloc/path-types": "^0.1.0",
-    "@hattip/compose": "^0.0.48"
+    "@hattip/compose": "^0.0.48",
+    "path-to-regexp": "npm:@alloc/path-to-regexp@^8.2.0"
+  },
+  "peerDependencies": {
+    "@sinclair/typebox": "*"
   },
   "devDependencies": {
+    "@sinclair/typebox": "^0.33.13",
     "@types/node": "^22.7.4"
   }
 }

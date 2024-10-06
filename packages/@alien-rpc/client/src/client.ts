@@ -1,8 +1,10 @@
 import { juri } from '@alien-rpc/juri'
 import ky from 'ky'
-import { parse, Token as PathToken, tokensToFunction } from 'path-to-regexp'
+import { parse, tokensToFunction } from 'path-to-regexp'
+import { isString } from 'radashi'
 import {
   RequestOptions,
+  ResponseCache,
   ResponseStream,
   RpcPagination,
   RpcPathname,
@@ -10,132 +12,187 @@ import {
   RpcRoute,
 } from './types.js'
 
-export type Client<API extends Record<string, RpcRoute>> = {
+interface ClientPrototype<API extends Record<string, RpcRoute>> {
   extend: (defaults: RequestOptions) => Client<API>
   setResponse: <P extends RpcPathname<API>>(
     path: P,
     response: Awaited<RpcResponseByPath<API, P>>
   ) => void
-} & {
-  [TKey in keyof API]: Extract<API[TKey], RpcRoute>['callee']
+}
+
+export type Client<API extends Record<string, RpcRoute>> =
+  ClientPrototype<API> & {
+    [TKey in keyof API]: Extract<API[TKey], RpcRoute>['callee']
+  }
+
+export interface ClientOptions extends RequestOptions {
+  prefixUrl: string
+  /**
+   * This cache is checked before sending a `GET` request. It remains empty
+   * until you manually call the `Client#setResponse` method.
+   *
+   * The `ResponseCache` interface is intentionally simplistic to allow use
+   * of your own caching algorithm, like one with “least recently used”
+   * eviction. Note that `undefined` values are not allowed.
+   *
+   * @default new Map()
+   */
+  responseCache?: ResponseCache
 }
 
 export function defineClient<API extends Record<string, RpcRoute>>(
-  endpoints: API,
-  { prefixUrl, ...options }: RequestOptions & { prefixUrl: string }
+  routes: API,
+  options: ClientOptions
 ): Client<API> {
-  const request = ky.create(options)
-  const responses: any = {}
-  class Client {
-    setResponse(path: string, response: any) {
-      responses[path] = response
-    }
+  const { prefixUrl, responseCache = new Map(), ...defaults } = options
+  return createClientProxy(
+    routes,
+    prefixUrl,
+    responseCache,
+    ky.create(defaults)
+  )
+}
+
+function createClientProxy<API extends Record<string, RpcRoute>>(
+  routes: API,
+  prefixUrl: string,
+  responseCache: ResponseCache,
+  request: typeof ky
+): Client<API> {
+  const client: ClientPrototype<API> = {
+    extend: defaults =>
+      createClientProxy(
+        routes,
+        prefixUrl,
+        responseCache,
+        request.extend(defaults)
+      ),
+    setResponse(path, response) {
+      responseCache.set(path, response)
+    },
   }
-  return new Proxy(request as any, {
-    get(target, prop) {
-      if (prop in endpoints) {
-        const endpoint = endpoints[prop as string]
-        const pathTokens = parse(endpoint.path)
-        const firstParamName = pathTokenToName(pathTokens[0])
-        const path = pathTokens.length > 1 && tokensToFunction(pathTokens)
-        const type = endpoint.type
 
-        const endpointRequest = (
-          method: string,
-          url: string,
-          options: RequestOptions | undefined,
-          body?: { json: any } | false
-        ) => {
-          const promise = request(url, {
-            ...options,
-            ...body,
-            method,
-          })
-
-          if (type === 'json') {
-            return (async () => {
-              const response = await promise
-              if (response.headers.get('Content-Length') === '0') {
-                return null
-              }
-              return response.json()
-            })()
-          }
-
-          let responseStream!: ResponseStream<any>
-          return (responseStream = (async function* () {
-            const response = await promise
-
-            const body: AsyncIterable<Uint8Array> & {
-              pipeThrough: <T>(
-                transform: TransformStream<any, T>
-              ) => AsyncIterable<T>
-            } = response.body as any
-
-            if (type === 'ndjson') {
-              const { ObjectParser } = await import('@aleclarson/json-stream')
-              for await (const object of body.pipeThrough(new ObjectParser())) {
-                if (isPagination(object)) {
-                  const { prev, next } = object
-                  if (prev) {
-                    responseStream.previousPage = () =>
-                      endpointRequest('GET', prefixUrl + prev, options) as any
-                  }
-                  if (next) {
-                    responseStream.nextPage = () =>
-                      endpointRequest('GET', prefixUrl + next, options) as any
-                  }
-                } else {
-                  yield object
-                }
-              }
-            } else if (type === 'text') {
-              yield* body.pipeThrough(new TextDecoderStream())
-            } else {
-              yield* body
-            }
-          })())
-        }
-
-        return (params: unknown, options?: RequestOptions) => {
-          // Pathname
-          const pathname = params ? path(params) : endpoint.path
-
-          if (endpoint.method === 'get') {
-            const searchParams = encodeJsonSearch(params as Record<string, any>)
-            if (searchParams) {
-              options ||= {}
-              options.searchParams = searchParams
-            }
-
-            let cacheKey = pathname
-            if (searchParams?.size) {
-              cacheKey += '?' + sortSearchParams(searchParams).toString()
-            }
-
-            if (cacheKey in responses) {
-              return Promise.resolve(responses[cacheKey])
-            }
-          }
-
-          return endpointRequest(
-            endpoint.method,
-            prefixUrl + pathname,
-            options,
-            endpoint.method !== 'get' && {
-              json: params,
-            }
-          )
-        }
+  return new Proxy(client, {
+    get(client, key) {
+      if (Object.prototype.hasOwnProperty.call(routes, key)) {
+        return createRouteFunction(
+          routes[key as keyof API],
+          prefixUrl,
+          responseCache,
+          request
+        )
       }
-      if (Client.prototype.hasOwnProperty(prop)) {
-        return Client.prototype[prop as keyof Client]
-      }
-      if (prop in target) {
-        return target[prop]
+      if (client.hasOwnProperty(key)) {
+        return client[key as keyof ClientPrototype<API>]
       }
     },
-  })
+  }) as any
+}
+
+function createRouteFunction(
+  route: RpcRoute,
+  prefixUrl: string,
+  responseCache: ResponseCache,
+  request: typeof ky
+) {
+  const pathTokens = parse(route.path)
+  const pathParams = pathTokens.map(token =>
+    isString(token) ? token : String(token.name)
+  )
+  const buildPath = pathTokens.length > 1 && tokensToFunction(pathTokens)
+
+  const send = (
+    method: string,
+    url: string,
+    options: import('ky').Options | undefined,
+    body?: { json: any } | false
+  ) => {
+    const promise = request(url, {
+      ...options,
+      ...body,
+      method,
+    })
+
+    if (route.type === 'json') {
+      return resolveJsonResponse(promise)
+    }
+
+    let responseStream!: ResponseStream<any>
+    return (responseStream = (async function* () {
+      const response = await promise
+
+      const body: AsyncIterable<Uint8Array> & {
+        pipeThrough: <T>(transform: TransformStream<any, T>) => AsyncIterable<T>
+      } = response.body as any
+
+      if (route.type === 'ndjson') {
+        const { ObjectParser } = await import('@aleclarson/json-stream')
+        for await (const object of body.pipeThrough(new ObjectParser())) {
+          if (isPagination(object)) {
+            const { prev, next } = object
+            if (prev) {
+              responseStream.previousPage = () =>
+                send('get', prefixUrl + prev, options) as any
+            }
+            if (next) {
+              responseStream.nextPage = () =>
+                send('get', prefixUrl + next, options) as any
+            }
+          } else {
+            yield object
+          }
+        }
+      } else if (route.type === 'text') {
+        yield* body.pipeThrough(new TextDecoderStream())
+      } else {
+        yield* body
+      }
+    })())
+  }
+
+  return (
+    arg: unknown,
+    options = route.arity === 1
+      ? (arg as import('ky').Options | undefined)
+      : undefined
+  ) => {
+    let params: Record<string, any> | undefined
+    if (route.arity === 2 && arg != null) {
+      params = isObject(arg) ? arg : { [pathParams[0]]: arg }
+    }
+
+    const path = buildPath ? buildPath(params) : route.path
+
+    if (route.method === 'get') {
+      let cacheKey = path
+
+      const searchParams = encodeJsonSearch(
+        params as Record<string, any>,
+        pathParams
+      )
+      if (searchParams) {
+        options ||= {}
+        options.searchParams = searchParams
+
+        // The search params are sorted to ensure consistent cache keys.
+        cacheKey += '?' + searchParams.toString()
+      }
+
+      const response = responseCache.get(cacheKey)
+      if (response !== undefined) {
+        return Promise.resolve(response)
+      }
+    }
+
+    return send(
+      route.method,
+      prefixUrl + path,
+      options,
+      route.method !== 'get' && {
+        json: params,
+      }
+    )
+  }
 }
 
 function isPagination(arg: object): arg is RpcPagination {
@@ -158,12 +215,19 @@ function checkKeyCount(object: object, count: number) {
   return i === count
 }
 
-function encodeJsonSearch(params: Record<string, any> | undefined) {
+function encodeJsonSearch(
+  params: Record<string, any> | undefined,
+  pathParams: string[]
+) {
   if (!params) {
     return
   }
   let searchParams: URLSearchParams | undefined
-  for (const [key, value] of Object.entries(params)) {
+  for (const key of Object.keys(params).sort()) {
+    if (pathParams.includes(key)) {
+      continue
+    }
+    const value = params[key]
     if (value == null) {
       continue
     }
@@ -180,37 +244,14 @@ function encodeJsonSearch(params: Record<string, any> | undefined) {
   return searchParams
 }
 
-function getRequiredParams(params: readonly any[]) {
-  for (let i = params.length - 1; i >= 0; i--) {
-    const param = params[i]
-    if (!isOptional(param)) {
-      return params.slice(0, i + 1)
-    }
-  }
-  return []
+function isObject(arg: unknown) {
+  return Object.getPrototypeOf(arg) === Object.prototype
 }
 
-function isOptional(param: any) {
-  if (param.anyOf) {
-    return param.anyOf.some(isOptional)
+async function resolveJsonResponse(promise: Promise<Response>) {
+  const response = await promise
+  if (response.headers.get('Content-Length') === '0') {
+    return null
   }
-  return param.type === 'null'
-}
-
-declare global {
-  interface URLSearchParams {
-    keys(): IterableIterator<string>
-  }
-}
-
-function sortSearchParams(searchParams: URLSearchParams) {
-  const sorted = new URLSearchParams()
-  for (const key of [...searchParams.keys()].sort()) {
-    sorted.append(key, searchParams.get(key)!)
-  }
-  return sorted
-}
-
-function pathTokenToName(token: PathToken) {
-  return typeof token === 'string' ? token : token.name
+  return response.json()
 }

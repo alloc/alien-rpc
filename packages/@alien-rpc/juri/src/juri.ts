@@ -48,6 +48,8 @@ function create(dictionary?: string[]) {
 
   if (Array.isArray(dictionary)) {
     dictionary.splice(64)
+    encMap = {}
+    decMap = {}
 
     dictionary.forEach(function (word) {
       let i: number

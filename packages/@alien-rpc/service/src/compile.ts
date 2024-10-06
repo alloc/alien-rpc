@@ -7,6 +7,10 @@ export function compileRoutes(routes: RouteDefinition[]) {
   const compiledRoutes = routes.map(route => ({
     ...route,
     match: match(route.path),
+    requestSchema:
+      route.method === 'get'
+        ? transformGetParams(route.requestSchema)
+        : route.requestSchema,
   }))
 
   return async (context: RequestContext) => {
@@ -28,20 +32,6 @@ export function compileRoutes(routes: RouteDefinition[]) {
           continue
         }
 
-        const data: any =
-          route.method === 'get'
-            ? Object.fromEntries(url.searchParams)
-            : await request.json()
-
-        const dataError = Errors(route.requestSchema, data).First()
-        if (dataError) {
-          const body: any = firstLeafError(dataError)
-          body.error ??= { message: 'Unsupported request' }
-          return new Response(JSON.stringify(body), {
-            status: 200,
-          })
-        }
-
         const ctx = context as RouteContext
         ctx.url = url
         ctx.response = {
@@ -50,6 +40,19 @@ export function compileRoutes(routes: RouteDefinition[]) {
             'Access-Control-Allow-Credentials': 'true',
             'Access-Control-Allow-Origin': request.headers.get('Origin') ?? '*',
           }),
+        }
+
+        const data: any =
+          route.method === 'get'
+            ? Object.fromEntries(url.searchParams)
+            : await request.json()
+
+        const dataError = Errors(route.requestSchema, data).First()
+        if (dataError) {
+          const body = JSON.stringify({ error: firstLeafError(dataError) })
+          return new Response(body, {
+            status: 200,
+          })
         }
 
         try {

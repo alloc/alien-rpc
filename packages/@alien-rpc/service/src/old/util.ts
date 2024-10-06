@@ -1,8 +1,8 @@
 import { RpcEndpoint, TReturnValue } from 'alien-rpc'
 import { JsonValue, TSchema, Type, Value } from 'alien-rpc/typebox'
 import { match } from 'path-to-regexp'
+import { transformGetParams } from '../get'
 import { RpcContext, RpcPaginationResult } from './function'
-import { transformGetParams } from './get'
 
 export function toArray(value: any): any[] {
   return Array.isArray(value) ? value : [value]

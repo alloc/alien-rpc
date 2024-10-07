@@ -113,7 +113,7 @@ function createRouteFunction(
       method,
     })
 
-    if (route.type === 'json') {
+    if (route.format === 'json') {
       return resolveJsonResponse(promise)
     }
 
@@ -125,7 +125,7 @@ function createRouteFunction(
         pipeThrough: <T>(transform: TransformStream<any, T>) => AsyncIterable<T>
       } = response.body as any
 
-      if (route.type === 'ndjson') {
+      if (route.format === 'ndjson') {
         const { ObjectParser } = await import('@aleclarson/json-stream')
         for await (const object of body.pipeThrough(new ObjectParser())) {
           if (isPagination(object)) {
@@ -142,7 +142,7 @@ function createRouteFunction(
             yield object
           }
         }
-      } else if (route.type === 'text') {
+      } else if (route.format === 'text') {
         yield* body.pipeThrough(new TextDecoderStream())
       } else {
         yield* body

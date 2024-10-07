@@ -74,11 +74,14 @@ importers:
         version: 4.3.7
       jumpgen:
         specifier: 0.1.0-beta.3
-        version: 0.1.0-beta.4
+        version: 0.1.0-beta.3
     devDependencies:
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.12
+      '@types/node':
+        specifier: ^22.7.4
+        version: 22.7.4
       radashi:
         specifier: ^12.1.0
         version: 12.1.0
@@ -872,8 +875,8 @@ packages:
   jsonfile@6.1.0:
     resolution: {integrity: sha512-5dgndWOriYSm5cnYaJNhalLNDKOqFwyDB/rr1E9ZsGciGvKPs8R2xYGCacuf3z6K1YKDz182fd+fY3cn3pMqXQ==}
 
-  jumpgen@0.1.0-beta.4:
-    resolution: {integrity: sha512-Z2CFUgQOhlEunapBkUVFFsi9PEvAQgBA5HcpHF6RvOD+OjRtC9szpch7Za4GRy2xvBubY6h7+7IPTPP8nzjVxw==}
+  jumpgen@0.1.0-beta.3:
+    resolution: {integrity: sha512-sEhErAsAAnFKvUlPVG1BM7Nt/gmQeYG68hXbSZgQetRAW5R/AEgnmmSnK1pe/LytqUodDp8HSsJlw4vBw+H3ow==}
 
   ky@1.7.2:
     resolution: {integrity: sha512-OzIvbHKKDpi60TnF9t7UUVAF1B4mcqc02z5PIvrm08Wyb+yOcz63GRvEuVxNT18a9E1SrNouhB4W2NNLeD7Ykg==}
@@ -1894,7 +1897,7 @@ snapshots:
     optionalDependencies:
       graceful-fs: 4.2.11
 
-  jumpgen@0.1.0-beta.4:
+  jumpgen@0.1.0-beta.3:
     dependencies:
       chokidar: 4.0.1
       fast-glob: 3.3.2

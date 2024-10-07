@@ -58,3 +58,8 @@ pnpm add @alien-rpc/client
 ## Development
 
 - It's recommended to run your server with [vite-node](https://www.npmjs.com/package/vite-node) during development, so that you can hot reload your server.
+
+## Limitations
+
+- Routes must return JSON-compatible types, an iterator that yields JSON-compatible types, or a `Response` object.
+- Recursive types are forbidden in route signatures.

@@ -4,7 +4,7 @@ type AnyFn = (...args: any) => any
 
 export type RpcMethod = 'get' | 'post'
 
-export type RpcResponseType = 'json' | 'ndjson' | 'text' | 'blob'
+export type RpcResponseFormat = 'json' | 'ndjson' | 'response'
 
 export type RpcRoute<
   Path extends string = string,
@@ -12,9 +12,25 @@ export type RpcRoute<
 > = {
   method: RpcMethod
   path: Path
+  /**
+   * The response format determines how the response must be handled for
+   * the caller to receive the expected type.
+   */
+  format: RpcResponseFormat
+  /**
+   * Equals 1 if the route has no search parameters or request body.
+   */
   arity: 1 | 2
+  /**
+   * Exists for GET routes and is non-empty for routes with search
+   * parameters that may be a string or some other type. This ensures the
+   * string values are JSON encoded to ensure parse-ability.
+   */
   jsonParams?: string[]
-  type: RpcResponseType
+  /**
+   * The route's signature type. This property never actually exists at
+   * runtime.
+   */
   callee: Callee
 }
 
@@ -77,7 +93,9 @@ type HasSingleKey<T extends object> = keyof T extends infer TKey
     : false
   : false
 
-export interface ResponseStream<T> extends AsyncIterable<T> {
+export type { ResponsePromise } from 'ky'
+
+export interface ResponseStream<T> extends AsyncIterableIterator<T> {
   /**
    * Fetch the next page of results. Exists only if there is a next page and
    * after the current stream has been fully consumed.

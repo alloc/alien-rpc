@@ -29,13 +29,6 @@ export function getFullyQualifiedType(
     return typeChecker.typeToString(type)
   }
 
-  if (type.symbol && type.symbol.flags & ts.SymbolFlags.TypeAlias) {
-    const aliasedType = typeChecker.getTypeAtLocation(
-      type.symbol.declarations![0]
-    )
-    return getFullyQualifiedType(aliasedType, typeChecker, opts)
-  }
-
   if (typeChecker.isArrayType(type)) {
     const typeArguments = (type as ts.TypeReference).typeArguments
     if (typeArguments && typeArguments.length > 0) {
@@ -47,38 +40,62 @@ export function getFullyQualifiedType(
     }
   }
 
-  if (
-    type.symbol &&
-    (type.symbol.flags & ts.SymbolFlags.TypeLiteral ||
-      type.symbol.flags & ts.SymbolFlags.ObjectLiteral ||
-      type.symbol.flags & ts.SymbolFlags.Interface)
-  ) {
-    // console.log({
-    //   type: typeChecker.typeToString(type),
-    //   flags: bitwiseEnumToArray(type.symbol.flags, ts.SymbolFlags),
-    // })
+  const typeSymbol = type.getSymbol()
 
-    const properties = type.getProperties().map(prop => {
-      const propType = typeChecker.getTypeOfSymbolAtLocation(
-        prop,
-        prop.valueDeclaration!
+  if (typeSymbol) {
+    if (isTypeAlias(typeSymbol)) {
+      const aliasedType = typeChecker.getTypeAtLocation(
+        type.symbol.declarations![0]
       )
-      return `${prop.name}${prop.flags & ts.SymbolFlags.Optional ? '?' : ''}: ${getFullyQualifiedType(propType, typeChecker, opts)}`
-    })
-    return `{ ${properties.join('; ')} }`
-  }
+      return getFullyQualifiedType(aliasedType, typeChecker, opts)
+    }
 
-  if (type.symbol && type.symbol.flags) {
-    console.log({
-      type: typeChecker.typeToString(type),
-      flags: bitwiseEnumToArray(type.symbol.flags, ts.SymbolFlags),
-    })
+    if (isObjectType(typeSymbol) || isInterfaceType(typeSymbol)) {
+      const properties = type.getProperties().map(prop => {
+        const propType = typeChecker.getTypeOfSymbol(prop)
+        return `${prop.name}${prop.flags & ts.SymbolFlags.Optional ? '?' : ''}: ${getFullyQualifiedType(propType, typeChecker, opts)}`
+      })
+
+      const stringIndexType = type.getStringIndexType()
+      if (stringIndexType) {
+        properties.push(
+          `[key: string]: ${getFullyQualifiedType(stringIndexType, typeChecker, opts)}`
+        )
+      }
+
+      const numberIndexType = type.getNumberIndexType()
+      if (numberIndexType) {
+        properties.push(
+          `[index: number]: ${getFullyQualifiedType(numberIndexType, typeChecker, opts)}`
+        )
+      }
+
+      return `{ ${properties.join('; ')} }`
+    }
   }
 
   return typeChecker.typeToString(type)
 }
 
-function bitwiseEnumToArray(flags: number, enumValues: Record<number, string>) {
+export function isTypeAlias(symbol: ts.Symbol): boolean {
+  return Boolean(symbol.flags & ts.SymbolFlags.TypeAlias)
+}
+
+export function isInterfaceType(symbol: ts.Symbol): boolean {
+  return Boolean(symbol.flags & ts.SymbolFlags.Interface)
+}
+
+export function isObjectType(symbol: ts.Symbol): boolean {
+  return Boolean(
+    symbol.flags & ts.SymbolFlags.TypeLiteral ||
+      symbol.flags & ts.SymbolFlags.ObjectLiteral
+  )
+}
+
+export function bitwiseEnumToArray(
+  flags: number,
+  enumValues: Record<number, string>
+) {
   return Object.entries(enumValues)
     .filter(([value]) => flags & Number(value))
     .map(([_, name]) => name)

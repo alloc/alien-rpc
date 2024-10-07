@@ -1,10 +1,12 @@
-import type { RpcResponseType } from '@alien-rpc/client'
-import { createProject, ts } from '@ts-morph/bootstrap'
+import type { RpcResponseFormat } from '@alien-rpc/client'
+import { createProject, Project, ts } from '@ts-morph/bootstrap'
+import path from 'node:path'
 import { debug } from './debug'
 import {
   getFullyQualifiedType,
   isAsyncGeneratorType,
   isGeneratorType,
+  isObjectType,
 } from './util/ts-ast'
 
 export async function extractRoutes(sourceCode: string, fileName: string) {
@@ -14,11 +16,13 @@ export async function extractRoutes(sourceCode: string, fileName: string) {
     skipAddingFilesFromTsConfig: true,
   })
 
+  const inferNodeTypes = defineNodeTypes(project, path.dirname(fileName))
   const sourceFile = project.createSourceFile(fileName, sourceCode)
   project.resolveSourceFileDependencies()
 
   const program = project.createProgram()
   const typeChecker = program.getTypeChecker()
+  const nodeTypes = inferNodeTypes(typeChecker)
 
   const diagnostics = program.getSemanticDiagnostics(sourceFile)
   if (diagnostics.length > 0) {
@@ -40,16 +44,7 @@ export async function extractRoutes(sourceCode: string, fileName: string) {
     })
   }
 
-  const validRouteMethods = ['get', 'post']
-
-  const routes: {
-    httpMethod: string
-    exportedName: string
-    resolvedPathLiteral: string
-    resolvedArguments: string[]
-    resolvedResponse: string
-    responseType: RpcResponseType
-  }[] = []
+  const routes: ExtractedRoute[] = []
 
   ts.forEachChild(sourceFile, node => {
     if (
@@ -62,102 +57,23 @@ export async function extractRoutes(sourceCode: string, fileName: string) {
       if (ts.isVariableDeclaration(declaration) && declaration.name) {
         const symbol = typeChecker.getSymbolAtLocation(declaration.name)
         if (symbol) {
-          const callExpression =
-            declaration.initializer &&
-            ts.isCallExpression(declaration.initializer) &&
-            declaration.initializer
-
-          if (!callExpression) {
-            return
-          }
-
-          const calleeIdentifier =
-            ts.isIdentifier(callExpression.expression) &&
-            callExpression.expression
-
-          if (!calleeIdentifier) {
-            return
-          }
-
-          const calleeName = calleeIdentifier.text
-          if (!validRouteMethods.includes(calleeName)) {
-            return
-          }
-
-          const handlerArgument = callExpression.arguments[1]
-
-          if (
-            !ts.isArrowFunction(handlerArgument) &&
-            !ts.isFunctionExpression(handlerArgument)
-          ) {
-            if (debug.enabled)
-              debug(
-                `handler is not an inline function (${getNodeLocation(handlerArgument)})`
-              )
-            return
-          }
-
-          const exportedName = symbol.getName()
-
-          const pathArgument = callExpression.arguments[0]
-          const resolvedPathLiteral = getFullyQualifiedType(
-            typeChecker.getTypeAtLocation(pathArgument),
-            typeChecker
-          )
-
-          const handlerSignature =
-            typeChecker.getSignatureFromDeclaration(handlerArgument)!
-
-          const resolvedArguments = handlerSignature.parameters
-            .slice(0, 2)
-            .map(param => {
-              const paramType = typeChecker.getTypeAtLocation(
-                param.valueDeclaration!
-              )
-              return getFullyQualifiedType(paramType, typeChecker, {
-                omitUndefinedLiteral: true,
-              })
-            })
-
-          const handlerResultType = typeChecker.getAwaitedType(
-            handlerSignature.getReturnType()
-          )
-          if (!handlerResultType) {
-            console.error(
-              `handler return type could not be resolved (${getNodeLocation(
-                handlerArgument
-              )})`
+          const routeName = symbol.getName()
+          const expressionType = typeChecker.getTypeAtLocation(declaration.name)
+          try {
+            const route = extractRoute(
+              routeName,
+              expressionType,
+              typeChecker,
+              nodeTypes
             )
-            return
+            if (route) {
+              debug('extracted route', route)
+              routes.push(route)
+            }
+          } catch (error: any) {
+            Object.assign(error, { routeName })
+            throw error
           }
-
-          const resolvedResponse = resolveResponseType(
-            handlerResultType,
-            typeChecker
-          )
-
-          type A = NodeJS.TypedArray | Buffer | NodeJS.ReadableStream
-
-          const responseType = typeChecker.isTypeAssignableTo(
-            handlerResultType,
-            typeChecker.getStringType()
-          )
-            ? 'text'
-            : resolvedReturn === 'Buffer' ||
-                resolvedReturn.startsWith('ReadableStream<')
-              ? 'blob'
-              : resolvedReturn.startsWith('AsyncGenerator<')
-                ? 'ndjson'
-                : 'json'
-
-          routes.push({
-            httpMethod: calleeName,
-            exportedName,
-            resolvedPathLiteral,
-            resolvedArguments,
-            resolvedResponse,
-            responseType,
-          })
         }
       }
     }
@@ -166,13 +82,116 @@ export async function extractRoutes(sourceCode: string, fileName: string) {
   return routes
 }
 
-function getNodeLocation(node: ts.Node) {
-  const sourceFile = node.getSourceFile()
-  const { line, character } = sourceFile.getLineAndCharacterOfPosition(
-    node.getStart()
+export type ExtractedRoute = {
+  httpMethod: string
+  exportedName: string
+  responseFormat: RpcResponseFormat
+  resolvedPathLiteral: string
+  resolvedArguments: string[]
+  resolvedResponse: string
+}
+
+function extractRoute(
+  routeName: string,
+  declarationType: ts.Type,
+  typeChecker: ts.TypeChecker,
+  nodeTypes: Record<string, ts.Type>
+): ExtractedRoute | null {
+  if (!isObjectType(declarationType.symbol)) {
+    return null
+  }
+
+  console.log(typeChecker.typeToString(declarationType))
+
+  const method = typeChecker.getPropertyOfType(declarationType, 'method')
+  if (!method) {
+    debug(`[skip] Route "${routeName}" has no "method" property`)
+    return null
+  }
+
+  const path = typeChecker.getPropertyOfType(declarationType, 'path')
+  if (!path) {
+    debug(`[skip] Route "${routeName}" has no "path" property`)
+    return null
+  }
+
+  const handler = typeChecker.getPropertyOfType(declarationType, 'handler')
+  if (!handler) {
+    debug(`[skip] Route "${routeName}" has no "handler" property`)
+    return null
+  }
+
+  if (
+    !typeChecker.isTypeAssignableTo(
+      typeChecker.getTypeOfSymbol(method),
+      nodeTypes.RouteMethod
+    )
+  ) {
+    throw new Error(
+      `Route has an unsupported HTTP method: ${typeChecker.typeToString(typeChecker.getTypeOfSymbol(method))}`
+    )
+  }
+
+  if (
+    !typeChecker.isTypeAssignableTo(
+      typeChecker.getTypeOfSymbol(path),
+      typeChecker.getStringType()
+    )
+  ) {
+    throw new Error(`Route path is not a string`)
+  }
+
+  const handlerCallSignatures = typeChecker
+    .getTypeOfSymbol(handler)
+    .getCallSignatures()
+  const handlerCallSignature = handlerCallSignatures[0]
+
+  if (handlerCallSignatures.length !== 1) {
+    throw new Error('Route handler must have exactly 1 call signature')
+  }
+
+  const handlerResultType = typeChecker.getAwaitedType(
+    handlerCallSignature.getReturnType()
+  )
+  if (!handlerResultType) {
+    throw new Error('Route handler has an unknown return type')
+  }
+
+  const httpMethod = getFullyQualifiedType(
+    typeChecker.getTypeOfSymbol(method),
+    typeChecker
   )
 
-  return `${sourceFile.fileName}:${line + 1}:${character + 1}`
+  const resolvedPathLiteral = getFullyQualifiedType(
+    typeChecker.getTypeOfSymbol(path),
+    typeChecker
+  )
+
+  const resolvedArguments = handlerCallSignature.parameters
+    .slice(0, 2)
+    .map(param => {
+      const paramType = typeChecker.getTypeAtLocation(param.valueDeclaration!)
+      return getFullyQualifiedType(paramType, typeChecker, {
+        omitUndefinedLiteral: true,
+      })
+    })
+
+  const resolvedResponse = resolveResponseType(handlerResultType, typeChecker)
+
+  const responseFormat = inferResponseFormat(
+    handlerResultType,
+    typeChecker,
+    nodeTypes
+  )
+
+  return {
+    httpMethod,
+    exportedName: routeName,
+    responseFormat,
+    resolvedPathLiteral,
+    resolvedArguments,
+    resolvedResponse,
+  }
 }
 
 function resolveResponseType(type: ts.Type, typeChecker: ts.TypeChecker) {
@@ -194,15 +213,99 @@ function resolveResponseType(type: ts.Type, typeChecker: ts.TypeChecker) {
   return getFullyQualifiedType(type, typeChecker)
 }
 
-function inferGeneratorType(
-  type: ts.Type,
-  typeChecker: ts.TypeChecker
-): string | undefined {
-  return undefined
+interface TypeArguments {
+  typeArguments: ts.Type[]
 }
 
-function hasTypeArguments(
-  type: ts.Type
-): type is ts.Type & { typeArguments: readonly ts.Type[] } {
+function hasTypeArguments(type: ts.Type): type is ts.Type & TypeArguments {
   return (type as ts.TypeReference).typeArguments !== undefined
+}
+
+function defineNodeTypes(project: Project, rootDir: string) {
+  const arpcService = 'import("@alien-rpc/service")'
+
+  const nodeTypes = [
+    ['Response', 'globalThis.Response'],
+    [
+      'IterableIterator',
+      'globalThis.Generator | globalThis.AsyncGenerator | globalThis.IterableIterator<unknown> | globalThis.AsyncIterableIterator<unknown>',
+    ],
+    ['JSON', '{ [key: string]: JSON } | readonly JSON[] | JSONValue'],
+    ['JSONValue', 'string | number | boolean | null | undefined'],
+    ['ValidResult', 'Response | IterableIterator | JSON'],
+    ['RouteMethod', arpcService + '.RouteMethod'],
+  ] as const
+
+  const sourceFile = project.createSourceFile(
+    path.join(rootDir, 'alien-rpc__node-types.ts'),
+    nodeTypes
+      .map(([exportedName, type]) => {
+        return `export type ${exportedName} = ${type}`
+      })
+      .join('\n')
+  )
+
+  const syntaxList = sourceFile.getChildAt(0)
+
+  return (typeChecker: ts.TypeChecker) =>
+    Object.fromEntries(
+      nodeTypes.map(([exportedName], i) => {
+        const resolvedType = typeChecker.getTypeAtLocation(
+          syntaxList.getChildAt(i)
+        )
+        if (resolvedType.flags & ts.TypeFlags.Any) {
+          throw new Error(
+            `Could not resolve ${exportedName} type. Make sure @types/node is installed in your project.`
+          )
+        }
+        return [exportedName, resolvedType]
+      })
+    ) as {
+      [K in (typeof nodeTypes)[number][0]]: ts.Type
+    }
+}
+
+function inferResponseFormat(
+  type: ts.Type,
+  typeChecker: ts.TypeChecker,
+  nodeTypes: Record<string, ts.Type>
+) {
+  if (type.flags & ts.TypeFlags.Any) {
+    throw new InvalidResponseTypeError('Your route is not type-safe.')
+  }
+  if (typeChecker.isTypeAssignableTo(type, nodeTypes.Response)) {
+    return 'response'
+  }
+  if (typeChecker.isTypeAssignableTo(type, nodeTypes.IterableIterator)) {
+    const yieldType = (type as ts.Type & TypeArguments).typeArguments[0]
+    if (!typeChecker.isTypeAssignableTo(yieldType, nodeTypes.JSON)) {
+      throw new InvalidResponseTypeError(
+        'Your route yields an unsupported type.'
+      )
+    }
+    return 'ndjson'
+  }
+  if (typeChecker.isTypeAssignableTo(nodeTypes.Response, type)) {
+    throw new InvalidResponseTypeError(
+      'Routes that return a `new Response()` cannot ever return anything else.'
+    )
+  }
+  if (typeChecker.isTypeAssignableTo(nodeTypes.IterableIterator, type)) {
+    throw new InvalidResponseTypeError(
+      'Routes that return an iterator cannot ever return anything else.'
+    )
+  }
+  if (!typeChecker.isTypeAssignableTo(type, nodeTypes.ValidResult)) {
+    throw new InvalidResponseTypeError(
+      'Your route returns an unsupported type.'
+    )
+  }
+  return 'json'
+}
+
+class InvalidResponseTypeError extends Error {
+  name = 'InvalidResponseTypeError'
+  constructor(detail?: string) {
+    super('Invalid response type' + (detail ? ': ' + detail : ''))
+  }
 }

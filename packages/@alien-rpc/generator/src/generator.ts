@@ -39,10 +39,9 @@ export default (options: Options) =>
     const serverDefinitions: string[] = []
     const clientDefinitions: string[] = []
     const clientInterface: string[] = []
+    const clientImports = new Set<string>(['RequestParams', 'RequestOptions'])
 
     for (const route of routes) {
-      console.log(route)
-
       const requestSchemaDecl = generateRuntimeValidator(
         `type Request = ${route.resolvedArguments[1]}`
       )
@@ -92,7 +91,7 @@ export default (options: Options) =>
       }
 
       serverDefinitions.push(
-        `{...routes.${route.exportedName}, type: "${responseType}", requestSchema: ${requestSchemaDecl}, responseSchema: ${responseSchemaDecl}}`
+        `{...routes.${route.exportedName}, format: "${route.responseFormat}", requestSchema: ${requestSchemaDecl}, responseSchema: ${responseSchemaDecl}}`
       )
 
       const resolvedPathParams = route.resolvedArguments[0]
@@ -107,7 +106,7 @@ export default (options: Options) =>
           arePropertiesOptional(resolvedExtraParams))
 
       clientDefinitions.push(
-        `${route.exportedName}: {method: "${route.httpMethod}", path: ${route.resolvedPathLiteral}, arity: ${expectsParams ? 2 : 1},${jsonEncodedParams ? ` jsonParams: ${JSON.stringify(jsonEncodedParams)},` : ''} type: "${responseType}"}`
+        `${route.exportedName}: {method: "${route.httpMethod}", path: ${route.resolvedPathLiteral}, format: "${route.responseFormat}", arity: ${expectsParams ? 2 : 1}${jsonEncodedParams ? `, jsonParams: ${JSON.stringify(jsonEncodedParams)}` : ''}}`
       )
 
       const clientArgs: string[] = ['requestOptions?: RequestOptions']
@@ -117,12 +116,18 @@ export default (options: Options) =>
         )
       }
 
-      const clientReturn =
-        responseType === 'ndjson'
-          ? `ResponseStream<${parseAsyncGeneratorYieldType(resolvedReturn)}>`
-          : responseType === 'json'
-            ? `Promise<${resolvedReturn}>`
-            : `AsyncIterable<${responseType === 'blob' ? 'Uint8Array' : 'string'}>`
+      let clientReturn: string
+      if (route.responseFormat === 'ndjson') {
+        clientImports.add('ResponseStream')
+        clientReturn = route.resolvedResponse.replace(/^\w+/, 'ResponseStream')
+      } else if (route.responseFormat === 'json') {
+        clientReturn = `Promise<${route.resolvedResponse}>`
+      } else if (route.responseFormat === 'response') {
+        clientImports.add('ResponsePromise')
+        clientReturn = 'ResponsePromise'
+      } else {
+        throw new Error(`Unsupported response format: ${route.responseFormat}`)
+      }
 
       clientInterface.push(
         dedent`
@@ -154,7 +159,7 @@ export default (options: Options) =>
       write(
         outFile,
         dedent`
-          import { RequestParams, RequestOptions } from '@alien-rpc/client'
+          import { ${[...clientImports].sort().join(', ')} } from '@alien-rpc/client'
 
           const API = {${clientDefinitions.join(', ')}} as const
 
@@ -219,17 +224,6 @@ function arePropertiesOptional(objectLiteralType: string): boolean {
     })
   }
   return false
-}
-
-function parseAsyncGeneratorYieldType(type: string) {
-  const typeNode = parseTypeLiteral(type)
-  if (ts.isTypeReferenceNode(typeNode)) {
-    if (typeNode.typeArguments?.length) {
-      return typeNode.typeArguments[0].getText()
-    }
-    throw new Error('Expected type argument')
-  }
-  throw new Error('Expected async generator type')
 }
 
 function parseTypeLiteral(type: string) {

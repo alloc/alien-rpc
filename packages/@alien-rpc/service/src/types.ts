@@ -1,5 +1,5 @@
 import { RequestContext } from '@hattip/compose'
-import { TObject } from '@sinclair/typebox'
+import { TObject, TSchema } from '@sinclair/typebox'
 
 export interface RouteContext extends RequestContext {
   /**
@@ -21,15 +21,15 @@ export interface RouteContext extends RequestContext {
   }
 }
 
+export type RouteMethod = 'get' | 'post'
+
 /**
  * An internal route definition.
  */
 export interface RouteDefinition {
-  method: 'get' | 'post'
+  method: RouteMethod
   path: string
   handler: (pathParams: object, data: object, context: RouteContext) => any
   requestSchema: TObject
-  responseSchema: TObject
+  responseSchema: TSchema
 }
-
-export type BlobResponse = Buffer | NodeJS.ReadableStream | NodeJS.TypedArray

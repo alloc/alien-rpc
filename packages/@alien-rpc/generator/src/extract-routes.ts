@@ -16,13 +16,12 @@ export async function extractRoutes(sourceCode: string, fileName: string) {
     skipAddingFilesFromTsConfig: true,
   })
 
-  const inferNodeTypes = defineNodeTypes(project, path.dirname(fileName))
+  const types = createSupportingTypes(project, path.dirname(fileName))
   const sourceFile = project.createSourceFile(fileName, sourceCode)
   project.resolveSourceFileDependencies()
 
   const program = project.createProgram()
   const typeChecker = program.getTypeChecker()
-  const nodeTypes = inferNodeTypes(typeChecker)
 
   const diagnostics = program.getSemanticDiagnostics(sourceFile)
   if (diagnostics.length > 0) {
@@ -63,7 +62,7 @@ export async function extractRoutes(sourceCode: string, fileName: string) {
               routeName,
               declaration,
               typeChecker,
-              nodeTypes
+              types
             )
             if (route) {
               debug('extracted route', route)
@@ -94,7 +93,7 @@ function extractRoute(
   routeName: string,
   declaration: ts.VariableDeclaration,
   typeChecker: ts.TypeChecker,
-  nodeTypes: Record<string, ts.Type>
+  types: SupportingTypes
 ): ExtractedRoute | null {
   const declarationType = typeChecker.getTypeAtLocation(declaration)
   if (!isObjectType(declarationType.symbol)) {
@@ -122,7 +121,7 @@ function extractRoute(
   if (
     !typeChecker.isTypeAssignableTo(
       typeChecker.getTypeOfSymbol(method),
-      nodeTypes.RouteMethod
+      types.RouteMethod(typeChecker)
     )
   ) {
     throw new Error(
@@ -166,11 +165,6 @@ function extractRoute(
     typeChecker
   )
 
-  console.log(
-    'signature =>',
-    typeChecker.signatureToString(handlerCallSignature)
-  )
-
   const resolvedArguments = handlerCallSignature.parameters
     .slice(0, 2)
     .map(param => {
@@ -185,7 +179,7 @@ function extractRoute(
   const responseFormat = inferResponseFormat(
     handlerResultType,
     typeChecker,
-    nodeTypes
+    types
   )
 
   return {
@@ -222,12 +216,19 @@ function hasTypeArguments(type: ts.Type): type is ts.Type & TypeArguments {
   return (type as ts.TypeReference).typeArguments !== undefined
 }
 
+type SupportingTypes = ReturnType<typeof createSupportingTypes>
+
+/**
+ * Supporting types are used when generating the route definitions for
+ * client and server. They help us ensure that the routes don't use any
+ * unsupported types.
+ */
 function createSupportingTypes(project: Project, rootDir: string) {
   const typeDeclarations = {
     AnyNonNull: '{}',
     Response: 'globalThis.Response',
     IterableIterator:
-      'globalThis.Generator | globalThis.AsyncGenerator | globalThis.IterableIterator<unknown> | globalThis.AsyncIterableIterator<unknown>',
+      'globalThis.IterableIterator<unknown> | globalThis.AsyncIterableIterator<unknown>',
     JSON: '{ [key: string]: JSON } | readonly JSON[] | JSONValue',
     JSONValue: 'string | number | boolean | null | undefined',
     ValidResult: 'Response | IterableIterator | JSON',
@@ -238,8 +239,9 @@ function createSupportingTypes(project: Project, rootDir: string) {
 
   const typeValidation: Record<string, TypeValidator> = {
     Response(typeChecker: ts.TypeChecker, type: ts.Type) {
-      const AnyNonNull = types.AnyNonNull(typeChecker)
-      if (typeChecker.isTypeAssignableTo(AnyNonNull, type)) {
+      // If the type "{}" is assignable to our "Response" type, then
+      // something is misconfigured on the user's end.
+      if (typeChecker.isTypeAssignableTo(types.AnyNonNull(typeChecker), type)) {
         throw new Error(
           `Could not resolve Response type. Make sure @types/node is installed in your project. If already installed, it may need to be re-installed.`
         )
@@ -249,7 +251,9 @@ function createSupportingTypes(project: Project, rootDir: string) {
 
   const sourceFile = project.createSourceFile(
     path.join(rootDir, '.alien-rpc/support.ts'),
-    renderTypeDeclarations(typeDeclarations)
+    Object.entries(typeDeclarations)
+      .map(([id, aliasedType]) => `export type ${id} = ${aliasedType}`)
+      .join('\n')
   )
 
   type TypeGetter = (typeChecker: ts.TypeChecker) => ts.Type
@@ -258,7 +262,7 @@ function createSupportingTypes(project: Project, rootDir: string) {
 
   const syntaxList = sourceFile.getChildAt(0)
   const types = Object.fromEntries(
-    Object.keys(typeDeclarations).map(typeName => {
+    Object.keys(typeDeclarations).map((typeName, i) => {
       const getType: TypeGetter = typeChecker => {
         let type = typeCache[typeName]
         if (type) {
@@ -290,125 +294,45 @@ function createSupportingTypes(project: Project, rootDir: string) {
   return types
 }
 
-function renderTypeDeclarations(declarations: Record<string, string>) {
-  return Object.entries(declarations)
-    .map(([id, aliasedType]) => `type ${id} = ${aliasedType}`)
-    .join('\n')
-}
-
-function defineTypeDeclarations<Id extends string = string>(
-  project: Project,
-  fileName: string,
-  declarations: Record<Id, string>,
-  validate?: (type: ts.Type, typeChecker: ts.TypeChecker, id: Id) => void
-) {
-  console.log(declarations)
-
-  const declarationEntries = Object.entries(declarations)
-  const sourceFile = project.createSourceFile(
-    fileName,
-    declarationEntries
-      .map(([id, aliasedType]) => `type ${id} = ${aliasedType}`)
-      .join('\n')
-  )
-
-  const program = project.createProgram()
-  const typeChecker = program.getTypeChecker()
-  project.resolveSourceFileDependencies()
-
-  const syntaxList = sourceFile.getChildAt(0)
-  console.log('syntaxList', syntaxList.toString())
-
-  return Object.fromEntries(
-    declarationEntries.map(([id], i) => {
-      const typeNode = syntaxList.getChildAt(i)
-      if (!ts.isTypeAliasDeclaration(typeNode)) {
-        throw new Error(
-          `Expected "${id}" to be TypeAliasDeclaration, got ${ts.SyntaxKind[typeNode.kind]}`
-        )
-      }
-
-      const type = typeChecker.getTypeAtLocation(typeNode)
-      console.log('type', id, '=', typeChecker.typeToString(type))
-      validate?.(type, typeChecker, id as Id)
-
-      return [id, type]
-    })
-  ) as {
-    [_ in Id]: ts.Type
-  }
-}
-
-function defineNodeTypes(project: Project, rootDir: string) {
-  const arpcService = 'import("@alien-rpc/service")'
-
-  const declarations = {
-    Response: 'globalThis.Response',
-    IterableIterator:
-      'globalThis.Generator | globalThis.AsyncGenerator | globalThis.IterableIterator<unknown> | globalThis.AsyncIterableIterator<unknown>',
-    JSON: '{ [key: string]: JSON } | readonly JSON[] | JSONValue',
-    JSONValue: 'string | number | boolean | null | undefined',
-    ValidResult: 'Response | IterableIterator | JSON',
-    RouteMethod: arpcService + '.RouteMethod',
-  } as const
-
-  return defineTypeDeclarations(
-    project,
-    path.join(rootDir, '.alien-rpc/node-types.ts'),
-    declarations,
-    (type, typeChecker, typeName) => {
-      if (typeName !== 'Response') {
-        return
-      }
-
-      const { AnyNonNull } = defineTypeDeclarations(
-        project,
-        path.join(rootDir, '.alien-rpc/intrinsic-types.ts'),
-        { AnyNonNull: '{}' }
-      )(typeChecker)
-
-      if (typeChecker.isTypeAssignableTo(AnyNonNull, type)) {
-        throw new Error(
-          `Could not resolve Response type. Make sure @types/node is installed in your project. If already installed, it may need to be re-installed.`
-        )
-      }
-    }
-  )
-}
-
 function inferResponseFormat(
   type: ts.Type,
   typeChecker: ts.TypeChecker,
-  nodeTypes: Record<string, ts.Type>
+  types: SupportingTypes
 ) {
   if (type.flags & ts.TypeFlags.Any) {
     throw new InvalidResponseTypeError('Your route is not type-safe.')
   }
-  if (typeChecker.isTypeAssignableTo(type, nodeTypes.Response)) {
+  if (typeChecker.isTypeAssignableTo(type, types.Response(typeChecker))) {
     return 'response'
   }
-  if (typeChecker.isTypeAssignableTo(type, nodeTypes.IterableIterator)) {
+  if (
+    typeChecker.isTypeAssignableTo(type, types.IterableIterator(typeChecker))
+  ) {
     const yieldType = (type as ts.Type & TypeArguments).typeArguments[0]
-    if (!typeChecker.isTypeAssignableTo(yieldType, nodeTypes.JSON)) {
+    if (!typeChecker.isTypeAssignableTo(yieldType, types.JSON(typeChecker))) {
       throw new InvalidResponseTypeError(
-        'Your route yields an unsupported type.'
+        'Your route yields an unsupported type: ' +
+          printTypeLiteral(yieldType, typeChecker)
       )
     }
     return 'ndjson'
   }
-  if (typeChecker.isTypeAssignableTo(nodeTypes.Response, type)) {
+  if (typeChecker.isTypeAssignableTo(types.Response(typeChecker), type)) {
     throw new InvalidResponseTypeError(
       'Routes that return a `new Response()` cannot ever return anything else.'
     )
   }
-  if (typeChecker.isTypeAssignableTo(nodeTypes.IterableIterator, type)) {
+  if (
+    typeChecker.isTypeAssignableTo(types.IterableIterator(typeChecker), type)
+  ) {
     throw new InvalidResponseTypeError(
       'Routes that return an iterator cannot ever return anything else.'
     )
   }
-  if (!typeChecker.isTypeAssignableTo(type, nodeTypes.ValidResult)) {
+  if (!typeChecker.isTypeAssignableTo(type, types.ValidResult(typeChecker))) {
     throw new InvalidResponseTypeError(
-      'Your route returns an unsupported type.'
+      'Your route returns an unsupported type: ' +
+        printTypeLiteral(type, typeChecker)
     )
   }
   return 'json'

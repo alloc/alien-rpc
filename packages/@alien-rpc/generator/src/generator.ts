@@ -30,11 +30,9 @@ type Options = {
 }
 
 export default (options: Options) =>
-  jumpgen('alien-rpc', async ({ read, write, dedent }) => {
-    const routes = await extractRoutes(
-      read(options.routesFile, 'utf8'),
-      options.routesFile
-    )
+  jumpgen('alien-rpc', async ({ read, write, dedent, root }) => {
+    const routesFile = path.join(root, options.routesFile)
+    const routes = await extractRoutes(read(routesFile, 'utf8'), routesFile)
 
     const serverDefinitions: string[] = []
     const clientDefinitions: string[] = []
@@ -42,6 +40,7 @@ export default (options: Options) =>
     const clientImports = new Set<string>(['RequestParams', 'RequestOptions'])
 
     for (const route of routes) {
+      console.log(route)
       const requestSchemaDecl = generateRuntimeValidator(
         `type Request = ${route.resolvedArguments[1]}`
       )
@@ -71,6 +70,8 @@ export default (options: Options) =>
         const isStringType = (schema: TSchema): boolean =>
           isString(schema.type) && schema.type === 'string'
 
+        // Instantiate the request schema so we can check if any properties
+        // need JSON encoding.
         const requestSchema = new Function(
           'Type',
           'return ' + requestSchemaDecl

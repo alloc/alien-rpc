@@ -3,10 +3,10 @@ import { createProject, Project, ts } from '@ts-morph/bootstrap'
 import path from 'node:path'
 import { debug } from './debug'
 import {
-  getFullyQualifiedType,
   isAsyncGeneratorType,
   isGeneratorType,
   isObjectType,
+  printTypeLiteral,
 } from './util/ts-ast'
 
 export async function extractRoutes(sourceCode: string, fileName: string) {
@@ -58,11 +58,10 @@ export async function extractRoutes(sourceCode: string, fileName: string) {
         const symbol = typeChecker.getSymbolAtLocation(declaration.name)
         if (symbol) {
           const routeName = symbol.getName()
-          const expressionType = typeChecker.getTypeAtLocation(declaration.name)
           try {
             const route = extractRoute(
               routeName,
-              expressionType,
+              declaration,
               typeChecker,
               nodeTypes
             )
@@ -93,15 +92,14 @@ export type ExtractedRoute = {
 
 function extractRoute(
   routeName: string,
-  declarationType: ts.Type,
+  declaration: ts.VariableDeclaration,
   typeChecker: ts.TypeChecker,
   nodeTypes: Record<string, ts.Type>
 ): ExtractedRoute | null {
+  const declarationType = typeChecker.getTypeAtLocation(declaration)
   if (!isObjectType(declarationType.symbol)) {
     return null
   }
-
-  console.log(typeChecker.typeToString(declarationType))
 
   const method = typeChecker.getPropertyOfType(declarationType, 'method')
   if (!method) {
@@ -142,8 +140,9 @@ function extractRoute(
   }
 
   const handlerCallSignatures = typeChecker
-    .getTypeOfSymbol(handler)
+    .getTypeOfSymbolAtLocation(handler, declaration)
     .getCallSignatures()
+
   const handlerCallSignature = handlerCallSignatures[0]
 
   if (handlerCallSignatures.length !== 1) {
@@ -157,21 +156,26 @@ function extractRoute(
     throw new Error('Route handler has an unknown return type')
   }
 
-  const httpMethod = getFullyQualifiedType(
+  const httpMethod = printTypeLiteral(
     typeChecker.getTypeOfSymbol(method),
     typeChecker
   )
 
-  const resolvedPathLiteral = getFullyQualifiedType(
+  const resolvedPathLiteral = printTypeLiteral(
     typeChecker.getTypeOfSymbol(path),
     typeChecker
+  )
+
+  console.log(
+    'signature =>',
+    typeChecker.signatureToString(handlerCallSignature)
   )
 
   const resolvedArguments = handlerCallSignature.parameters
     .slice(0, 2)
     .map(param => {
-      const paramType = typeChecker.getTypeAtLocation(param.valueDeclaration!)
-      return getFullyQualifiedType(paramType, typeChecker, {
+      const paramType = typeChecker.getTypeOfSymbol(param)
+      return printTypeLiteral(paramType, typeChecker, {
         omitUndefinedLiteral: true,
       })
     })
@@ -203,14 +207,11 @@ function resolveResponseType(type: ts.Type, typeChecker: ts.TypeChecker) {
         : undefined
 
     if (iteratorType) {
-      const yieldType = getFullyQualifiedType(
-        type.typeArguments[0],
-        typeChecker
-      )
+      const yieldType = printTypeLiteral(type.typeArguments[0], typeChecker)
       return `${iteratorType}<${yieldType}>`
     }
   }
-  return getFullyQualifiedType(type, typeChecker)
+  return printTypeLiteral(type, typeChecker)
 }
 
 interface TypeArguments {
@@ -221,48 +222,158 @@ function hasTypeArguments(type: ts.Type): type is ts.Type & TypeArguments {
   return (type as ts.TypeReference).typeArguments !== undefined
 }
 
-function defineNodeTypes(project: Project, rootDir: string) {
-  const arpcService = 'import("@alien-rpc/service")'
-
-  const nodeTypes = [
-    ['Response', 'globalThis.Response'],
-    [
-      'IterableIterator',
+function createSupportingTypes(project: Project, rootDir: string) {
+  const typeDeclarations = {
+    AnyNonNull: '{}',
+    Response: 'globalThis.Response',
+    IterableIterator:
       'globalThis.Generator | globalThis.AsyncGenerator | globalThis.IterableIterator<unknown> | globalThis.AsyncIterableIterator<unknown>',
-    ],
-    ['JSON', '{ [key: string]: JSON } | readonly JSON[] | JSONValue'],
-    ['JSONValue', 'string | number | boolean | null | undefined'],
-    ['ValidResult', 'Response | IterableIterator | JSON'],
-    ['RouteMethod', arpcService + '.RouteMethod'],
-  ] as const
+    JSON: '{ [key: string]: JSON } | readonly JSON[] | JSONValue',
+    JSONValue: 'string | number | boolean | null | undefined',
+    ValidResult: 'Response | IterableIterator | JSON',
+    RouteMethod: 'import("@alien-rpc/service").RouteMethod',
+  } as const
+
+  type TypeValidator = (typeChecker: ts.TypeChecker, type: ts.Type) => void
+
+  const typeValidation: Record<string, TypeValidator> = {
+    Response(typeChecker: ts.TypeChecker, type: ts.Type) {
+      const AnyNonNull = types.AnyNonNull(typeChecker)
+      if (typeChecker.isTypeAssignableTo(AnyNonNull, type)) {
+        throw new Error(
+          `Could not resolve Response type. Make sure @types/node is installed in your project. If already installed, it may need to be re-installed.`
+        )
+      }
+    },
+  }
 
   const sourceFile = project.createSourceFile(
-    path.join(rootDir, 'alien-rpc__node-types.ts'),
-    nodeTypes
-      .map(([exportedName, type]) => {
-        return `export type ${exportedName} = ${type}`
-      })
+    path.join(rootDir, '.alien-rpc/support.ts'),
+    renderTypeDeclarations(typeDeclarations)
+  )
+
+  type TypeGetter = (typeChecker: ts.TypeChecker) => ts.Type
+
+  const typeCache: Record<string, ts.Type> = {}
+
+  const syntaxList = sourceFile.getChildAt(0)
+  const types = Object.fromEntries(
+    Object.keys(typeDeclarations).map(typeName => {
+      const getType: TypeGetter = typeChecker => {
+        let type = typeCache[typeName]
+        if (type) {
+          return type
+        }
+
+        const typeNode = syntaxList.getChildAt(i)
+        if (!ts.isTypeAliasDeclaration(typeNode)) {
+          throw new Error(
+            `Expected "${typeName}" to be TypeAliasDeclaration, got ${ts.SyntaxKind[typeNode.kind]}`
+          )
+        }
+
+        type = typeChecker.getTypeAtLocation(typeNode)
+        if (typeName in typeValidation) {
+          typeValidation[typeName](typeChecker, type)
+        }
+
+        typeCache[typeName] = type
+        return type
+      }
+
+      return [typeName, getType] as const
+    })
+  ) as {
+    [TypeName in keyof typeof typeDeclarations]: TypeGetter
+  }
+
+  return types
+}
+
+function renderTypeDeclarations(declarations: Record<string, string>) {
+  return Object.entries(declarations)
+    .map(([id, aliasedType]) => `type ${id} = ${aliasedType}`)
+    .join('\n')
+}
+
+function defineTypeDeclarations<Id extends string = string>(
+  project: Project,
+  fileName: string,
+  declarations: Record<Id, string>,
+  validate?: (type: ts.Type, typeChecker: ts.TypeChecker, id: Id) => void
+) {
+  console.log(declarations)
+
+  const declarationEntries = Object.entries(declarations)
+  const sourceFile = project.createSourceFile(
+    fileName,
+    declarationEntries
+      .map(([id, aliasedType]) => `type ${id} = ${aliasedType}`)
       .join('\n')
   )
 
-  const syntaxList = sourceFile.getChildAt(0)
+  const program = project.createProgram()
+  const typeChecker = program.getTypeChecker()
+  project.resolveSourceFileDependencies()
 
-  return (typeChecker: ts.TypeChecker) =>
-    Object.fromEntries(
-      nodeTypes.map(([exportedName], i) => {
-        const resolvedType = typeChecker.getTypeAtLocation(
-          syntaxList.getChildAt(i)
+  const syntaxList = sourceFile.getChildAt(0)
+  console.log('syntaxList', syntaxList.toString())
+
+  return Object.fromEntries(
+    declarationEntries.map(([id], i) => {
+      const typeNode = syntaxList.getChildAt(i)
+      if (!ts.isTypeAliasDeclaration(typeNode)) {
+        throw new Error(
+          `Expected "${id}" to be TypeAliasDeclaration, got ${ts.SyntaxKind[typeNode.kind]}`
         )
-        if (resolvedType.flags & ts.TypeFlags.Any) {
-          throw new Error(
-            `Could not resolve ${exportedName} type. Make sure @types/node is installed in your project.`
-          )
-        }
-        return [exportedName, resolvedType]
-      })
-    ) as {
-      [K in (typeof nodeTypes)[number][0]]: ts.Type
+      }
+
+      const type = typeChecker.getTypeAtLocation(typeNode)
+      console.log('type', id, '=', typeChecker.typeToString(type))
+      validate?.(type, typeChecker, id as Id)
+
+      return [id, type]
+    })
+  ) as {
+    [_ in Id]: ts.Type
+  }
+}
+
+function defineNodeTypes(project: Project, rootDir: string) {
+  const arpcService = 'import("@alien-rpc/service")'
+
+  const declarations = {
+    Response: 'globalThis.Response',
+    IterableIterator:
+      'globalThis.Generator | globalThis.AsyncGenerator | globalThis.IterableIterator<unknown> | globalThis.AsyncIterableIterator<unknown>',
+    JSON: '{ [key: string]: JSON } | readonly JSON[] | JSONValue',
+    JSONValue: 'string | number | boolean | null | undefined',
+    ValidResult: 'Response | IterableIterator | JSON',
+    RouteMethod: arpcService + '.RouteMethod',
+  } as const
+
+  return defineTypeDeclarations(
+    project,
+    path.join(rootDir, '.alien-rpc/node-types.ts'),
+    declarations,
+    (type, typeChecker, typeName) => {
+      if (typeName !== 'Response') {
+        return
+      }
+
+      const { AnyNonNull } = defineTypeDeclarations(
+        project,
+        path.join(rootDir, '.alien-rpc/intrinsic-types.ts'),
+        { AnyNonNull: '{}' }
+      )(typeChecker)
+
+      if (typeChecker.isTypeAssignableTo(AnyNonNull, type)) {
+        throw new Error(
+          `Could not resolve Response type. Make sure @types/node is installed in your project. If already installed, it may need to be re-installed.`
+        )
+      }
     }
+  )
 }
 
 function inferResponseFormat(

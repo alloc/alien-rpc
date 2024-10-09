@@ -5,7 +5,7 @@ import create from '../src/generator.js'
 test('generator', async () => {
   const root = path.resolve('test/__fixtures__/basic')
   const generate = create({
-    write: false,
+    apiVersion: '1',
     routesFile: 'routes.ts',
     outDir: '.',
   })

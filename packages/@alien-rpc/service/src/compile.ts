@@ -1,17 +1,64 @@
 import { RequestContext } from '@hattip/compose'
 import { Errors, ValueError } from '@sinclair/typebox/errors'
+import { Value } from '@sinclair/typebox/value'
 import { match } from 'path-to-regexp'
+import { isPromise } from 'util/types'
 import { ndjson } from './ndjson'
-import { RouteContext, RouteDefinition } from './types'
+import { transformRequestSchema } from './requestSchema'
+import {
+  Promisable,
+  RouteContext,
+  RouteDefinition,
+  ValidIterator,
+} from './types'
+
+function compileRouteHandler(
+  route: RouteDefinition
+): (
+  params: Record<string, unknown>,
+  data: Record<string, unknown>,
+  ctx: RouteContext
+) => Promise<Response> {
+  if (route.format === 'response') {
+    return route.handler
+  }
+  const { handler } = route
+  if (route.format === 'ndjson') {
+    return async (params, data, ctx) => {
+      let result = handler(params, data, ctx) as Promisable<ValidIterator>
+      if (isPromise(result)) {
+        result = await result
+      }
+      ctx.response.headers.set('Content-Type', 'text/plain; charset=utf-8')
+      const stream = ReadableStream.from(ndjson(result, route, ctx))
+      return new Response(stream, {
+        status: ctx.response.status,
+        headers: ctx.response.headers,
+      })
+    }
+  }
+  return async (params, data, ctx) => {
+    let result = await handler(params, data, ctx)
+    if (result === undefined) {
+      ctx.response.headers.set('Content-Length', '0')
+    } else {
+      ctx.response.headers.set('Content-Type', 'application/json')
+      result = Value.Encode(route.responseSchema, result)
+      result = JSON.stringify(result)
+    }
+    return new Response(result, {
+      status: ctx.response.status,
+      headers: ctx.response.headers,
+    })
+  }
+}
 
 export function compileRoutes(routes: RouteDefinition[]) {
   const compiledRoutes = routes.map(route => ({
     ...route,
     match: match(route.path),
-    requestSchema:
-      route.method === 'get'
-        ? transformGetParams(route.requestSchema)
-        : route.requestSchema,
+    requestSchema: transformRequestSchema(route),
+    handler: compileRouteHandler(route),
   }))
 
   return async (context: RequestContext) => {
@@ -57,33 +104,7 @@ export function compileRoutes(routes: RouteDefinition[]) {
         }
 
         try {
-          let result = await (0, route.handler)(match.params, data, ctx)
-
-          if (route.type === 'json') {
-            if (route.optionalReturn && result === undefined) {
-              ctx.response.headers.set('Content-Length', '0')
-            } else {
-              ctx.response.headers.set('Content-Type', 'application/json')
-              result = Value.Encode(route.schema.returns, result)
-              result = JSON.stringify(result)
-            }
-          } else if (route.type === 'ndjson') {
-            ctx.response.headers.set(
-              'Content-Type',
-              'text/plain; charset=utf-8'
-            )
-            result = ndjson(result, route, ctx)
-          } else if (route.type === 'text') {
-            ctx.response.headers.set(
-              'Content-Type',
-              'text/plain; charset=utf-8'
-            )
-          }
-
-          return new Response(result, {
-            status: ctx.response.status,
-            headers: ctx.response.headers,
-          })
+          return await (0, route.handler)(match.params, data, ctx)
         } catch (error) {
           console.error(error)
           return new Response(null, { status: 500 })

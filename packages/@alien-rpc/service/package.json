@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@alien-rpc/juri": "workspace:^",
-    "@alloc/path-types": "^0.1.0",
+    "@alloc/path-types": "^0.1.2",
     "@hattip/compose": "^0.0.48",
     "path-to-regexp": "npm:@alloc/path-to-regexp@^8.2.0"
   },

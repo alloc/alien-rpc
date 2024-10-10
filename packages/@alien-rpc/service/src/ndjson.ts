@@ -1,19 +1,19 @@
 import { Type } from '@alien-rpc/typebox'
 import { Value } from '@sinclair/typebox/value'
-import { createPaginationLink, PaginationResult } from './pagination'
-import { RouteContext, RouteDefinition } from './types'
+import { createPaginationLink } from './pagination'
+import { RouteContext, RouteDefinition, ValidIterator } from './types'
 
 /**
- * Converts an async generator to an NDJSON stream.
+ * Converts an async iterator to an NDJSON stream.
  *
  * @see https://github.com/ndjson/ndjson-spec
  */
 export async function* ndjson(
-  generator: AsyncGenerator<unknown, PaginationResult | null | undefined>,
+  iterator: ValidIterator,
   route: RouteDefinition,
   ctx: RouteContext
 ) {
-  const iterator = generator[Symbol.asyncIterator]()
+  const encoder = new TextEncoder()
   while (true) {
     const iteration = await iterator.next()
 
@@ -28,8 +28,8 @@ export async function* ndjson(
       encodedValue = Value.Encode(route.responseSchema, iteration.value)
     }
 
-    yield JSON.stringify(encodedValue)
-    yield '\n'
+    yield encoder.encode(JSON.stringify(encodedValue))
+    yield encoder.encode('\n')
 
     if (iteration.done) {
       return

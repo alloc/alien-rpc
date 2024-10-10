@@ -1,12 +1,6 @@
 {
   "private": true,
   "type": "module",
-  "dependencies": {
-    "path-types": "npm:@alloc/path-types@^0.1.0"
-  },
-  "peerDependencies": {
-    "@sinclair/typebox": "*"
-  },
   "devDependencies": {
     "@alloc/fast-rimraf": "^1.0.8",
     "@alloc/prettier-config": "^1.0.0",

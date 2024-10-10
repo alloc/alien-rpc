@@ -1,4 +1,4 @@
-import { PathTemplate } from 'path-types'
+import { PathTemplate } from '@alloc/path-types'
 
 type AnyFn = (...args: any) => any
 
@@ -65,7 +65,7 @@ export type RpcPagination = {
   next: Record<string, any> | null
 }
 
-export type { InferParams, PathTemplate } from 'path-types'
+export type { InferParams, PathTemplate } from '@alloc/path-types'
 
 export type RequestOptions = Omit<
   import('ky').Options,

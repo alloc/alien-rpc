@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@ts-morph/bootstrap": "^0.25.0",
+    "@alloc/path-types": "^0.1.2",
     "debug": "^4.3.7",
     "jumpgen": "0.1.0-beta.3"
   },

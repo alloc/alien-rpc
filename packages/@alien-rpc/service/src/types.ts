@@ -1,5 +1,7 @@
+import type { RpcResponseFormat } from '@alien-rpc/client'
 import { RequestContext } from '@hattip/compose'
 import { TObject, TSchema } from '@sinclair/typebox'
+import { ValidResult } from './route'
 
 export interface RouteContext extends RequestContext {
   /**
@@ -23,13 +25,26 @@ export interface RouteContext extends RequestContext {
 
 export type RouteMethod = 'get' | 'post'
 
+export type Promisable<T> = T | Promise<T>
+
+type JSON = { [key: string]: JSON } | readonly JSON[] | JSONValue
+type JSONValue = string | number | boolean | null | undefined
+
+export type ValidIterator = AsyncIterator<JSON>
+export type ValidResult = Promisable<JSON | Response | ValidIterator>
+
 /**
  * An internal route definition.
  */
 export interface RouteDefinition {
   method: RouteMethod
   path: string
-  handler: (pathParams: object, data: object, context: RouteContext) => any
+  format: RpcResponseFormat
+  handler: (
+    pathParams: object,
+    data: object,
+    context: RouteContext
+  ) => ValidResult
   requestSchema: TObject
   responseSchema: TSchema
 }

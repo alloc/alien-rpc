@@ -1,2 +1,2 @@
 export * from './src/route.js'
-export * from './src/types.js'
+export type { RouteContext, RouteMethod } from './src/types.js'

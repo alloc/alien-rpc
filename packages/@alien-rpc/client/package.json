@@ -14,6 +14,7 @@
   "dependencies": {
     "@aleclarson/json-stream": "^0.1.22",
     "@alien-rpc/juri": "workspace:^",
+    "@alloc/path-types": "^0.1.2",
     "ky": "^1.2.2",
     "path-to-regexp": "npm:@alloc/path-to-regexp@^8.2.0"
   },

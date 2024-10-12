@@ -2,6 +2,7 @@ import type { TObject, TSchema } from '@sinclair/typebox'
 import { ts } from '@ts-morph/bootstrap'
 import { jumpgen } from 'jumpgen'
 import path from 'path'
+import * as RoutePath from 'path-to-regexp'
 import { isString } from 'radashi'
 import { extractRoutes } from './extract-routes.js'
 import { TypeScriptToTypeBox } from './typebox-codegen/typescript/generator.js'
@@ -50,7 +51,7 @@ export default (options: Options) =>
 
       let jsonEncodedParams: string[] | undefined
 
-      if (route.httpMethod === 'get') {
+      if (route.resolvedMethod === 'get') {
         const { Type, KindGuard } = await import('@sinclair/typebox')
 
         /**
@@ -91,8 +92,12 @@ export default (options: Options) =>
         }
       }
 
+      const pathParams = parseRoutePathParams(route.resolvedPathname)
+
+      const sharedProperties = `${jsonEncodedParams ? `, jsonParams: ${JSON.stringify(jsonEncodedParams)}` : ''}${pathParams.length ? `, pathParams: ${JSON.stringify(pathParams)}` : ''}, format: "${route.responseFormat}"`
+
       serverDefinitions.push(
-        `{...routes.${route.exportedName}, format: "${route.responseFormat}", requestSchema: ${requestSchemaDecl}, responseSchema: ${responseSchemaDecl}}`
+        `{def: routes.${route.exportedName}, requestSchema: ${requestSchemaDecl}, responseSchema: ${responseSchemaDecl}${sharedProperties}}`
       )
 
       const resolvedPathParams = route.resolvedArguments[0]
@@ -107,7 +112,7 @@ export default (options: Options) =>
           arePropertiesOptional(resolvedExtraParams))
 
       clientDefinitions.push(
-        `${route.exportedName}: {method: "${route.httpMethod}", path: ${route.resolvedPathLiteral}, format: "${route.responseFormat}", arity: ${expectsParams ? 2 : 1}${jsonEncodedParams ? `, jsonParams: ${JSON.stringify(jsonEncodedParams)}` : ''}}`
+        `${route.exportedName}: {method: "${route.resolvedMethod}", path: "${route.resolvedPathname}", arity: ${expectsParams ? 2 : 1}${sharedProperties}}`
       )
 
       const clientArgs: string[] = ['requestOptions?: RequestOptions']
@@ -118,7 +123,7 @@ export default (options: Options) =>
       }
 
       let clientReturn: string
-      if (route.responseFormat === 'ndjson') {
+      if (route.responseFormat === 'json-seq') {
         clientImports.add('ResponseStream')
         clientReturn = route.resolvedResponse.replace(/^\w+/, 'ResponseStream')
       } else if (route.responseFormat === 'json') {
@@ -234,4 +239,20 @@ function parseTypeLiteral(type: string) {
     ts.ScriptTarget.Latest
   )
   return (sourceFile.statements[0] as ts.TypeAliasDeclaration).type
+}
+
+function parseRoutePathParams(pathname: string) {
+  return RoutePath.parse(pathname).tokens.flatMap(function stringifyToken(
+    token: RoutePath.Token
+  ): string | string[] {
+    switch (token.type) {
+      case 'param':
+      case 'wildcard':
+        return token.name
+      case 'group':
+        return token.tokens.flatMap(stringifyToken)
+      case 'text':
+        return []
+    }
+  })
 }

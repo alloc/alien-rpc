@@ -8,14 +8,14 @@
       "import": "./dist/index.js"
     }
   },
-  "scripts": {
-    "lint": "tsc -p . --outDir node_modules/.tmp"
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
     "@alien-rpc/juri": "workspace:^",
     "@alloc/path-types": "^0.1.2",
     "@hattip/compose": "^0.0.48",
-    "path-to-regexp": "npm:@alloc/path-to-regexp@^8.2.0"
+    "path-to-regexp": "workspace:^"
   },
   "peerDependencies": {
     "@sinclair/typebox": "*"
@@ -24,5 +24,8 @@
     "@sinclair/typebox": "^0.33.13",
     "@types/node": "^22.7.4",
     "radashi": "^12.1.0"
+  },
+  "scripts": {
+    "lint": "tsc -p . --outDir node_modules/.tmp"
   }
 }

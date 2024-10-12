@@ -1,6 +1,7 @@
+/// <reference lib="dom.asynciterable" />
 import { juri } from '@alien-rpc/juri'
 import ky from 'ky'
-import { parse, tokensToFunction } from 'path-to-regexp'
+import { compile, parse, Token } from 'path-to-regexp'
 import { isArray, isString } from 'radashi'
 import {
   RequestOptions,
@@ -95,11 +96,9 @@ function createRouteFunction(
   responseCache: ResponseCache,
   request: typeof ky
 ) {
-  const pathTokens = parse(route.path)
-  const pathParams = pathTokens.map(token =>
-    isString(token) ? token : String(token.name)
-  )
-  const buildPath = pathTokens.length > 1 && tokensToFunction(pathTokens)
+  const parsedPath = parse(route.path)
+  const pathParams = parsedPath.tokens.flatMap(stringifyToken)
+  const buildPath = parsedPath.tokens.length > 1 && compile(parsedPath)
 
   const send = (
     method: string,
@@ -107,47 +106,53 @@ function createRouteFunction(
     options: import('ky').Options | undefined,
     body?: { json: any } | false
   ) => {
-    const promise = request(url, {
+    const promisedResponse = request(url, {
       ...options,
       ...body,
       method,
     })
 
-    if (route.format === 'json') {
-      return resolveJsonResponse(promise)
+    if (route.format === 'response') {
+      return promisedResponse
     }
 
-    let responseStream!: ResponseStream<any>
-    return (responseStream = (async function* () {
-      const response = await promise
+    if (route.format === 'json') {
+      return resolveJsonResponse(promisedResponse)
+    }
 
-      const body: AsyncIterable<Uint8Array> & {
-        pipeThrough: <T>(transform: TransformStream<any, T>) => AsyncIterable<T>
-      } = response.body as any
+    if (route.format === 'json-seq') {
+      // Keep a reference to the iterator, so we can attach previousPage
+      //and nextPage methods when a pagination result is provided.
+      let responseStream!: ResponseStream<any>
 
-      if (route.format === 'ndjson') {
+      return (responseStream = (async function* () {
+        const response = await promisedResponse
+        if (!response.body) {
+          return
+        }
+
         const { ObjectParser } = await import('@aleclarson/json-stream')
-        for await (const object of body.pipeThrough(new ObjectParser())) {
+
+        for await (const object of response.body.pipeThrough(
+          new ObjectParser()
+        )) {
           if (isPagination(object)) {
-            const { prev, next } = object
-            if (prev) {
+            if (object.$prev) {
               responseStream.previousPage = () =>
-                send('get', prefixUrl + prev, options) as any
+                send('get', prefixUrl + object.$prev, options) as any
             }
-            if (next) {
+            if (object.$next) {
               responseStream.nextPage = () =>
-                send('get', prefixUrl + next, options) as any
+                send('get', prefixUrl + object.$next, options) as any
             }
           } else {
             yield object
           }
         }
-      } else if (route.format === 'text') {
-        yield* body.pipeThrough(new TextDecoderStream())
-      } else {
-        yield* body
-      }
-    })())
+      })())
+    }
+
+    throw new Error('Unsupported route format: ' + route.format)
   }
 
   return (
@@ -161,7 +166,7 @@ function createRouteFunction(
       params = isObject(arg) ? arg : { [pathParams[0]]: arg }
     }
 
-    const path = buildPath ? buildPath(params) : route.path
+    const path = buildPath ? buildPath(params!) : route.path
 
     if (route.method === 'get') {
       let cacheKey = path
@@ -200,8 +205,8 @@ function isPagination(arg: object): arg is RpcPagination {
   // The server ensures both `prev` and `next` are defined, even though the
   // RpcPagination type says otherwise.
   return (
-    Object.prototype.hasOwnProperty.call(arg, 'prev') &&
-    Object.prototype.hasOwnProperty.call(arg, 'next') &&
+    Object.prototype.hasOwnProperty.call(arg, '$prev') &&
+    Object.prototype.hasOwnProperty.call(arg, '$next') &&
     checkKeyCount(arg, 2)
   )
 }
@@ -256,4 +261,16 @@ async function resolveJsonResponse(promise: Promise<Response>) {
     return null
   }
   return response.json()
+}
+
+function stringifyToken(token: Token): string | string[] {
+  switch (token.type) {
+    case 'param':
+    case 'wildcard':
+      return token.name
+    case 'group':
+      return token.tokens.flatMap(stringifyToken)
+    case 'text':
+      return []
+  }
 }

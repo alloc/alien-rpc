@@ -1,7 +1,9 @@
 import type { RpcResponseFormat } from '@alien-rpc/client'
+import { Type } from '@alien-rpc/typebox'
 import { RequestContext } from '@hattip/compose'
 import { TObject, TSchema } from '@sinclair/typebox'
-import { ValidResult } from './route'
+import { JSON, Promisable } from './internal/types'
+import { PaginationLinks } from './pagination'
 
 export interface RouteContext extends RequestContext {
   /**
@@ -25,26 +27,59 @@ export interface RouteContext extends RequestContext {
 
 export type RouteMethod = 'get' | 'post'
 
-export type Promisable<T> = T | Promise<T>
+export type RouteIterator<
+  TParams extends object = Record<string, Type.JsonValue>,
+> = AsyncIterator<JSON, PaginationLinks<TParams> | null | void>
 
-type JSON = { [key: string]: JSON } | readonly JSON[] | JSONValue
-type JSONValue = string | number | boolean | null | undefined
+export type RouteResult<
+  TParams extends object = Record<string, Type.JsonValue>,
+> = Promisable<JSON | Response | RouteIterator<TParams>>
 
-export type ValidIterator = AsyncIterator<JSON>
-export type ValidResult = Promisable<JSON | Response | ValidIterator>
-
-/**
- * An internal route definition.
- */
-export interface RouteDefinition {
+export interface RouteDefinition<
+  PathParams extends object = object,
+  Data extends object = object,
+> {
   method: RouteMethod
   path: string
-  format: RpcResponseFormat
   handler: (
-    pathParams: object,
-    data: object,
+    this: NoInfer<RouteDefinition<PathParams, Data>>,
+    pathParams: PathParams,
+    data: Data,
     context: RouteContext
-  ) => ValidResult
+  ) => RouteResult
+}
+
+/**
+ * A route definition enhanced with compile-time metadata.
+ */
+export interface Route {
+  def: RouteDefinition
+  /** Exists on GET routes only. */
+  jsonParams?: string[]
+  format: RpcResponseFormat
   requestSchema: TObject
   responseSchema: TSchema
 }
+
+export type BuildRouteParams<PathParams extends object, Data extends object> =
+  PathParams extends Record<string, never>
+    ? Data extends Record<string, never>
+      ? Record<string, never>
+      : Data
+    : Data extends Record<string, never>
+      ? PathParams
+      : PathParams & Data
+
+export type InferRouteParams<T extends { handler: any }> =
+  T['handler'] extends (
+    pathParams: infer PathParams extends object,
+    data: infer Data extends object,
+    ...rest: any[]
+  ) => any
+    ? BuildRouteParams<PathParams, Data>
+    : never
+
+export type RouteResponder<TResult extends RouteResult = RouteResult> = (
+  handler: (params: any, data: any, context: RouteContext) => TResult,
+  route: Route
+) => (params: any, data: any, context: RouteContext) => Promise<Response>

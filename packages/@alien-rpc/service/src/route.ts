@@ -1,8 +1,6 @@
 import { InferParams } from '@alloc/path-types'
 import { RequestContext } from '@hattip/compose'
-import { ValidResult } from './types'
-
-type EmptyRecord = Record<keyof any, never>
+import { BuildRouteParams, RouteDefinition, RouteResult } from './types'
 
 /**
  * Declare a GET route for your API. You *must* export the result for your
@@ -11,13 +9,14 @@ type EmptyRecord = Record<keyof any, never>
  */
 export function get<
   Path extends string,
-  SearchParams extends object = EmptyRecord,
-  Result extends ValidResult = any,
+  Search extends object = Record<string, never>,
+  Result extends RouteResult<BuildRouteParams<InferParams<Path>, Search>> = any,
 >(
   path: Path,
   handler: (
+    this: NoInfer<RouteDefinition<InferParams<Path>, Search>>,
     pathParams: InferParams<Path>,
-    searchParams: SearchParams,
+    searchParams: Search,
     request: RequestContext
   ) => Result
 ) {
@@ -30,11 +29,12 @@ export function get<
  */
 export function post<
   Path extends string,
-  Body extends object = EmptyRecord,
-  Result extends ValidResult = any,
+  Body extends object = Record<string, never>,
+  Result extends RouteResult<BuildRouteParams<InferParams<Path>, Body>> = any,
 >(
   path: Path,
   handler: (
+    this: NoInfer<RouteDefinition<InferParams<Path>, Body>>,
     pathParams: InferParams<Path>,
     body: Body,
     request: RequestContext

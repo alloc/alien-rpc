@@ -20,7 +20,6 @@
   "prettier": "@alloc/prettier-config",
   "scripts": {
     "dev": "pnpm --parallel run dev",
-    "build": "pnpm m run build",
-    "prepare": "indo"
+    "build": "pnpm m run build"
   }
 }

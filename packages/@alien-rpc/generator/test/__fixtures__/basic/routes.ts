@@ -1,7 +1,7 @@
-import { get, post } from '@alien-rpc/service'
+import { paginate, route } from '@alien-rpc/service'
 
 // Simple GET route (nullable result)
-export const getUserById = get('/users/:id', async ({ id }, {}) => {
+export const getUserById = route.get('/users/:id', async ({ id }, {}) => {
   if (id === '1') {
     return { id: 1, name: 'John' }
   }
@@ -9,7 +9,7 @@ export const getUserById = get('/users/:id', async ({ id }, {}) => {
 })
 
 // Simple POST route
-export const createUser = post(
+export const createUser = route.post(
   '/users',
   async ({}, props: { name: string }) => {
     return { id: 1 }
@@ -18,42 +18,33 @@ export const createUser = post(
 
 type PostSort = 'title' | 'date'
 
-// AsyncGenerator-based GET route (with pagination)
-export const getPostsByUser = get(
+// Generator-based GET route (without pagination)
+export const getPostsByUser = route.get(
   '/users/:id/posts',
-  async function* (
-    { id },
-    { sort, page = 1 }: { sort?: PostSort; page?: number }
-  ) {
+  async function* ({ id }, { sort }: { sort?: PostSort }) {
     yield { id: 1, title: 'Post 1' }
     yield { id: 2, title: 'Post 2' }
-
-    // Pagination
-    return {
-      prev: page > 1 ? { page: page - 1 } : null,
-      next: { page: page + 1 },
-    }
   }
 )
 
 // Generator-based GET route (with pagination)
-export const generatorBasedRoute = get(
-  '/generator-based-route',
-  function* ({}, { page = 1 }: { page?: number }) {
+export const getTopPostsPaginated = route.get(
+  '/posts/top',
+  async function* ({}, { page = 1 }: { page?: number }) {
     yield { id: 1, title: 'Post 1' }
     yield { id: 2, title: 'Post 2' }
 
-    // Pagination
-    return {
+    return paginate(this, {
       prev: page > 1 ? { page: page - 1 } : null,
       next: { page: page + 1 },
-    }
+    })
   }
 )
 
-export const bufferReturningRoute = get(
-  '/buffer-returning-route',
-  async ({}, {}) => {
-    return new Uint8Array([1, 2, 3, 4, 5])
+// Response-based GET route
+export const getResponse = route.get(
+  '/response',
+  async ({}, {}): Promise<Response> => {
+    return new Response('Not implemented', { status: 500 })
   }
 )

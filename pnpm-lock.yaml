@@ -53,8 +53,8 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2
       path-to-regexp:
-        specifier: npm:@alloc/path-to-regexp@^8.2.0
-        version: /@alloc/path-to-regexp@8.2.0
+        specifier: workspace:^
+        version: link:../path-to-regexp
     devDependencies:
       radashi:
         specifier: 12.2.0-beta.af825f4
@@ -74,7 +74,13 @@ importers:
       jumpgen:
         specifier: 0.1.0-beta.3
         version: 0.1.0-beta.3
+      path-to-regexp:
+        specifier: workspace:^
+        version: link:../path-to-regexp
     devDependencies:
+      '@sinclair/typebox':
+        specifier: ^0.33.13
+        version: 0.33.13
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.12
@@ -89,6 +95,8 @@ importers:
         version: 5.6.2
 
   packages/@alien-rpc/juri: {}
+
+  packages/@alien-rpc/path-to-regexp: {}
 
   packages/@alien-rpc/runtime:
     dependencies:
@@ -130,8 +138,8 @@ importers:
         specifier: ^0.0.48
         version: 0.0.48
       path-to-regexp:
-        specifier: npm:@alloc/path-to-regexp@^8.2.0
-        version: /@alloc/path-to-regexp@8.2.0
+        specifier: workspace:^
+        version: link:../path-to-regexp
     devDependencies:
       '@sinclair/typebox':
         specifier: ^0.33.13
@@ -159,11 +167,6 @@ packages:
     resolution: {integrity: sha512-TsRTRLLDW6Q4fWBAYlbkcaHQDAANKsI0smrhS/1x7/GHcjVxo+r+2VRbqrWaYpmjdhvCp5v7n2wtwkMYp+Kivw==}
     hasBin: true
     dev: true
-
-  /@alloc/path-to-regexp@8.2.0:
-    resolution: {integrity: sha512-NqUA2IP4Oi5/9qal0GxRcRgKURTEwUo25iLJ9gv/bDzYkXgIzh+1cZvdlgXobMImYLSVMLWqNLBypeJB8H+DOg==}
-    engines: {node: '>=16'}
-    dev: false
 
   /@alloc/path-types@0.1.2:
     resolution: {integrity: sha512-p+eZytuRXAcd4jI+fsJjtED/vadSLRfbx5bejIOifCboUgvXR26dIy9WMhw6WQEqH8FO1hXG2q995cfWWuf++w==}

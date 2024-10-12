@@ -1,5 +1,5 @@
 {
-  "name": "@alien-rpc/path-to-regexp",
+  "name": "path-to-regexp",
   "type": "module",
   "version": "8.2.0"
 }

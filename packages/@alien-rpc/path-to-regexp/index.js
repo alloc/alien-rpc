@@ -113,9 +113,6 @@ var TokenData = class {
   constructor(tokens) {
     this.tokens = tokens;
   }
-  toFunction(delimiter, encode) {
-    return tokensToFunction(this.tokens, delimiter, encode);
-  }
 };
 function parse(str, options = {}) {
   const { encodePath = NOOP_VALUE } = options;

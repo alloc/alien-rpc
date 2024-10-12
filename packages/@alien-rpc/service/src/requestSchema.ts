@@ -3,9 +3,9 @@ import { KindGuard, TSchema, Type } from '@alien-rpc/typebox'
 import { SchemaOptions, TUnion } from '@sinclair/typebox/type'
 import { Value } from '@sinclair/typebox/value'
 import { isString, pick } from 'radashi'
-import { RouteDefinition } from './types'
+import { Route } from './types'
 
-export function transformRequestSchema(route: RouteDefinition) {
+export function transformRequestSchema(route: Route) {
   if (route.method !== 'get') {
     // JSON request body doesn't need custom handling.
     return route.requestSchema

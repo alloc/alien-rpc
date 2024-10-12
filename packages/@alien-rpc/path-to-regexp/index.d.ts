@@ -92,7 +92,6 @@ type Token = Text | Parameter | Wildcard | Group;
 declare class TokenData {
     readonly tokens: Token[];
     constructor(tokens: Token[]);
-    toFunction(delimiter?: string, encode?: Encode | false): (data: ParamData) => string[];
 }
 /**
  * Parse a string for the raw tokens.

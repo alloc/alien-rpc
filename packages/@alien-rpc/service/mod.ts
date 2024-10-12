@@ -1,2 +1,9 @@
-export * from './src/route.js'
-export type { RouteContext, RouteMethod } from './src/types.js'
+export { paginate } from './src/pagination.js'
+export * as route from './src/route.js'
+
+export type {
+  RouteContext,
+  RouteIterator,
+  RouteMethod,
+  RouteResult,
+} from './src/types.js'

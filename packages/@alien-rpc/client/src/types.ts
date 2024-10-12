@@ -4,7 +4,7 @@ type AnyFn = (...args: any) => any
 
 export type RpcMethod = 'get' | 'post'
 
-export type RpcResponseFormat = 'json' | 'ndjson' | 'response'
+export type RpcResponseFormat = 'json' | 'json-seq' | 'response'
 
 export type RpcRoute<
   Path extends string = string,
@@ -57,12 +57,16 @@ export type RpcResponseByPath<
 }[keyof TRoutes]
 
 /**
- * The backend defines pagination links by returning objects that are
- * converted to URL search params.
+ * Pagination links (relative to the client prefix URL) are returned by the
+ * server route handler for ndJSON-based routes. These links are used by
+ * the `previousPage` and `nextPage` methods of the returned async
+ * generator.
+ *
+ * Note that page requests are sent to `GET` routes.
  */
 export type RpcPagination = {
-  prev: Record<string, any> | null
-  next: Record<string, any> | null
+  $prev: string | null
+  $next: string | null
 }
 
 export type { InferParams, PathTemplate } from '@alloc/path-types'

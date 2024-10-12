@@ -81,10 +81,10 @@ export async function extractRoutes(sourceCode: string, fileName: string) {
 }
 
 export type ExtractedRoute = {
-  httpMethod: string
   exportedName: string
   responseFormat: RpcResponseFormat
-  resolvedPathLiteral: string
+  resolvedMethod: string
+  resolvedPathname: string
   resolvedArguments: string[]
   resolvedResponse: string
 }
@@ -155,26 +155,47 @@ function extractRoute(
     throw new Error('Route handler has an unknown return type')
   }
 
-  const httpMethod = printTypeLiteral(
+  let resolvedMethod = printTypeLiteral(
     typeChecker.getTypeOfSymbol(method),
     typeChecker
   )
 
-  const resolvedPathLiteral = printTypeLiteral(
+  try {
+    resolvedMethod = JSON.parse(resolvedMethod) as string
+  } catch {
+    throw new Error(
+      `Route must have a string literal for its "method" property.`
+    )
+  }
+
+  let resolvedPathname = printTypeLiteral(
     typeChecker.getTypeOfSymbol(path),
     typeChecker
   )
+
+  try {
+    resolvedPathname = JSON.parse(resolvedPathname) as string
+  } catch {
+    throw new Error(`Route must have a string literal for its "path" property.`)
+  }
 
   const resolvedArguments = handlerCallSignature.parameters
     .slice(0, 2)
     .map(param => {
       const paramType = typeChecker.getTypeOfSymbol(param)
+      console.log(typeChecker.typeToString(paramType))
+
       return printTypeLiteral(paramType, typeChecker, {
         omitUndefinedLiteral: true,
       })
     })
 
-  const resolvedResponse = resolveResponseType(handlerResultType, typeChecker)
+  const resolvedResponse = typeChecker.isTypeAssignableTo(
+    handlerResultType,
+    types.Response(typeChecker)
+  )
+    ? 'Response'
+    : resolveResponseType(handlerResultType, typeChecker)
 
   const responseFormat = inferResponseFormat(
     handlerResultType,
@@ -183,10 +204,10 @@ function extractRoute(
   )
 
   return {
-    httpMethod,
     exportedName: routeName,
     responseFormat,
-    resolvedPathLiteral,
+    resolvedMethod,
+    resolvedPathname,
     resolvedArguments,
     resolvedResponse,
   }
@@ -227,11 +248,8 @@ function createSupportingTypes(project: Project, rootDir: string) {
   const typeDeclarations = {
     AnyNonNull: '{}',
     Response: 'globalThis.Response',
-    IterableIterator:
-      'globalThis.IterableIterator<unknown> | globalThis.AsyncIterableIterator<unknown>',
-    JSON: '{ [key: string]: JSON } | readonly JSON[] | JSONValue',
-    JSONValue: 'string | number | boolean | null | undefined',
-    ValidResult: 'Response | IterableIterator | JSON',
+    RouteIterator: 'import("@alien-rpc/service").RouteIterator',
+    RouteResult: 'import("@alien-rpc/service").RouteResult',
     RouteMethod: 'import("@alien-rpc/service").RouteMethod',
   } as const
 
@@ -244,6 +262,15 @@ function createSupportingTypes(project: Project, rootDir: string) {
       if (typeChecker.isTypeAssignableTo(types.AnyNonNull(typeChecker), type)) {
         throw new Error(
           `Could not resolve Response type. Make sure @types/node is installed in your project. If already installed, it may need to be re-installed.`
+        )
+      }
+    },
+    RouteIterator(typeChecker: ts.TypeChecker, type: ts.Type) {
+      // If the type "{}" is assignable to our "RouteIterator" type, then
+      // something is misconfigured on the user's end.
+      if (typeChecker.isTypeAssignableTo(types.AnyNonNull(typeChecker), type)) {
+        throw new Error(
+          `Could not resolve RouteIterator type. Make sure your tsconfig has "es2018" or higher in its \`lib\` array.`
         )
       }
     },
@@ -305,31 +332,20 @@ function inferResponseFormat(
   if (typeChecker.isTypeAssignableTo(type, types.Response(typeChecker))) {
     return 'response'
   }
-  if (
-    typeChecker.isTypeAssignableTo(type, types.IterableIterator(typeChecker))
-  ) {
-    const yieldType = (type as ts.Type & TypeArguments).typeArguments[0]
-    if (!typeChecker.isTypeAssignableTo(yieldType, types.JSON(typeChecker))) {
-      throw new InvalidResponseTypeError(
-        'Your route yields an unsupported type: ' +
-          printTypeLiteral(yieldType, typeChecker)
-      )
-    }
-    return 'ndjson'
+  if (typeChecker.isTypeAssignableTo(type, types.RouteIterator(typeChecker))) {
+    return 'json-seq'
   }
   if (typeChecker.isTypeAssignableTo(types.Response(typeChecker), type)) {
     throw new InvalidResponseTypeError(
       'Routes that return a `new Response()` cannot ever return anything else.'
     )
   }
-  if (
-    typeChecker.isTypeAssignableTo(types.IterableIterator(typeChecker), type)
-  ) {
+  if (typeChecker.isTypeAssignableTo(type, types.RouteIterator(typeChecker))) {
     throw new InvalidResponseTypeError(
       'Routes that return an iterator cannot ever return anything else.'
     )
   }
-  if (!typeChecker.isTypeAssignableTo(type, types.ValidResult(typeChecker))) {
+  if (!typeChecker.isTypeAssignableTo(type, types.RouteResult(typeChecker))) {
     throw new InvalidResponseTypeError(
       'Your route returns an unsupported type: ' +
         printTypeLiteral(type, typeChecker)

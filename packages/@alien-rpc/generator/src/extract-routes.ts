@@ -1,7 +1,7 @@
 import type { RpcResponseFormat } from '@alien-rpc/client'
 import { createProject, Project, ts } from '@ts-morph/bootstrap'
 import path from 'node:path'
-import { debug } from './debug'
+import { debug, reportDiagnostic } from './debug'
 import {
   isAsyncGeneratorType,
   isGeneratorType,
@@ -34,11 +34,11 @@ export async function extractRoutes(sourceCode: string, fileName: string) {
         const { line, character } =
           diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start!)
 
-        console.warn(
+        reportDiagnostic(
           `${message} (${diagnostic.file.fileName}:${line + 1}:${character + 1})`
         )
       } else {
-        console.warn(message)
+        reportDiagnostic(message)
       }
     })
   }

@@ -7,5 +7,6 @@
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit"
   },
-  "autoHide.autoHidePanel": false
+  "autoHide.autoHidePanel": false,
+  "typescript.preferences.importModuleSpecifierEnding": "js"
 }

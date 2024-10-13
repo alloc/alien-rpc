@@ -11,7 +11,7 @@ type Options = {
   /**
    * The API version.
    */
-  apiVersion: string
+  apiVersion?: string
   /**
    * The file that contains the routes.
    */
@@ -137,44 +137,44 @@ export default (options: Options) =>
 
       clientInterface.push(
         dedent`
-          ${route.exportedName}: typeof API['${route.exportedName}'] & {
+          ${route.exportedName}: typeof routes['${route.exportedName}'] & {
             callee: (${clientArgs.join(', ')}) => ${clientReturn}
           }
         `
       )
     }
 
+    const writeServerDefinitions = (outFile: string) => {
+      outFile = path.join(options.outDir, outFile)
+
+      const content = dedent/* ts */ `
+        import { Type } from "@sinclair/typebox"
+        import * as routes from "${resolveImportPath(outFile, options.routesFile.replace(/\.ts$/, '.js'))}"
+
+        export default [${serverDefinitions.join(', ')}] as const
+      `
+
+      write(outFile, content)
+    }
+
+    const writeClientDefinitions = (outFile: string) => {
+      outFile = path.join(options.outDir, outFile)
+
+      const content = dedent/* ts */ `
+        import { ${[...clientImports].sort().join(', ')} } from '@alien-rpc/client'
+
+        const routes = {${clientDefinitions.join(', ')}}
+
+        export default routes as {
+          ${clientInterface.join('\n')}
+        }
+      `
+
+      write(outFile, content)
+    }
+
     writeServerDefinitions(options.serverOutFile ?? 'server/api.ts')
     writeClientDefinitions(options.clientOutFile ?? 'client/api.ts')
-
-    function writeServerDefinitions(outFile: string) {
-      outFile = path.join(options.outDir, outFile)
-      write(
-        outFile,
-        dedent`
-          import { Type } from "@sinclair/typebox"
-          import * as routes from "${resolveImportPath(outFile, options.routesFile.replace(/\.ts$/, '.js'))}"
-
-          export default [${serverDefinitions.join(', ')}] as const
-        `
-      )
-    }
-
-    function writeClientDefinitions(outFile: string) {
-      outFile = path.join(options.outDir, outFile)
-      write(
-        outFile,
-        dedent`
-          import { ${[...clientImports].sort().join(', ')} } from '@alien-rpc/client'
-
-          const API = {${clientDefinitions.join(', ')}} as const
-
-          export default API as {
-            ${clientInterface.join('\n')}
-          }
-        `
-      )
-    }
   })
 
 function generateRuntimeValidator(code: string) {

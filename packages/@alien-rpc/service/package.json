@@ -23,7 +23,7 @@
   "devDependencies": {
     "@sinclair/typebox": "^0.33.13",
     "@types/node": "^22.7.4",
-    "radashi": "^12.1.0"
+    "radashi": "12.2.0-beta.af825f4"
   },
   "scripts": {
     "lint": "tsc -p . --outDir node_modules/.tmp"

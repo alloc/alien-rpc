@@ -21,7 +21,7 @@
     "@sinclair/typebox": "*"
   },
   "devDependencies": {
-    "@sinclair/typebox": "^0.33.13",
+    "@sinclair/typebox": "^0.33.16",
     "@types/node": "^22.7.4",
     "radashi": "12.2.0-beta.af825f4"
   },

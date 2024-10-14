@@ -1,40 +1,25 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import prettier from 'prettier'
-import { isArray } from 'radashi'
-export async function recursiveRead(
+import { isArray, isFunction } from 'radashi'
+
+export function recursiveRead(
   dir: string,
-  filter: (key: string) => boolean = () => true,
   files: Record<string, string> = {},
   root = dir
-): Promise<Record<string, string>> {
-  await Promise.all(
-    fs.readdirSync(dir).map(async name => {
-      if (name === '.') return
+): Record<string, string> {
+  fs.readdirSync(dir).forEach(name => {
+    if (name === '.') return
 
-      const file = path.join(dir, name)
-      const stat = fs.statSync(file)
+    const file = path.join(dir, name)
+    const stat = fs.statSync(file)
 
-      if (stat.isDirectory()) {
-        await recursiveRead(file, filter, files, root)
-      } else {
-        const key = path.relative(root, file)
-        if (filter(key)) {
-          const fileInfo = await prettier.getFileInfo(file)
-
-          let content = fs.readFileSync(file, 'utf8')
-          if (fileInfo.inferredParser) {
-            content = await prettier.format(content, {
-              parser: fileInfo.inferredParser,
-              filepath: file,
-            })
-          }
-
-          files[key] = content
-        }
-      }
-    })
-  )
+    if (stat.isDirectory()) {
+      recursiveRead(file, files, root)
+    } else {
+      const key = path.relative(root, file)
+      files[key] = fs.readFileSync(file, 'utf8')
+    }
+  })
   return files
 }
 
@@ -121,4 +106,23 @@ export function dedent(
 // Find the indentation of the first non-empty line.
 function detectIndent(text: string) {
   return text.match(/^[ \t]*(?=\S)/m)?.[0]
+}
+
+type Fn = (...args: any[]) => any
+
+export function prefer<T>(
+  ...prefs: (Exclude<T, Fn> | ((value: T) => boolean))[]
+) {
+  return (a: T, b: T): number => {
+    for (const pref of prefs) {
+      if (isFunction(pref)) {
+        if (pref(a)) return -1
+        if (pref(b)) return 1
+      } else {
+        if (Object.is(a, pref)) return -1
+        if (Object.is(b, pref)) return 1
+      }
+    }
+    return 0
+  }
 }

@@ -4,19 +4,19 @@ type AnyFn = (...args: any) => any
 
 export type RpcMethod = 'get' | 'post'
 
-export type RpcResponseFormat = 'json' | 'json-seq' | 'response'
+export type RpcResultFormat = 'json' | 'json-seq' | 'response'
 
 export type RpcRoute<
-  Path extends string = string,
-  Callee extends AnyFn = AnyFn,
+  TPath extends string = string,
+  TCallee extends AnyFn = AnyFn,
 > = {
   method: RpcMethod
-  path: Path
+  path: TPath
   /**
-   * The response format determines how the response must be handled for
-   * the caller to receive the expected type.
+   * The result format determines how the response must be handled for the
+   * caller to receive the expected type.
    */
-  format: RpcResponseFormat
+  format: RpcResultFormat
   /**
    * Equals 1 if the route has no search parameters or request body.
    */
@@ -31,7 +31,7 @@ export type RpcRoute<
    * The route's signature type. This property never actually exists at
    * runtime.
    */
-  callee: Callee
+  callee: TCallee
 }
 
 /**
@@ -80,22 +80,43 @@ export type RequestParams<
   TPathParams extends object,
   TSearchParams extends object,
 > =
-  | (TPathParams & TSearchParams)
+  | MergeParams<TPathParams, TSearchParams>
   | (object extends TSearchParams
       ? HasSingleKey<TPathParams> extends true
-        ?
-            | Exclude<TPathParams[keyof TPathParams], object>
-            | Extract<TPathParams[keyof TPathParams], readonly any[]>
+        ? ExcludeObject<TPathParams[keyof TPathParams]>
         : never
       : never)
 
+/**
+ * Exclude object types from the type, except for arrays.
+ */
+type ExcludeObject<T> = T extends object
+  ? T extends readonly any[]
+    ? T
+    : never
+  : T
+
+/**
+ * Merge two object types, with handling of `Record<string, never>` being
+ * used to represent an empty object.
+ */
+type MergeParams<TLeft extends object, TRight extends object> =
+  TLeft extends Record<string, never>
+    ? TRight
+    : TRight extends Record<string, never>
+      ? TLeft
+      : TLeft & TRight
+
+/**
+ * Return true if type `T` has a single property.
+ */
 type HasSingleKey<T extends object> = keyof T extends infer TKey
   ? TKey extends any
     ? keyof T extends TKey
       ? true
       : false
-    : false
-  : false
+    : never
+  : never
 
 export type { ResponsePromise } from 'ky'
 

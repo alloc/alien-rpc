@@ -1,27 +1,29 @@
-import type { RpcResponseFormat } from '@alien-rpc/client'
+import type { RpcResultFormat } from '@alien-rpc/client'
 import { Type } from '@alien-rpc/typebox'
 import { RequestContext } from '@hattip/compose'
 import { TObject, TSchema } from '@sinclair/typebox'
 import { JSON, Promisable } from './internal/types'
 import { PaginationLinks } from './pagination'
 
-export interface RouteContext extends RequestContext {
-  /**
-   * Manipulate the HTTP response by editing this.
-   */
-  response: {
+declare module '@hattip/compose' {
+  interface RequestContextExtensions {
     /**
-     * Set the HTTP status code.
-     *
-     * @default 200
+     * Manipulate the HTTP response by editing this.
      */
-    status: number
-    /**
-     * Add your own HTTP response headers.
-     *
-     * Content-Type and Content-Length are set for you automatically.
-     */
-    headers: Headers
+    response: {
+      /**
+       * Set the HTTP status code.
+       *
+       * @default 200
+       */
+      status: number
+      /**
+       * Add your own HTTP response headers.
+       *
+       * Content-Type and Content-Length are set for you automatically.
+       */
+      headers: Headers
+    }
   }
 }
 
@@ -33,7 +35,7 @@ export type RouteIterator<
 
 export type RouteResult<
   TParams extends object = Record<string, Type.JsonValue>,
-> = Promisable<JSON | Response | RouteIterator<TParams>>
+> = Promisable<JSON | Response | RouteIterator<TParams> | void>
 
 export interface RouteDefinition<
   PathParams extends object = object,
@@ -43,9 +45,9 @@ export interface RouteDefinition<
   path: string
   handler: (
     this: NoInfer<RouteDefinition<PathParams, Data>>,
-    pathParams: PathParams,
+    params: PathParams,
     data: Data,
-    context: RouteContext
+    ctx: RequestContext
   ) => RouteResult
 }
 
@@ -56,7 +58,8 @@ export interface Route {
   def: RouteDefinition
   /** Exists on GET routes only. */
   jsonParams?: string[]
-  format: RpcResponseFormat
+  pathParams?: string[]
+  format: RpcResultFormat
   requestSchema: TObject
   responseSchema: TSchema
 }
@@ -80,6 +83,6 @@ export type InferRouteParams<T extends { handler: any }> =
     : never
 
 export type RouteResponder<TResult extends RouteResult = RouteResult> = (
-  handler: (params: any, data: any, context: RouteContext) => TResult,
+  handler: (params: any, data: any, ctx: RequestContext) => TResult,
   route: Route
-) => (params: any, data: any, context: RouteContext) => Promise<Response>
+) => (params: any, data: any, ctx: RequestContext) => Promise<Response>

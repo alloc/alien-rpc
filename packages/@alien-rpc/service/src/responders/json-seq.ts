@@ -1,8 +1,10 @@
+import { RequestContext } from '@hattip/compose'
+import { TAsyncIterator } from '@sinclair/typebox'
 import { Value } from '@sinclair/typebox/value'
 import { isPromise } from 'node:util/types'
-import { Promisable } from '../internal/types'
+import { JSON, Promisable } from '../internal/types'
 import { resolvePaginationLink } from '../pagination'
-import { Route, RouteContext, RouteIterator, RouteResponder } from '../types'
+import { Route, RouteIterator, RouteResponder } from '../types'
 
 const responder: RouteResponder<Promisable<RouteIterator>> =
   (handler, route) => async (params, data, ctx) => {
@@ -10,6 +12,8 @@ const responder: RouteResponder<Promisable<RouteIterator>> =
     if (isPromise(result)) {
       result = await result
     }
+
+    result = Value.Encode(route.responseSchema, result) as RouteIterator
 
     const stream = ReadableStream.from(
       generateJsonTextSequence(result, route, ctx)
@@ -31,29 +35,31 @@ export default responder
 async function* generateJsonTextSequence(
   iterator: RouteIterator,
   route: Route,
-  ctx: RouteContext
+  ctx: RequestContext
 ) {
+  const yieldSchema = (route.responseSchema as TAsyncIterator).items
   const encoder = new TextEncoder()
+
   while (true) {
     const iteration = await iterator.next()
 
-    let encodedValue: any
+    let value: JSON
     if (iteration.done) {
       const links = iteration.value
       if (!links) {
         return
       }
 
-      encodedValue = {
+      value = {
         $prev: links.prev ? resolvePaginationLink(ctx.url, links.prev) : null,
         $next: links.next ? resolvePaginationLink(ctx.url, links.next) : null,
       }
     } else {
-      encodedValue = Value.Encode(route.responseSchema, iteration.value)
+      value = Value.Encode(yieldSchema, iteration.value)
     }
 
     yield encoder.encode('\u001E') // ASCII record separator
-    yield encoder.encode(JSON.stringify(encodedValue))
+    yield encoder.encode(JSON.stringify(value))
     yield encoder.encode('\n')
 
     if (iteration.done) {

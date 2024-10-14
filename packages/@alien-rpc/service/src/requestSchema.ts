@@ -6,7 +6,7 @@ import { isString, pick } from 'radashi'
 import { Route } from './types'
 
 export function transformRequestSchema(route: Route) {
-  if (route.method !== 'get') {
+  if (route.def.method !== 'get') {
     // JSON request body doesn't need custom handling.
     return route.requestSchema
   }

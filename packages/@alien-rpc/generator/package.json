@@ -15,7 +15,7 @@
     "@alloc/path-types": "^0.1.2",
     "@ts-morph/bootstrap": "^0.25.0",
     "debug": "^4.3.7",
-    "jumpgen": "0.1.0-beta.4",
+    "jumpgen": "0.1.0-beta.5",
     "path-to-regexp": "workspace:^"
   },
   "peerDependencies": {
@@ -23,7 +23,7 @@
     "typescript": "*"
   },
   "devDependencies": {
-    "@sinclair/typebox": "^0.33.13",
+    "@sinclair/typebox": "^0.33.16",
     "@types/debug": "^4.1.12",
     "@types/node": "^22.7.4",
     "fast-glob": "^3.3.2",

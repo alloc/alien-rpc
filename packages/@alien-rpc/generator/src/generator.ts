@@ -37,16 +37,14 @@ export default (options: Options) =>
 
     const serverDefinitions: string[] = []
     const clientDefinitions: string[] = []
-    const clientInterface: string[] = []
-    const clientImports = new Set<string>(['RequestParams', 'RequestOptions'])
+    const clientImports = new Set<string>(['RequestOptions', 'RpcRoute'])
 
     for (const route of routes) {
-      console.log(route)
       const requestSchemaDecl = generateRuntimeValidator(
         `type Request = ${route.resolvedArguments[1]}`
       )
       const responseSchemaDecl = generateRuntimeValidator(
-        `type Response = ${route.resolvedResponse}`
+        `type Response = ${route.resolvedResult}`
       )
 
       let jsonEncodedParams: string[] | undefined
@@ -104,19 +102,17 @@ export default (options: Options) =>
       const resolvedExtraParams = route.resolvedArguments[1]
 
       const expectsParams =
-        resolvedPathParams !== '{}' || resolvedExtraParams !== '{}'
+        resolvedPathParams !== 'Record<string, never>' ||
+        resolvedExtraParams !== 'Record<string, never>'
 
       const optionalParams =
         !expectsParams ||
         (arePropertiesOptional(resolvedPathParams) &&
           arePropertiesOptional(resolvedExtraParams))
 
-      clientDefinitions.push(
-        `${route.exportedName}: {method: "${route.resolvedMethod}", path: "${route.resolvedPathname}", arity: ${expectsParams ? 2 : 1}${sharedProperties}}`
-      )
-
       const clientArgs: string[] = ['requestOptions?: RequestOptions']
       if (expectsParams) {
+        clientImports.add('RequestParams')
         clientArgs.unshift(
           `params${optionalParams ? '?' : ''}: RequestParams<${resolvedPathParams}, ${resolvedExtraParams}>${optionalParams ? ' | null' : ''}`
         )
@@ -125,9 +121,9 @@ export default (options: Options) =>
       let clientReturn: string
       if (route.responseFormat === 'json-seq') {
         clientImports.add('ResponseStream')
-        clientReturn = route.resolvedResponse.replace(/^\w+/, 'ResponseStream')
+        clientReturn = route.resolvedResult.replace(/^\w+/, 'ResponseStream')
       } else if (route.responseFormat === 'json') {
-        clientReturn = `Promise<${route.resolvedResponse}>`
+        clientReturn = `Promise<${route.resolvedResult}>`
       } else if (route.responseFormat === 'response') {
         clientImports.add('ResponsePromise')
         clientReturn = 'ResponsePromise'
@@ -135,12 +131,8 @@ export default (options: Options) =>
         throw new Error(`Unsupported response format: ${route.responseFormat}`)
       }
 
-      clientInterface.push(
-        dedent`
-          ${route.exportedName}: typeof routes['${route.exportedName}'] & {
-            callee: (${clientArgs.join(', ')}) => ${clientReturn}
-          }
-        `
+      clientDefinitions.push(
+        `export const ${route.exportedName} = {method: "${route.resolvedMethod}", path: "${route.resolvedPathname}", arity: ${expectsParams ? 2 : 1}${sharedProperties}} as RpcRoute<"${route.resolvedPathname}", (${clientArgs.join(', ')}) => ${clientReturn}>`
       )
     }
 
@@ -163,11 +155,7 @@ export default (options: Options) =>
       const content = dedent/* ts */ `
         import { ${[...clientImports].sort().join(', ')} } from '@alien-rpc/client'
 
-        const routes = {${clientDefinitions.join(', ')}}
-
-        export default routes as {
-          ${clientInterface.join('\n')}
-        }
+        ${clientDefinitions.join('\n\n')}
       `
 
       write(outFile, content)

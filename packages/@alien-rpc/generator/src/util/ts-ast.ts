@@ -108,15 +108,13 @@ export function bitwiseEnumToArray(
 }
 
 export function isAsyncGeneratorType(type: ts.Type): type is ts.TypeReference {
-  return type.symbol && type.symbol.name === 'AsyncGenerator'
-}
-
-export function isGeneratorType(type: ts.Type): type is ts.TypeReference {
-  return type.symbol && type.symbol.name === 'Generator'
+  const symbol = type.getSymbol()
+  return Boolean(symbol && symbol.name === 'AsyncGenerator')
 }
 
 function isBuiltInType(type: ts.Type): boolean {
-  const declarations = type.symbol?.getDeclarations()
+  const symbol = type.getSymbol()
+  const declarations = symbol?.getDeclarations()
   return Boolean(
     declarations?.some(declaration => {
       const fileName = declaration.getSourceFile().fileName

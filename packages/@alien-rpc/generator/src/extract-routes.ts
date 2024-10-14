@@ -1,10 +1,9 @@
-import type { RpcResponseFormat } from '@alien-rpc/client'
+import type { RpcResultFormat } from '@alien-rpc/client'
 import { createProject, Project, ts } from '@ts-morph/bootstrap'
 import path from 'node:path'
 import { debug, reportDiagnostic } from './debug'
 import {
   isAsyncGeneratorType,
-  isGeneratorType,
   isObjectType,
   printTypeLiteral,
 } from './util/ts-ast'
@@ -82,11 +81,11 @@ export async function extractRoutes(sourceCode: string, fileName: string) {
 
 export type ExtractedRoute = {
   exportedName: string
-  responseFormat: RpcResponseFormat
+  responseFormat: RpcResultFormat
   resolvedMethod: string
   resolvedPathname: string
   resolvedArguments: string[]
-  resolvedResponse: string
+  resolvedResult: string
 }
 
 function extractRoute(
@@ -183,19 +182,16 @@ function extractRoute(
     .slice(0, 2)
     .map(param => {
       const paramType = typeChecker.getTypeOfSymbol(param)
-      console.log(typeChecker.typeToString(paramType))
-
       return printTypeLiteral(paramType, typeChecker, {
         omitUndefinedLiteral: true,
       })
     })
 
-  const resolvedResponse = typeChecker.isTypeAssignableTo(
+  const resolvedResult = resolveResultType(
     handlerResultType,
-    types.Response(typeChecker)
+    typeChecker,
+    types
   )
-    ? 'Response'
-    : resolveResponseType(handlerResultType, typeChecker)
 
   const responseFormat = inferResponseFormat(
     handlerResultType,
@@ -209,23 +205,32 @@ function extractRoute(
     resolvedMethod,
     resolvedPathname,
     resolvedArguments,
-    resolvedResponse,
+    resolvedResult,
   }
 }
 
-function resolveResponseType(type: ts.Type, typeChecker: ts.TypeChecker) {
-  if (hasTypeArguments(type)) {
-    const iteratorType = isAsyncGeneratorType(type)
-      ? 'AsyncIterableIterator'
-      : isGeneratorType(type)
-        ? 'IterableIterator'
-        : undefined
-
-    if (iteratorType) {
-      const yieldType = printTypeLiteral(type.typeArguments[0], typeChecker)
-      return `${iteratorType}<${yieldType}>`
-    }
+function resolveResultType(
+  type: ts.Type,
+  typeChecker: ts.TypeChecker,
+  types: SupportingTypes
+) {
+  // Prevent mapping of `Response` to literal type
+  if (typeChecker.isTypeAssignableTo(type, types.Response(typeChecker))) {
+    return 'Response'
   }
+
+  // Coerce `void` to `undefined`
+  if (typeChecker.isTypeAssignableTo(type, types.Void(typeChecker))) {
+    return 'undefined'
+  }
+
+  // Async generators are coerced to `AsyncIterableIterator` since
+  // typebox-codegen has no Type.AsyncGenerator validator
+  if (isAsyncGeneratorType(type) && hasTypeArguments(type)) {
+    const yieldType = printTypeLiteral(type.typeArguments[0], typeChecker)
+    return `AsyncIterableIterator<${yieldType}>`
+  }
+
   return printTypeLiteral(type, typeChecker)
 }
 
@@ -249,8 +254,9 @@ function createSupportingTypes(project: Project, rootDir: string) {
     AnyNonNull: '{}',
     Response: 'globalThis.Response',
     RouteIterator: 'import("@alien-rpc/service").RouteIterator',
-    RouteResult: 'import("@alien-rpc/service").RouteResult',
     RouteMethod: 'import("@alien-rpc/service").RouteMethod',
+    RouteResult: 'import("@alien-rpc/service").RouteResult',
+    Void: 'void',
   } as const
 
   type TypeValidator = (typeChecker: ts.TypeChecker, type: ts.Type) => void

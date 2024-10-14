@@ -1,6 +1,6 @@
 /// <reference lib="dom.asynciterable" />
 import { juri } from '@alien-rpc/juri'
-import ky from 'ky'
+import ky, { HTTPError } from 'ky'
 import { compile, parse, Token } from 'path-to-regexp'
 import { isArray, isString } from 'radashi'
 import {
@@ -46,12 +46,28 @@ export function defineClient<API extends Record<string, RpcRoute>>(
   options: ClientOptions
 ): Client<API> {
   const { prefixUrl, responseCache = new Map(), ...defaults } = options
+  const { hooks } = defaults
+
   return createClientProxy(
     routes,
     prefixUrl,
     responseCache,
-    ky.create(defaults)
+    ky.create({
+      ...defaults,
+      hooks: {
+        ...hooks,
+        beforeError: [extendHTTPError, ...(hooks?.beforeError ?? [])],
+      },
+    })
   )
+}
+
+async function extendHTTPError(error: HTTPError) {
+  const { response } = error
+  if (response.headers.get('Content-Type') === 'application/json') {
+    Object.assign(error, await response.json())
+  }
+  return error
 }
 
 function createClientProxy<API extends Record<string, RpcRoute>>(
@@ -257,10 +273,10 @@ function isObject(arg: unknown) {
 
 async function resolveJsonResponse(promise: Promise<Response>) {
   const response = await promise
-  if (response.headers.get('Content-Length') === '0') {
-    return null
+  // Empty response equals undefined
+  if (response.headers.get('Content-Length') !== '0') {
+    return response.json()
   }
-  return response.json()
 }
 
 function stringifyToken(token: Token): string | string[] {

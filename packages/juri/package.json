@@ -1,0 +1,14 @@
+{
+  "name": "@alien-rpc/juri",
+  "type": "module",
+  "version": "0.0.0",
+  "exports": {
+    ".": {
+      "types": "./dist/juri.d.ts",
+      "import": "./dist/juri.js"
+    }
+  },
+  "scripts": {
+    "lint": "tsc -p . --outDir node_modules/.tmp"
+  }
+}

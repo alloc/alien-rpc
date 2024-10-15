@@ -1,0 +1,17 @@
+{
+  "name": "@alien-rpc/typebox",
+  "type": "module",
+  "version": "0.0.0",
+  "exports": {
+    ".": {
+      "types": "./dist/typebox.d.ts",
+      "import": "./dist/typebox.js"
+    }
+  },
+  "scripts": {
+    "lint": "tsc -p . --outDir node_modules/.tmp"
+  },
+  "peerDependencies": {
+    "@sinclair/typebox": "*"
+  }
+}

@@ -14,15 +14,33 @@ importers:
       '@alloc/prettier-config':
         specifier: ^1.0.0
         version: 1.0.0
+      '@hattip/adapter-test':
+        specifier: ^0.0.48
+        version: 0.0.48
+      '@sinclair/typebox':
+        specifier: ^0.33.16
+        version: 0.33.16
+      '@types/node':
+        specifier: ^22.7.4
+        version: 22.7.5
       esbuild-plugin-copy:
         specifier: ^2.1.1
         version: 2.1.1(esbuild@0.23.1)
       ky:
         specifier: ^1.2.2
         version: 1.7.2
+      memfs:
+        specifier: ^4.13.0
+        version: 4.14.0
       prettier:
         specifier: ^3.2.5
         version: 3.3.3
+      radashi:
+        specifier: 12.2.0-beta.af825f4
+        version: 12.2.0-beta.af825f4
+      tinyglobby:
+        specifier: ^0.2.9
+        version: 0.2.9
       tinyrun:
         specifier: ^1.0.1
         version: 1.0.2
@@ -30,15 +48,15 @@ importers:
         specifier: ^8.0.2
         version: 8.3.0(postcss@8.4.47)(typescript@5.6.3)(yaml@2.6.0)
       typescript:
-        specifier: ^5.4.3
+        specifier: ^5.6.3
         version: 5.6.3
       vitest:
         specifier: ^2.1.2
         version: 2.1.2(@types/node@22.7.5)
 
-  packages/@alien-rpc/cli: {}
+  packages/cli: {}
 
-  packages/@alien-rpc/client:
+  packages/client:
     dependencies:
       '@aleclarson/json-stream':
         specifier: ^0.1.22
@@ -55,16 +73,15 @@ importers:
       path-to-regexp:
         specifier: workspace:^
         version: link:../path-to-regexp
-    devDependencies:
-      radashi:
-        specifier: 12.2.0-beta.af825f4
-        version: 12.2.0-beta.af825f4
 
-  packages/@alien-rpc/generator:
+  packages/generator:
     dependencies:
       '@alloc/path-types':
         specifier: ^0.1.2
         version: 0.1.2
+      '@sinclair/typebox':
+        specifier: '*'
+        version: 0.33.16
       '@ts-morph/bootstrap':
         specifier: ^0.25.0
         version: 0.25.0
@@ -77,62 +94,19 @@ importers:
       path-to-regexp:
         specifier: workspace:^
         version: link:../path-to-regexp
+      typescript:
+        specifier: '*'
+        version: 5.6.3
     devDependencies:
-      '@sinclair/typebox':
-        specifier: ^0.33.16
-        version: 0.33.16
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.12
-      '@types/node':
-        specifier: ^22.7.4
-        version: 22.7.5
-      fast-glob:
-        specifier: ^3.3.2
-        version: 3.3.2
-      memfs:
-        specifier: ^4.13.0
-        version: 4.14.0
-      radashi:
-        specifier: 12.2.0-beta.af825f4
-        version: 12.2.0-beta.af825f4
-      typescript:
-        specifier: ^5.6.2
-        version: 5.6.3
 
-  packages/@alien-rpc/juri: {}
+  packages/juri: {}
 
-  packages/@alien-rpc/path-to-regexp: {}
+  packages/path-to-regexp: {}
 
-  packages/@alien-rpc/runtime:
-    dependencies:
-      path-types:
-        specifier: npm:@alloc/path-types@^0.1.0
-        version: '@alloc/path-types@0.1.2'
-    devDependencies:
-      '@alloc/fast-rimraf':
-        specifier: ^1.0.8
-        version: 1.0.8
-      '@alloc/prettier-config':
-        specifier: ^1.0.0
-        version: 1.0.0
-      '@sinclair/typebox':
-        specifier: ^0.33.16
-        version: 0.33.16
-      prettier:
-        specifier: ^3.2.5
-        version: 3.3.3
-      tinyrun:
-        specifier: ^1.0.1
-        version: 1.0.2
-      tsup:
-        specifier: ^8.0.2
-        version: 8.3.0(postcss@8.4.47)(typescript@5.6.3)(yaml@2.6.0)
-      typescript:
-        specifier: ^5.4.3
-        version: 5.6.3
-
-  packages/@alien-rpc/service:
+  packages/service:
     dependencies:
       '@alien-rpc/juri':
         specifier: workspace:^
@@ -143,21 +117,14 @@ importers:
       '@hattip/compose':
         specifier: ^0.0.48
         version: 0.0.48
+      '@sinclair/typebox':
+        specifier: '*'
+        version: 0.33.16
       path-to-regexp:
         specifier: workspace:^
         version: link:../path-to-regexp
-    devDependencies:
-      '@sinclair/typebox':
-        specifier: ^0.33.16
-        version: 0.33.16
-      '@types/node':
-        specifier: ^22.7.4
-        version: 22.7.5
-      radashi:
-        specifier: 12.2.0-beta.af825f4
-        version: 12.2.0-beta.af825f4
 
-  packages/@alien-rpc/typebox:
+  packages/typebox:
     dependencies:
       '@sinclair/typebox':
         specifier: '*'
@@ -460,11 +427,17 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@hattip/adapter-test@0.0.48':
+    resolution: {integrity: sha512-UJp63VFAKeGLq4ycW72mM8KBT1VUaXQt9mL9EQwKou6e6xbkMSpt+HIBoRq68oShE1qbygS8cgm/2j5ShzV9mw==}
+
   '@hattip/compose@0.0.48':
     resolution: {integrity: sha512-4Hdk6JBk7Cb65BpgodcK69OdiXqBQ0CM4WRRzzcA1gPRkfBucmv06Wx/q5v6ZtkfwCIqTP09KSi+HmIPj7935A==}
 
   '@hattip/core@0.0.48':
     resolution: {integrity: sha512-rx28E2Ofl2GpJ73Uw011d1kM3kLyuFTijcBZjRWZn6cZ6qmFI194BZLtsvvO3ocBgyUUVv4JPC9PdH5FGA/ZoA==}
+
+  '@hattip/polyfills@0.0.48':
+    resolution: {integrity: sha512-r9Q5cGpAyN/2HL3UI1z1prrIok3kopnszgXFIP1Ns4lMsukc9bYosrDVH2ZKIJ4Zowzi6kzH0/kE6VsUgfuESQ==}
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -505,6 +478,9 @@ packages:
     engines: {node: '>=10.0'}
     peerDependencies:
       tslib: '2'
+
+  '@kamilkisiela/fast-url-parser@1.1.4':
+    resolution: {integrity: sha512-gbkePEBupNydxCelHCESvFSFM8XPh1Zs/OAVRW/rKpEqPAl5PbOM90Si8mv9bvnR53uPD2s/FiRxdvSejpRJew==}
 
   '@kikobeats/time-span@1.0.5':
     resolution: {integrity: sha512-txRAdmi35N1wnsLS1AO5mTlbY5Cv5/61WXqek2y3L9Q7u4mgdUVq819so5xe753hL5gYeLzlWoJ/VJfXg9nx8g==}
@@ -657,6 +633,14 @@ packages:
   '@vitest/utils@2.1.2':
     resolution: {integrity: sha512-zMO2KdYy6mx56btx9JvAqAZ6EyS3g49krMPPrgOp1yxGZiA93HumGk+bZ5jIZtOg5/VBYl5eBmGRQHqq4FG6uQ==}
 
+  '@whatwg-node/fetch@0.9.21':
+    resolution: {integrity: sha512-Wt0jPb+04JjobK0pAAN7mEHxVHcGA9HoP3OyCsZtyAecNQeADXCZ1MihFwVwjsgaRYuGVmNlsCmLxlG6mor8Gw==}
+    engines: {node: '>=18.0.0'}
+
+  '@whatwg-node/node-fetch@0.5.26':
+    resolution: {integrity: sha512-4jXDeZ4IH4bylZ6wu14VEx0aDXXhrN4TC279v9rPmn08g4EYekcYf8wdcOOnS9STjDkb6x77/6xBUTqxGgjr8g==}
+    engines: {node: '>=18.0.0'}
+
   ansi-regex@5.0.1:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
     engines: {node: '>=8'}
@@ -707,6 +691,10 @@ packages:
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
     peerDependencies:
       esbuild: '>=0.18'
+
+  busboy@1.6.0:
+    resolution: {integrity: sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==}
+    engines: {node: '>=10.16.0'}
 
   cac@6.7.14:
     resolution: {integrity: sha512-b6Ilus+c3RrdDk+JhLKUAQfzzgLEPy6wcXqS7f/xe1EETvsDP6GORG7SFuOs6cID5YkqchW/LXZbX5bc8j7ZcQ==}
@@ -799,9 +787,15 @@ packages:
     resolution: {integrity: sha512-8uSpZZocAZRBAPIEINJj3Lo9HyGitllczc27Eh5YYojjMFMn8yHMDMaUHE2Jqfq05D/wucwI4JGURyXt1vchyg==}
     engines: {node: '>=10'}
 
+  fast-decode-uri-component@1.0.1:
+    resolution: {integrity: sha512-WKgKWg5eUxvRZGwW8FvfbaH7AXSh2cL+3j5fMGzUMCxWBJ3dV3a7Wz8y2f/uQ0e3B6WmodD3oS54jTQ9HVTIIg==}
+
   fast-glob@3.3.2:
     resolution: {integrity: sha512-oX2ruAFQwf/Orj8m737Y5adxDQO0LAB7/S5MnxCdTNDd4p6BsyIVsv9JQsATbTSq8KHRpLwIHbVlUNatxd+1Ow==}
     engines: {node: '>=8.6.0'}
+
+  fast-querystring@1.1.2:
+    resolution: {integrity: sha512-g6KuKWmFXc0fID8WWH0jit4g0AGBoJhCkJMb1RmbsSEUNvQ+ZC8D6CUZ+GtF8nMzSPXnhiePyyqqipzNNEnHjg==}
 
   fastq@1.17.1:
     resolution: {integrity: sha512-sRVD3lWVIXWg6By68ZN7vho9a1pQcN/WBFaAAsDDFzlJjvoGx0P8z7V1t72grFJfJhu3YPZBuu25f7Kaw2jN1w==}
@@ -978,6 +972,9 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
+  node-fetch-native@1.6.4:
+    resolution: {integrity: sha512-IhOigYzAKHd244OC0JIMIUrjzctirCmPkaIfhDeGcEETWof5zKYUW7e7MYvChGWh/4CJeXEgsRyGzuF334rOOQ==}
+
   normalize-path@3.0.0:
     resolution: {integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==}
     engines: {node: '>=0.10.0'}
@@ -1132,6 +1129,10 @@ packages:
   std-env@3.7.0:
     resolution: {integrity: sha512-JPbdCEQLj1w5GilpiHAx3qJvFndqybBysA3qUOnznweH4QbNYUsW/ea8QzSrnh0vNsezMMw5bcVool8lM0gwzg==}
 
+  streamsearch@1.1.0:
+    resolution: {integrity: sha512-Mcc5wHehp9aXz1ax6bZUyY5afg9u2rv5cqQI3mRrYkGC8rW2hM02jWuwjtL++LS5qinSyhj2QfLyNsuc+VsExg==}
+    engines: {node: '>=10.0.0'}
+
   string-width@4.2.3:
     resolution: {integrity: sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==}
     engines: {node: '>=8'}
@@ -1258,6 +1259,9 @@ packages:
   universalify@2.0.1:
     resolution: {integrity: sha512-gptHNQghINnc/vTGIk0SOFGFNXw7JVrlRUtConJRlvaw6DuX0wO5Jeko9sWrMBhh+PsYAZ7oXAiOnf/UKogyiw==}
     engines: {node: '>= 10.0.0'}
+
+  urlpattern-polyfill@10.0.0:
+    resolution: {integrity: sha512-H/A06tKD7sS1O1X2SshBVeA5FLycRpjqiBeqGKmBwBDBy28EnRjORxTNe269KSSr5un5qyWi1iL61wLxpd+ZOg==}
 
   vite-node@2.1.2:
     resolution: {integrity: sha512-HPcGNN5g/7I2OtPjLqgOtCRu/qhVvBxTUD3qzitmL0SrG1cWFzxzhMDWussxSbrRYWqnKf8P2jiNhPMSN+ymsQ==}
@@ -1500,11 +1504,22 @@ snapshots:
   '@esbuild/win32-x64@0.23.1':
     optional: true
 
+  '@hattip/adapter-test@0.0.48':
+    dependencies:
+      '@hattip/core': 0.0.48
+      '@hattip/polyfills': 0.0.48
+
   '@hattip/compose@0.0.48':
     dependencies:
       '@hattip/core': 0.0.48
 
   '@hattip/core@0.0.48': {}
+
+  '@hattip/polyfills@0.0.48':
+    dependencies:
+      '@hattip/core': 0.0.48
+      '@whatwg-node/fetch': 0.9.21
+      node-fetch-native: 1.6.4
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -1547,6 +1562,8 @@ snapshots:
   '@jsonjoy.com/util@1.5.0(tslib@2.7.0)':
     dependencies:
       tslib: 2.7.0
+
+  '@kamilkisiela/fast-url-parser@1.1.4': {}
 
   '@kikobeats/time-span@1.0.5': {}
 
@@ -1677,6 +1694,18 @@ snapshots:
       loupe: 3.1.1
       tinyrainbow: 1.2.0
 
+  '@whatwg-node/fetch@0.9.21':
+    dependencies:
+      '@whatwg-node/node-fetch': 0.5.26
+      urlpattern-polyfill: 10.0.0
+
+  '@whatwg-node/node-fetch@0.5.26':
+    dependencies:
+      '@kamilkisiela/fast-url-parser': 1.1.4
+      busboy: 1.6.0
+      fast-querystring: 1.1.2
+      tslib: 2.7.0
+
   ansi-regex@5.0.1: {}
 
   ansi-regex@6.1.0: {}
@@ -1714,6 +1743,10 @@ snapshots:
     dependencies:
       esbuild: 0.23.1
       load-tsconfig: 0.2.5
+
+  busboy@1.6.0:
+    dependencies:
+      streamsearch: 1.1.0
 
   cac@6.7.14: {}
 
@@ -1857,6 +1890,8 @@ snapshots:
       signal-exit: 3.0.7
       strip-final-newline: 2.0.0
 
+  fast-decode-uri-component@1.0.1: {}
+
   fast-glob@3.3.2:
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -1864,6 +1899,10 @@ snapshots:
       glob-parent: 5.1.2
       merge2: 1.4.1
       micromatch: 4.0.8
+
+  fast-querystring@1.1.2:
+    dependencies:
+      fast-decode-uri-component: 1.0.1
 
   fastq@1.17.1:
     dependencies:
@@ -2020,6 +2059,8 @@ snapshots:
 
   nanoid@3.3.7: {}
 
+  node-fetch-native@1.6.4: {}
+
   normalize-path@3.0.0: {}
 
   npm-run-path@4.0.1:
@@ -2137,6 +2178,8 @@ snapshots:
   stackback@0.0.2: {}
 
   std-env@3.7.0: {}
+
+  streamsearch@1.1.0: {}
 
   string-width@4.2.3:
     dependencies:
@@ -2259,6 +2302,8 @@ snapshots:
   undici-types@6.19.8: {}
 
   universalify@2.0.1: {}
+
+  urlpattern-polyfill@10.0.0: {}
 
   vite-node@2.1.2(@types/node@22.7.5):
     dependencies:

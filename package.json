@@ -4,12 +4,18 @@
   "devDependencies": {
     "@alloc/fast-rimraf": "^1.0.8",
     "@alloc/prettier-config": "^1.0.0",
+    "@hattip/adapter-test": "^0.0.48",
+    "@sinclair/typebox": "^0.33.16",
+    "@types/node": "^22.7.4",
     "esbuild-plugin-copy": "^2.1.1",
     "ky": "^1.2.2",
+    "memfs": "^4.13.0",
     "prettier": "^3.2.5",
+    "radashi": "12.2.0-beta.af825f4",
+    "tinyglobby": "^0.2.9",
     "tinyrun": "^1.0.1",
     "tsup": "^8.0.2",
-    "typescript": "^5.4.3",
+    "typescript": "^5.6.3",
     "vitest": "^2.1.2"
   },
   "files": [
@@ -19,7 +25,7 @@
   ],
   "prettier": "@alloc/prettier-config",
   "scripts": {
-    "dev": "pnpm --parallel run dev",
-    "build": "pnpm m run build"
+    "dev": "tsup --watch --sourcemap",
+    "build": "tsup"
   }
 }

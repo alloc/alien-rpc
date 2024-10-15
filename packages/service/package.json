@@ -1,0 +1,26 @@
+{
+  "name": "@alien-rpc/service",
+  "type": "module",
+  "version": "0.0.0",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@alien-rpc/juri": "workspace:^",
+    "@alloc/path-types": "^0.1.2",
+    "@hattip/compose": "^0.0.48",
+    "path-to-regexp": "workspace:^"
+  },
+  "peerDependencies": {
+    "@sinclair/typebox": "*"
+  },
+  "scripts": {
+    "lint": "tsc -p . --outDir node_modules/.tmp"
+  }
+}

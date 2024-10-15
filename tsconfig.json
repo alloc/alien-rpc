@@ -8,8 +8,13 @@
     "declaration": true,
     "emitDeclarationOnly": true,
     "allowSyntheticDefaultImports": true,
+    "types": [],
     "paths": {
-      "@alien-rpc/*": ["./packages/@alien-rpc/*/mod.ts"]
+      "@alien-rpc/client": ["./packages/client/src/index.ts"],
+      "@alien-rpc/generator": ["./packages/generator/src/generator.ts"],
+      "@alien-rpc/juri": ["./packages/juri/src/juri.ts"],
+      "@alien-rpc/service": ["./packages/service/src/index.ts"],
+      "@alien-rpc/typebox": ["./packages/typebox/src/typebox.ts"]
     }
   }
 }

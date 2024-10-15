@@ -1,0 +1,22 @@
+{
+  "name": "@alien-rpc/client",
+  "type": "module",
+  "version": "0.0.0",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./formats/*": "./dist/formats/*.js"
+  },
+  "scripts": {
+    "lint": "tsc -p . --outDir node_modules/.tmp"
+  },
+  "dependencies": {
+    "@aleclarson/json-stream": "^0.1.22",
+    "@alien-rpc/juri": "workspace:^",
+    "@alloc/path-types": "^0.1.2",
+    "ky": "^1.2.2",
+    "path-to-regexp": "workspace:^"
+  }
+}

@@ -12,13 +12,15 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@alien-rpc/juri": "workspace:^",
-    "@alloc/path-types": "^0.1.2",
-    "@hattip/compose": "^0.0.48",
-    "path-to-regexp": "workspace:^"
+    "@hattip/compose": "^0.0.48"
   },
   "peerDependencies": {
     "@sinclair/typebox": "*"
+  },
+  "devDependencies": {
+    "@alien-rpc/juri": "workspace:^",
+    "@alloc/path-types": "^0.1.2",
+    "path-to-regexp": "workspace:^"
   },
   "scripts": {
     "lint": "tsc -p . --outDir node_modules/.tmp"

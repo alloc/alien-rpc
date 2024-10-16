@@ -21,12 +21,12 @@ export const createUser = route.post(
 import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
 
 export const createUser = {
+  path: "users",
   method: "post",
-  path: "/users",
   arity: 2,
   format: "json",
 } as RpcRoute<
-  "/users",
+  "users",
   (
     params: RequestParams<Record<string, never>, { name: string }>,
     requestOptions?: RequestOptions,
@@ -37,15 +37,16 @@ export const createUser = {
  * server/api.ts
  */
 import { Type } from "@sinclair/typebox";
-import * as routes from "../routes.js";
 
 export default [
   {
-    def: routes.createUser,
+    path: "/users",
+    method: "post",
+    import: async () => (await import("../routes.js")).createUser.handler,
+    format: "json",
     requestSchema: Type.Object({
       name: Type.String(),
     }),
     responseSchema: Type.Number(),
-    format: "json",
   },
 ] as const;

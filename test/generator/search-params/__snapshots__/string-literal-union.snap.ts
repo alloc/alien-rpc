@@ -32,13 +32,13 @@ export const getSortedPosts = route.get("/posts", ({}, opts: PostSort) => {
 import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
 
 export const getSortedPosts = {
+  path: "posts",
   method: "get",
-  path: "/posts",
-  arity: 2,
   jsonParams: [],
+  arity: 2,
   format: "json",
 } as RpcRoute<
-  "/posts",
+  "posts",
   (
     params: RequestParams<
       Record<string, never>,
@@ -52,17 +52,18 @@ export const getSortedPosts = {
  * server/api.ts
  */
 import { Type } from "@sinclair/typebox";
-import * as routes from "../routes.js";
 
 export default [
   {
-    def: routes.getSortedPosts,
+    path: "/posts",
+    method: "get",
+    jsonParams: [],
+    import: async () => (await import("../routes.js")).getSortedPosts.handler,
+    format: "json",
     requestSchema: Type.Object({
       order: Type.Union([Type.Literal("asc"), Type.Literal("desc")]),
       key: Type.Union([Type.Literal("title"), Type.Literal("date")]),
     }),
     responseSchema: Type.Array(Post),
-    jsonParams: [],
-    format: "json",
   },
 ] as const;

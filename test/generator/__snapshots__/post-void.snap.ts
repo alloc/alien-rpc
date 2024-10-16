@@ -13,23 +13,24 @@ export const voidTest = route.post("/void", async () => {});
 import { RequestOptions, RpcRoute } from "@alien-rpc/client";
 
 export const voidTest = {
+  path: "void",
   method: "post",
-  path: "/void",
   arity: 1,
   format: "json",
-} as RpcRoute<"/void", (requestOptions?: RequestOptions) => Promise<undefined>>;
+} as RpcRoute<"void", (requestOptions?: RequestOptions) => Promise<undefined>>;
 
 /**
  * server/api.ts
  */
 import { Type } from "@sinclair/typebox";
-import * as routes from "../routes.js";
 
 export default [
   {
-    def: routes.voidTest,
+    path: "/void",
+    method: "post",
+    import: async () => (await import("../routes.js")).voidTest.handler,
+    format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Undefined(),
-    format: "json",
   },
 ] as const;

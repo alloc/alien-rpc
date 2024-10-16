@@ -2,63 +2,52 @@
 import { juri } from '@alien-rpc/juri'
 import ky, { HTTPError } from 'ky'
 import { compile, parse, Token } from 'path-to-regexp'
-import { isArray, isFunction, isString } from 'radashi'
+import { isArray, isString } from 'radashi'
+import jsonFormat from './formats/json.js'
+import responseFormat from './formats/response.js'
 import {
-  RequestOptions,
-  ResponseCache,
+  ClientOptions,
+  RpcCachedResult,
   RpcPathname,
   RpcResponseByPath,
-  RpcResultParser,
+  RpcResultCache,
+  RpcResultFormatter,
   RpcRoute,
 } from './types.js'
 
 interface ClientPrototype<API extends Record<string, RpcRoute>> {
-  extend: (defaults: RequestOptions) => Client<API>
-  setResponse: <P extends RpcPathname<API>>(
+  extend: (defaults: ClientOptions) => Client<API>
+  request: typeof ky
+  getCachedResponse: <P extends RpcPathname<API>>(
+    path: P
+  ) => RpcCachedResult<Awaited<RpcResponseByPath<API, P>>> | undefined
+  setCachedResponse: <P extends RpcPathname<API>>(
     path: P,
-    response: Awaited<RpcResponseByPath<API, P>>
+    response: RpcCachedResult<Awaited<RpcResponseByPath<API, P>>>
   ) => void
 }
 
-export type Client<API extends Record<string, RpcRoute>> =
-  ClientPrototype<API> & {
-    [TKey in keyof API]: Extract<API[TKey], RpcRoute>['callee']
-  }
-
-export interface ClientOptions extends RequestOptions {
-  /**
-   * The base URL of the API.
-   */
-  prefixUrl: string
-  /**
-   * This cache is checked before sending a `GET` request. It remains empty
-   * until you manually call the `Client#setResponse` method.
-   *
-   * The `ResponseCache` interface is intentionally simplistic to allow use
-   * of your own caching algorithm, like one with “least recently used”
-   * eviction. Note that `undefined` values are not allowed.
-   *
-   * @default new Map()
-   */
-  responseCache?: ResponseCache
+export type Client<
+  API extends Record<string, RpcRoute> = Record<string, RpcRoute>,
+> = ClientPrototype<API> & {
+  [TKey in keyof API]: Extract<API[TKey], RpcRoute>['callee']
 }
 
 export function defineClient<API extends Record<string, RpcRoute>>(
   routes: API,
   options: ClientOptions
 ): Client<API> {
-  const { prefixUrl, responseCache = new Map(), ...defaults } = options
+  const { resultCache = new Map(), ...defaults } = options
   const { hooks } = defaults
 
   return createClientProxy(
     routes,
-    prefixUrl,
-    responseCache,
+    resultCache,
     ky.create({
       ...defaults,
       hooks: {
         ...hooks,
-        beforeError: [extendHTTPError, ...(hooks?.beforeError ?? [])],
+        beforeError: mergeHooks(hooks?.beforeError, extendHTTPError, 'start'),
       },
     })
   )
@@ -74,31 +63,33 @@ async function extendHTTPError(error: HTTPError) {
 
 function createClientProxy<API extends Record<string, RpcRoute>>(
   routes: API,
-  prefixUrl: string,
-  responseCache: ResponseCache,
+  resultCache: RpcResultCache,
   request: typeof ky
 ): Client<API> {
   const client: ClientPrototype<API> = {
     extend: defaults =>
       createClientProxy(
         routes,
-        prefixUrl,
-        responseCache,
+        defaults.resultCache ?? resultCache,
         request.extend(defaults)
       ),
-    setResponse(path, response) {
-      responseCache.set(path, response)
+    request,
+    getCachedResponse(path) {
+      return resultCache.get(path) as any
+    },
+    setCachedResponse(path, response) {
+      resultCache.set(path, response)
     },
   }
 
   return new Proxy(client, {
-    get(client, key) {
+    get(client, key, proxy) {
       if (Object.prototype.hasOwnProperty.call(routes, key)) {
         return createRouteFunction(
           routes[key as keyof API],
-          prefixUrl,
-          responseCache,
-          request
+          resultCache,
+          request,
+          proxy
         )
       }
       if (client.hasOwnProperty(key)) {
@@ -110,59 +101,14 @@ function createClientProxy<API extends Record<string, RpcRoute>>(
 
 function createRouteFunction(
   route: RpcRoute,
-  prefixUrl: string,
-  responseCache: ResponseCache,
-  request: typeof ky
+  responseCache: RpcResultCache,
+  request: typeof ky,
+  client: Client
 ) {
   const parsedPath = parse(route.path)
   const pathParams = parsedPath.tokens.flatMap(stringifyToken)
   const buildPath = parsedPath.tokens.length > 1 && compile(parsedPath)
-  const importedFormat = isFunction(route.format) ? route.format() : undefined
-
-  async function resolveResultFormat(
-    format: RpcRoute['format']
-  ): Promise<RpcResultParser> {
-    if (format === 'response') {
-      return promisedResponse => promisedResponse
-    }
-
-    if (format === 'json') {
-      return resolveJsonResponse
-    }
-
-    if (isFunction(format)) {
-      const importedFormat = await format()
-      return importedFormat.default
-    }
-  }
-
-  const send = (
-    method: string,
-    url: string,
-    options: import('ky').Options | undefined,
-    body?: { json: any } | false
-  ) => {
-    const promisedResponse = request(url, {
-      ...options,
-      ...body,
-      method,
-    })
-
-    if (route.format === 'response') {
-      return promisedResponse
-    }
-
-    if (route.format === 'json') {
-      return resolveJsonResponse(promisedResponse)
-    }
-
-    if (isFunction(route.format)) {
-      const importedFormat = route.format()
-      return
-    }
-
-    throw new Error('Unsupported route format: ' + route.format)
-  }
+  const format = resolveResultFormat(route.format)
 
   return (
     arg: unknown,
@@ -193,21 +139,46 @@ function createRouteFunction(
         cacheKey += '?' + searchParams.toString()
       }
 
-      const response = responseCache.get(cacheKey)
-      if (response !== undefined) {
-        return Promise.resolve(response)
+      if (responseCache.has(cacheKey)) {
+        return format.mapCachedResult(responseCache.get(cacheKey), client)
       }
     }
 
-    return send(
-      route.method,
-      prefixUrl + path,
-      options,
-      route.method !== 'get' && {
-        json: params,
-      }
-    )
+    const promisedResponse = request(path, {
+      ...options,
+      ...(route.method !== 'get' && { json: params }),
+      method: route.method,
+    })
+
+    return format.parseResponse(promisedResponse, client)
   }
+}
+
+function mergeHooks<T>(
+  hooks: T[] | undefined,
+  hook: T | undefined,
+  position: 'start' | 'end'
+) {
+  return hook
+    ? hooks
+      ? position === 'start'
+        ? [hook, ...hooks]
+        : [...hooks, hook]
+      : [hook]
+    : hooks
+}
+
+function resolveResultFormat(format: RpcRoute['format']): RpcResultFormatter {
+  if (format === 'response') {
+    return responseFormat
+  }
+  if (format === 'json') {
+    return jsonFormat
+  }
+  if (isString(format)) {
+    throw new Error('Unsupported route format: ' + format)
+  }
+  return format
 }
 
 function encodeJsonSearch(
@@ -242,14 +213,6 @@ function encodeJsonSearch(
 
 function isObject(arg: unknown) {
   return Object.getPrototypeOf(arg) === Object.prototype
-}
-
-async function resolveJsonResponse(promise: Promise<Response>) {
-  const response = await promise
-  // Empty response equals undefined
-  if (response.headers.get('Content-Length') !== '0') {
-    return response.json()
-  }
 }
 
 function stringifyToken(token: Token): string | string[] {

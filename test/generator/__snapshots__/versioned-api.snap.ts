@@ -22,13 +22,13 @@ export const funFact = route.get("/fun-fact", () => {
 import { RequestOptions, RpcRoute } from "@alien-rpc/client";
 
 export const funFact = {
+  path: "v1/fun-fact",
   method: "get",
-  path: "/v1/fun-fact",
-  arity: 1,
   jsonParams: [],
+  arity: 1,
   format: "json",
 } as RpcRoute<
-  "/v1/fun-fact",
+  "v1/fun-fact",
   (requestOptions?: RequestOptions) => Promise<string>
 >;
 
@@ -36,14 +36,15 @@ export const funFact = {
  * server/api.ts
  */
 import { Type } from "@sinclair/typebox";
-import * as routes from "../routes.js";
 
 export default [
   {
-    def: routes.funFact,
+    path: "/v1/fun-fact",
+    method: "get",
+    jsonParams: [],
+    import: async () => (await import("../routes.js")).funFact.handler,
+    format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.String(),
-    jsonParams: [],
-    format: "json",
   },
 ] as const;

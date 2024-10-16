@@ -1,81 +1,62 @@
 import type { RpcResultFormat } from '@alien-rpc/client'
-import { createProject, Project, ts } from '@ts-morph/bootstrap'
-import path from 'node:path'
-import { debug, reportDiagnostic } from './debug'
+import { ts } from '@ts-morph/bootstrap'
+import { debug } from './debug'
+import { ParsedRoutes, SupportingTypes } from './parse-routes.js'
 import {
   isAsyncGeneratorType,
   isObjectType,
   printTypeLiteral,
 } from './util/ts-ast'
 
-export async function extractRoutes(sourceCode: string, fileName: string) {
-  const tsConfigFilePath = ts.findConfigFile(fileName, ts.sys.fileExists)
-  const project = await createProject({
-    tsConfigFilePath,
-    skipAddingFilesFromTsConfig: true,
-  })
+export function extractRoutes({
+  types,
+  sourceFiles,
+  typeChecker,
+}: ParsedRoutes) {
+  const routes: ExtractedRoute[] = []
 
-  const types = createSupportingTypes(project, path.dirname(fileName))
-  const sourceFile = project.createSourceFile(fileName, sourceCode)
-  project.resolveSourceFileDependencies()
-
-  const program = project.createProgram()
-  const typeChecker = program.getTypeChecker()
-
-  const diagnostics = program.getSemanticDiagnostics(sourceFile)
-  if (diagnostics.length > 0) {
-    diagnostics.forEach(diagnostic => {
-      const message = ts.flattenDiagnosticMessageText(
-        diagnostic.messageText,
-        '\n'
-      )
-      if (diagnostic.file) {
-        const { line, character } =
-          diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start!)
-
-        reportDiagnostic(
-          `${message} (${diagnostic.file.fileName}:${line + 1}:${character + 1})`
+  for (const sourceFile of sourceFiles) {
+    ts.forEachChild(sourceFile, node => {
+      if (
+        !ts.isVariableStatement(node) ||
+        !node.modifiers ||
+        node.modifiers.every(
+          modifier => modifier.kind !== ts.SyntaxKind.ExportKeyword
         )
-      } else {
-        reportDiagnostic(message)
+      ) {
+        return
+      }
+
+      const declaration = node.declarationList.declarations[0]
+      if (!ts.isVariableDeclaration(declaration)) {
+        return
+      }
+
+      const symbol =
+        declaration.name && typeChecker.getSymbolAtLocation(declaration.name)
+      if (!symbol) {
+        return
+      }
+
+      const routeName = symbol.getName()
+      try {
+        const route = extractRoute(
+          sourceFile.fileName,
+          routeName,
+          declaration,
+          typeChecker,
+          types
+        )
+        if (route) {
+          debug('extracted route', route)
+          routes.push(route)
+        }
+      } catch (error: any) {
+        Object.assign(error, { routeName })
+        throw error
       }
     })
   }
-
-  const routes: ExtractedRoute[] = []
-
-  ts.forEachChild(sourceFile, node => {
-    if (
-      ts.isVariableStatement(node) &&
-      node.modifiers?.some(
-        modifier => modifier.kind === ts.SyntaxKind.ExportKeyword
-      )
-    ) {
-      const declaration = node.declarationList.declarations[0]
-      if (ts.isVariableDeclaration(declaration) && declaration.name) {
-        const symbol = typeChecker.getSymbolAtLocation(declaration.name)
-        if (symbol) {
-          const routeName = symbol.getName()
-          try {
-            const route = extractRoute(
-              fileName,
-              routeName,
-              declaration,
-              typeChecker,
-              types
-            )
-            if (route) {
-              debug('extracted route', route)
-              routes.push(route)
-            }
-          } catch (error: any) {
-            Object.assign(error, { routeName })
-            throw error
-          }
-        }
-      }
-    }
-  })
 
   return routes
 }
@@ -84,7 +65,7 @@ export type ExtractedRoute = {
   fileName: string
   exportedName: string
   description: string | undefined
-  responseFormat: RpcResultFormat
+  resolvedFormat: RpcResultFormat
   resolvedMethod: string
   resolvedPathname: string
   resolvedArguments: string[]
@@ -197,7 +178,7 @@ function extractRoute(
     types
   )
 
-  const responseFormat = inferResponseFormat(
+  const resolvedFormat = resolveResultFormat(
     handlerResultType,
     typeChecker,
     types
@@ -207,7 +188,7 @@ function extractRoute(
     fileName,
     exportedName: routeName,
     description: extractDescription(declaration),
-    responseFormat,
+    resolvedFormat,
     resolvedMethod,
     resolvedPathname,
     resolvedArguments,
@@ -279,92 +260,7 @@ function hasTypeArguments(type: ts.Type): type is ts.Type & TypeArguments {
   return (type as ts.TypeReference).typeArguments !== undefined
 }
 
-type SupportingTypes = ReturnType<typeof createSupportingTypes>
-
-/**
- * Supporting types are used when generating the route definitions for
- * client and server. They help us ensure that the routes don't use any
- * unsupported types.
- */
-function createSupportingTypes(project: Project, rootDir: string) {
-  const typeDeclarations = {
-    AnyNonNull: '{}',
-    Response: 'globalThis.Response',
-    RouteIterator: 'import("@alien-rpc/service").RouteIterator',
-    RouteMethod: 'import("@alien-rpc/service").RouteMethod',
-    RouteResult: 'import("@alien-rpc/service").RouteResult',
-    Void: 'void',
-  } as const
-
-  type TypeValidator = (typeChecker: ts.TypeChecker, type: ts.Type) => void
-
-  const typeValidation: Record<string, TypeValidator> = {
-    Response(typeChecker: ts.TypeChecker, type: ts.Type) {
-      // If the type "{}" is assignable to our "Response" type, then
-      // something is misconfigured on the user's end.
-      if (typeChecker.isTypeAssignableTo(types.AnyNonNull(typeChecker), type)) {
-        throw new Error(
-          `Could not resolve Response type. Make sure @types/node is installed in your project. If already installed, it may need to be re-installed.`
-        )
-      }
-    },
-    RouteIterator(typeChecker: ts.TypeChecker, type: ts.Type) {
-      // If the type "{}" is assignable to our "RouteIterator" type, then
-      // something is misconfigured on the user's end.
-      if (typeChecker.isTypeAssignableTo(types.AnyNonNull(typeChecker), type)) {
-        throw new Error(
-          `Could not resolve RouteIterator type. Make sure your tsconfig has "es2018" or higher in its \`lib\` array.`
-        )
-      }
-    },
-  }
-
-  const sourceFile = project.createSourceFile(
-    path.join(rootDir, '.alien-rpc/support.ts'),
-    Object.entries(typeDeclarations)
-      .map(([id, aliasedType]) => `export type ${id} = ${aliasedType}`)
-      .join('\n')
-  )
-
-  type TypeGetter = (typeChecker: ts.TypeChecker) => ts.Type
-
-  const typeCache: Record<string, ts.Type> = {}
-
-  const syntaxList = sourceFile.getChildAt(0)
-  const types = Object.fromEntries(
-    Object.keys(typeDeclarations).map((typeName, i) => {
-      const getType: TypeGetter = typeChecker => {
-        let type = typeCache[typeName]
-        if (type) {
-          return type
-        }
-
-        const typeNode = syntaxList.getChildAt(i)
-        if (!ts.isTypeAliasDeclaration(typeNode)) {
-          throw new Error(
-            `Expected "${typeName}" to be TypeAliasDeclaration, got ${ts.SyntaxKind[typeNode.kind]}`
-          )
-        }
-
-        type = typeChecker.getTypeAtLocation(typeNode)
-        if (typeName in typeValidation) {
-          typeValidation[typeName](typeChecker, type)
-        }
-
-        typeCache[typeName] = type
-        return type
-      }
-
-      return [typeName, getType] as const
-    })
-  ) as {
-    [TypeName in keyof typeof typeDeclarations]: TypeGetter
-  }
-
-  return types
-}
-
-function inferResponseFormat(
+function resolveResultFormat(
   type: ts.Type,
   typeChecker: ts.TypeChecker,
   types: SupportingTypes

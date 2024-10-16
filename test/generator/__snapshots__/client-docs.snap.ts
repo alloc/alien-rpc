@@ -27,25 +27,26 @@ import { RequestOptions, RpcRoute } from "@alien-rpc/client";
  * @see https://en.wikipedia.org/wiki/Foo_(disambiguation)
  */
 export const foo = {
+  path: "foo",
   method: "get",
-  path: "/foo",
-  arity: 1,
   jsonParams: [],
+  arity: 1,
   format: "json",
-} as RpcRoute<"/foo", (requestOptions?: RequestOptions) => Promise<"foo">>;
+} as RpcRoute<"foo", (requestOptions?: RequestOptions) => Promise<"foo">>;
 
 /**
  * server/api.ts
  */
 import { Type } from "@sinclair/typebox";
-import * as routes from "../routes.js";
 
 export default [
   {
-    def: routes.foo,
+    path: "/foo",
+    method: "get",
+    jsonParams: [],
+    import: async () => (await import("../routes.js")).foo.handler,
+    format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Literal("foo"),
-    jsonParams: [],
-    format: "json",
   },
 ] as const;

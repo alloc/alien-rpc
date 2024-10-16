@@ -8,9 +8,11 @@
     "declaration": true,
     "emitDeclarationOnly": true,
     "allowSyntheticDefaultImports": true,
+    "extendedDiagnostics": true,
     "types": [],
     "paths": {
       "@alien-rpc/client": ["./packages/client/src/index.ts"],
+      "@alien-rpc/client/formats/*": ["./packages/client/src/formats/*.ts"],
       "@alien-rpc/generator": ["./packages/generator/src/generator.ts"],
       "@alien-rpc/juri": ["./packages/juri/src/juri.ts"],
       "@alien-rpc/service": ["./packages/service/src/index.ts"],

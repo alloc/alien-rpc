@@ -3,8 +3,9 @@ import { ts } from '@ts-morph/bootstrap'
 import { jumpgen } from 'jumpgen'
 import path from 'path'
 import * as RoutePath from 'path-to-regexp'
-import { isString, sift } from 'radashi'
+import { camel, isString, sift } from 'radashi'
 import { extractRoutes } from './extract-routes.js'
+import { parseRoutes } from './parse-routes.js'
 import { TypeScriptToTypeBox } from './typebox-codegen/typescript/generator.js'
 
 export type Options = {
@@ -40,11 +41,15 @@ export type Options = {
 }
 
 export default (options: Options) =>
-  jumpgen('alien-rpc', async ({ read, write, scan, dedent, root }) => {
-    const files = scan(options.include, { cwd: root, absolute: true })
-    const routes = await Promise.all(
-      files.map(file => extractRoutes(read(file, 'utf8'), file))
-    ).then(routes => routes.flat())
+  jumpgen('alien-rpc', async ({ write, scan, dedent, root, File }) => {
+    const files = scan(options.include, {
+      cwd: root,
+      absolute: true,
+    }).map(path => {
+      return new File(path)
+    })
+
+    const routes = extractRoutes(await parseRoutes(files))
 
     if (options.version) {
       for (const route of routes) {
@@ -55,14 +60,15 @@ export default (options: Options) =>
     options = { ...options }
 
     options.serverOutFile ??= 'server/api.ts'
-    options.serverOutFile = path.resolve(options.outDir, options.serverOutFile)
+    options.serverOutFile = path.join(options.outDir, options.serverOutFile)
 
     options.clientOutFile ??= 'client/api.ts'
-    options.clientOutFile = path.resolve(options.outDir, options.clientOutFile)
+    options.clientOutFile = path.join(options.outDir, options.clientOutFile)
 
     const serverDefinitions: string[] = []
     const clientDefinitions: string[] = []
     const clientImports = new Set<string>(['RequestOptions', 'RpcRoute'])
+    const clientFormats = new Set<string>()
 
     for (const route of routes) {
       const requestSchemaDecl = generateRuntimeValidator(
@@ -137,25 +143,34 @@ export default (options: Options) =>
         }
       }
 
-      const importPath = resolveImportPath(
-        options.serverOutFile,
+      const handlerPath = resolveImportPath(
+        path.join(root, options.serverOutFile),
         route.fileName.replace(/\.ts$/, '.js')
       )
 
       const pathParams = parseRoutePathParams(route.resolvedPathname)
 
-      const properties = sift([
+      const sharedProperties = sift([
         `method: "${route.resolvedMethod}"`,
-        `path: "${route.resolvedPathname}"`,
-        `import: async () => (await import(${JSON.stringify(importPath)})).${route.exportedName}.handler`,
-        `format: "${route.responseFormat}"`,
-        `requestSchema: ${requestSchemaDecl}`,
-        `responseSchema: ${responseSchemaDecl}`,
         jsonEncodedParams && `jsonParams: ${JSON.stringify(jsonEncodedParams)}`,
         pathParams.length && `pathParams: ${JSON.stringify(pathParams)}`,
       ])
 
-      serverDefinitions.push(`{${properties.join(', ')}}`)
+      const serverPathname =
+        route.resolvedPathname[0] === '/'
+          ? route.resolvedPathname
+          : `/${route.resolvedPathname}`
+
+      const serverProperties = [
+        `path: "${serverPathname}"`,
+        ...sharedProperties,
+        `import: async () => (await import(${JSON.stringify(handlerPath)})).${route.exportedName}.handler`,
+        `format: "${route.resolvedFormat}"`,
+        `requestSchema: ${requestSchemaDecl}`,
+        `responseSchema: ${responseSchemaDecl}`,
+      ]
+
+      serverDefinitions.push(`{${serverProperties.join(', ')}}`)
 
       const resolvedPathParams = route.resolvedArguments[0]
       const resolvedExtraParams = route.resolvedArguments[1]
@@ -178,25 +193,43 @@ export default (options: Options) =>
       }
 
       let clientReturn: string
-      if (route.responseFormat === 'json-seq') {
+      if (route.resolvedFormat === 'json-seq') {
         clientImports.add('ResponseStream')
         clientReturn = route.resolvedResult.replace(/^\w+/, 'ResponseStream')
-      } else if (route.responseFormat === 'json') {
+      } else if (route.resolvedFormat === 'json') {
         clientReturn = `Promise<${route.resolvedResult}>`
-      } else if (route.responseFormat === 'response') {
+      } else if (route.resolvedFormat === 'response') {
         clientImports.add('ResponsePromise')
         clientReturn = 'ResponsePromise'
       } else {
-        throw new Error(`Unsupported response format: ${route.responseFormat}`)
+        throw new Error(`Unsupported response format: ${route.resolvedFormat}`)
       }
 
       const description =
         route.description &&
         `/**\n${route.description.replace(/^/gm, ' * ')}\n */\n`
 
+      // Ky doesn't support leading slashes in pathnames.
+      const clientPathname =
+        route.resolvedPathname[0] === '/'
+          ? route.resolvedPathname.slice(1)
+          : route.resolvedPathname
+
+      const clientProperties = [
+        `path: "${clientPathname}"`,
+        ...sharedProperties,
+        `arity: ${expectsParams ? 2 : 1}`,
+        `format: ${
+          /^json-seq$/.test(route.resolvedFormat)
+            ? camel(route.resolvedFormat)
+            : `"${route.resolvedFormat}"`
+        }`,
+      ]
+
+      clientFormats.add(route.resolvedFormat)
       clientDefinitions.push(
         (description || '') +
-          `export const ${route.exportedName} = {method: "${route.resolvedMethod}", path: "${route.resolvedPathname}", arity: ${expectsParams ? 2 : 1}${sharedProperties}} as RpcRoute<"${route.resolvedPathname}", (${clientArgs.join(', ')}) => ${clientReturn}>`
+          `export const ${route.exportedName} = {${clientProperties.join(', ')}} as RpcRoute<"${clientPathname}", (${clientArgs.join(', ')}) => ${clientReturn}>`
       )
     }
 
@@ -211,8 +244,22 @@ export default (options: Options) =>
     }
 
     const writeClientDefinitions = (outFile: string) => {
+      let imports = ''
+
+      // Delete the two formats that are always available.
+      clientFormats.delete('json')
+      clientFormats.delete('response')
+
+      if (clientFormats.size > 0) {
+        imports += Array.from(
+          clientFormats,
+          format =>
+            `\nimport ${camel(format)} from '@alien-rpc/client/formats/${format}'`
+        ).join('')
+      }
+
       const content = dedent/* ts */ `
-        import { ${[...clientImports].sort().join(', ')} } from '@alien-rpc/client'
+        import { ${[...clientImports].sort().join(', ')} } from '@alien-rpc/client'${imports}
 
         ${clientDefinitions.join('\n\n')}
       `

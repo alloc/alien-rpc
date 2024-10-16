@@ -1,4 +1,5 @@
-import { PathTemplate } from '@alloc/path-types'
+import type { PathTemplate } from '@alloc/path-types'
+import type { Client } from './client.js'
 
 type AnyFn = (...args: any) => any
 
@@ -6,13 +7,18 @@ export type RpcMethod = 'get' | 'post'
 
 export type RpcResultFormat = 'json' | 'json-seq' | 'response'
 
-export type RpcResultFormatImport<TCallee extends AnyFn> = () => Promise<{
-  default: RpcResultParser<Awaited<ReturnType<TCallee>>>
-}>
+export type RpcCachedResult<TResult> =
+  TResult extends ResponseStream<infer TStreamResult>
+    ? readonly TStreamResult[] | readonly [...TStreamResult[], RpcPagination]
+    : TResult
 
-export type RpcResultParser<TResult = unknown> = (
-  promisedResponse: Promise<Response>
-) => Promise<TResult>
+export type RpcResultFormatter<
+  TResult = unknown,
+  TCachedResult = Awaited<TResult>,
+> = {
+  mapCachedResult: (value: TCachedResult, client: Client) => TResult
+  parseResponse(promisedResponse: Promise<Response>, client: Client): TResult
+}
 
 export type RpcRoute<
   TPath extends string = string,
@@ -24,7 +30,7 @@ export type RpcRoute<
    * The result format determines how the response must be handled for the
    * caller to receive the expected type.
    */
-  format: Exclude<RpcResultFormat, 'json-seq'> | RpcResultFormatImport<TCallee>
+  format: string | RpcResultFormatter<Awaited<ReturnType<TCallee>>, any>
   /**
    * Equals 1 if the route has no search parameters or request body.
    */
@@ -79,10 +85,24 @@ export type RpcPagination = {
 
 export type { InferParams, PathTemplate } from '@alloc/path-types'
 
-export type RequestOptions = Omit<
+export type ClientOptions = Omit<
   import('ky').Options,
-  'method' | 'body' | 'json' | 'searchParams' | 'prefixUrl'
->
+  'method' | 'body' | 'json' | 'searchParams'
+> & {
+  /**
+   * This cache is checked before sending a `GET` request. It remains empty
+   * until you manually call the `Client#setResponse` method.
+   *
+   * The `ResponseCache` interface is intentionally simplistic to allow use
+   * of your own caching algorithm, like one with “least recently used”
+   * eviction. Note that `undefined` values are not allowed.
+   *
+   * @default new Map()
+   */
+  resultCache?: RpcResultCache
+}
+
+export type RequestOptions = Omit<ClientOptions, 'prefixUrl'>
 
 export type RequestParams<
   TPathParams extends object,
@@ -133,15 +153,16 @@ export interface ResponseStream<T> extends AsyncIterableIterator<T> {
    * Fetch the next page of results. Exists only if there is a next page and
    * after the current stream has been fully consumed.
    */
-  nextPage?: () => ResponseStream<T>
+  nextPage?: (options?: RequestOptions) => ResponseStream<T>
   /**
    * Fetch the previous page of results. Exists only if there is a previous page
    * and after the current stream has been fully consumed.
    */
-  previousPage?: () => ResponseStream<T>
+  previousPage?: (options?: RequestOptions) => ResponseStream<T>
 }
 
-export interface ResponseCache {
+export interface RpcResultCache {
+  has: (path: string) => boolean
   get: (path: string) => unknown | undefined
   set: (path: string, response: unknown) => void
 }

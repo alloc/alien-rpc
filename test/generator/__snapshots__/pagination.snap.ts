@@ -45,15 +45,16 @@ import {
   ResponseStream,
   RpcRoute,
 } from "@alien-rpc/client";
+import jsonSeq from "@alien-rpc/client/formats/json-seq";
 
 export const paginatedNumbers = {
+  path: "posts",
   method: "get",
-  path: "/posts",
-  arity: 2,
   jsonParams: [],
-  format: "json-seq",
+  arity: 2,
+  format: jsonSeq,
 } as RpcRoute<
-  "/posts",
+  "posts",
   (
     params: RequestParams<
       Record<string, never>,
@@ -67,11 +68,14 @@ export const paginatedNumbers = {
  * server/api.ts
  */
 import { Type } from "@sinclair/typebox";
-import * as routes from "../routes.js";
 
 export default [
   {
-    def: routes.paginatedNumbers,
+    path: "/posts",
+    method: "get",
+    jsonParams: [],
+    import: async () => (await import("../routes.js")).paginatedNumbers.handler,
+    format: "json-seq",
     requestSchema: Type.Object({
       page: Type.Optional(Type.Number()),
       limit: Type.Optional(Type.Union([Type.Number(), Type.Undefined()])),
@@ -83,7 +87,5 @@ export default [
         content: Type.String(),
       }),
     ),
-    jsonParams: [],
-    format: "json-seq",
   },
 ] as const;

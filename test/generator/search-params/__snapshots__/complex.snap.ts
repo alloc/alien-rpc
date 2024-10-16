@@ -25,13 +25,13 @@ export const complexSearch = route.get(
 import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
 
 export const complexSearch = {
+  path: "complex",
   method: "get",
-  path: "/complex",
-  arity: 2,
   jsonParams: ["foo"],
+  arity: 2,
   format: "json",
 } as RpcRoute<
-  "/complex",
+  "complex",
   (
     params: RequestParams<
       Record<string, never>,
@@ -45,11 +45,14 @@ export const complexSearch = {
  * server/api.ts
  */
 import { Type } from "@sinclair/typebox";
-import * as routes from "../routes.js";
 
 export default [
   {
-    def: routes.complexSearch,
+    path: "/complex",
+    method: "get",
+    jsonParams: ["foo"],
+    import: async () => (await import("../routes.js")).complexSearch.handler,
+    format: "json",
     requestSchema: Type.Object({
       foo: Type.Optional(
         Type.Union([
@@ -69,7 +72,5 @@ export default [
       }),
       Type.Array(Type.String()),
     ]),
-    jsonParams: ["foo"],
-    format: "json",
   },
 ] as const;

@@ -15,15 +15,16 @@ export const streamNumbers = route.get("/numbers", async function* () {
  * client/api.ts
  */
 import { RequestOptions, ResponseStream, RpcRoute } from "@alien-rpc/client";
+import jsonSeq from "@alien-rpc/client/formats/json-seq";
 
 export const streamNumbers = {
+  path: "numbers",
   method: "get",
-  path: "/numbers",
-  arity: 1,
   jsonParams: [],
-  format: "json-seq",
+  arity: 1,
+  format: jsonSeq,
 } as RpcRoute<
-  "/numbers",
+  "numbers",
   (requestOptions?: RequestOptions) => ResponseStream<1 | 2 | 3>
 >;
 
@@ -31,16 +32,17 @@ export const streamNumbers = {
  * server/api.ts
  */
 import { Type } from "@sinclair/typebox";
-import * as routes from "../routes.js";
 
 export default [
   {
-    def: routes.streamNumbers,
+    path: "/numbers",
+    method: "get",
+    jsonParams: [],
+    import: async () => (await import("../routes.js")).streamNumbers.handler,
+    format: "json-seq",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.AsyncIterator(
       Type.Union([Type.Literal(1), Type.Literal(2), Type.Literal(3)]),
     ),
-    jsonParams: [],
-    format: "json-seq",
   },
 ] as const;

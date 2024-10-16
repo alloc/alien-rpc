@@ -6,8 +6,9 @@ export default defineConfig({
     setupFiles: './test/setup.ts',
     server: {
       deps: {
-        inline: ['jumpgen'],
+        inline: ['@alien-rpc/generator', 'jumpgen'],
       },
     },
+    testTimeout: 10e3,
   },
 })

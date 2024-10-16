@@ -1,10 +1,14 @@
 import { Value } from '@sinclair/typebox/value'
 import { JSON, Promisable } from '../internal/types'
-import { RouteResponder } from '../types'
+import { RouteDefinition, RouteResponder } from '../types'
 
-const responder: RouteResponder<Promisable<JSON>> =
-  (handler, route) => async (params, data, ctx) => {
-    let result = await handler(params, data, ctx)
+type TDefinition = RouteDefinition<any, any, Promisable<JSON>>
+
+const responder: RouteResponder<TDefinition> =
+  route => async (params, data, ctx) => {
+    const routeDef = await route.import()
+
+    let result = await routeDef.handler(params, data, ctx)
     result = Value.Encode(route.responseSchema, result)
 
     if (result === undefined) {

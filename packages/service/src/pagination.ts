@@ -64,7 +64,7 @@ export function resolvePaginationLink(
   if (!route) {
     throw new Error('Cannot resolve pagination link for uncompiled route.')
   }
-  if (route.def.method !== 'get') {
+  if (route.method !== 'get') {
     throw new Error('Pagination links are only supported for GET routes.')
   }
 

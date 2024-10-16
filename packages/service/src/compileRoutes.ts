@@ -19,7 +19,7 @@ export function compileRoutes(routes: Route[]) {
       let corsMethods: string[] | undefined
 
       for (const route of compiledRoutes) {
-        if (!isOptionsRequest && request.method !== route.def.method) {
+        if (!isOptionsRequest && request.method !== route.method) {
           continue
         }
 
@@ -30,7 +30,7 @@ export function compileRoutes(routes: Route[]) {
 
         if (isOptionsRequest) {
           corsMethods ??= []
-          corsMethods.push(route.def.method)
+          corsMethods.push(route.method)
           continue
         }
 

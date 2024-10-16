@@ -1,19 +1,18 @@
 import { RequestContext } from '@hattip/compose'
 import { TAsyncIterator } from '@sinclair/typebox'
 import { Value } from '@sinclair/typebox/value'
-import { isPromise } from 'node:util/types'
 import { JSON, Promisable } from '../internal/types'
 import { resolvePaginationLink } from '../pagination'
-import { Route, RouteIterator, RouteResponder } from '../types'
+import { Route, RouteDefinition, RouteIterator, RouteResponder } from '../types'
 
-const responder: RouteResponder<Promisable<RouteIterator>> =
-  (handler, route) => async (params, data, ctx) => {
-    let result = handler(params, data, ctx)
-    if (isPromise(result)) {
-      result = await result
-    }
+type TDefinition = RouteDefinition<any, any, Promisable<RouteIterator>>
 
-    result = Value.Encode(route.responseSchema, result) as RouteIterator
+const responder: RouteResponder<TDefinition> =
+  route => async (params, data, ctx) => {
+    const routeDef = await route.import()
+
+    let result = await routeDef.handler(params, data, ctx)
+    result = Value.Encode(route.responseSchema, result)
 
     const stream = ReadableStream.from(
       generateJsonTextSequence(result, route, ctx)

@@ -38,31 +38,33 @@ export type RouteResult<
 > = Promisable<JSON | Response | RouteIterator<TParams> | void>
 
 export type RouteHandler<
-  PathParams extends object = object,
-  Data extends object = object,
+  TParams extends object = object,
+  TData extends object = object,
+  TResult extends RouteResult<any> = RouteResult,
 > = (
-  this: NoInfer<RouteDefinition<PathParams, Data>>,
-  params: PathParams,
-  data: Data,
+  this: NoInfer<RouteDefinition<TParams, TData>>,
+  params: TParams,
+  data: TData,
   ctx: RequestContext
-) => RouteResult
+) => TResult
 
 export interface RouteDefinition<
-  PathParams extends object = object,
-  Data extends object = object,
+  TParams extends object = any,
+  TData extends object = any,
+  TResult extends RouteResult<any> = any,
 > {
   method: RouteMethod
   path: string
-  handler: RouteHandler<PathParams, Data>
+  handler: RouteHandler<TParams, TData, TResult>
 }
 
 /**
  * A route definition enhanced with compile-time metadata.
  */
-export interface Route {
+export interface Route<TDefinition extends RouteDefinition = RouteDefinition> {
   method: RouteMethod
   path: string
-  import: () => Promise<RouteHandler>
+  import: () => Promise<TDefinition>
   /** Exists on GET routes only. */
   jsonParams?: string[]
   pathParams?: string[]
@@ -89,7 +91,12 @@ export type InferRouteParams<T extends { handler: any }> =
     ? BuildRouteParams<PathParams, Data>
     : never
 
-export type RouteResponder<TResult extends RouteResult = RouteResult> = (
-  handler: (params: any, data: any, ctx: RequestContext) => TResult,
-  route: Route
-) => (params: any, data: any, ctx: RequestContext) => Promise<Response>
+export type RouteResponder<
+  TDefinition extends RouteDefinition = RouteDefinition,
+> = (
+  route: Route<TDefinition>
+) => (
+  params: TDefinition extends RouteDefinition<infer TParams> ? TParams : never,
+  data: TDefinition extends RouteDefinition<any, infer TData> ? TData : never,
+  ctx: RequestContext
+) => Promise<Response>

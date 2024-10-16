@@ -10,22 +10,19 @@ export function compileRoute(route: Route) {
   const decodeRequestData = async ({ request, url }: RequestContext) =>
     Value.Decode(
       requestSchema,
-      route.def.method === 'get'
+      route.method === 'get'
         ? Object.fromEntries(url.searchParams)
         : await request.json()
     )
 
-  const responder = supportedResponders[route.format](
-    route.def.handler.bind(route.def),
-    route
-  )
+  const responder = supportedResponders[route.format](route)
 
   return {
-    def: route.def,
+    method: route.method,
     /**
      * Match the request path against the route's path pattern.
      */
-    match: match(route.def.path),
+    match: match(route.path),
     /**
      * Decode the request data using the route's request schema.
      */

@@ -41,7 +41,9 @@ export type Options = {
 }
 
 export default (options: Options) =>
-  jumpgen('alien-rpc', async ({ write, scan, dedent, root, File }) => {
+  jumpgen('alien-rpc', async context => {
+    const { write, scan, dedent, root, changedFiles, File } = context
+
     const files = scan(options.include, {
       cwd: root,
       absolute: true,
@@ -164,7 +166,7 @@ export default (options: Options) =>
       const serverProperties = [
         `path: "${serverPathname}"`,
         ...sharedProperties,
-        `import: async () => (await import(${JSON.stringify(handlerPath)})).${route.exportedName}.handler`,
+        `import: async () => (await import(${JSON.stringify(handlerPath)})).${route.exportedName}`,
         `format: "${route.resolvedFormat}"`,
         `requestSchema: ${requestSchemaDecl}`,
         `responseSchema: ${responseSchemaDecl}`,

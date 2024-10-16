@@ -51,6 +51,7 @@ export async function parseRoutes(files: File[]) {
     types,
     sourceFiles,
     typeChecker,
+    program,
   }
 }
 

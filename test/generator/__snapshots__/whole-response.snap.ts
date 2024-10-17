@@ -32,7 +32,7 @@ export default [
     path: "/test",
     method: "get",
     jsonParams: [],
-    import: async () => (await import("../routes.js")).test.handler,
+    import: async () => (await import("../routes.js")).test,
     format: "response",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Recursive((This) => This),

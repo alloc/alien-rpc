@@ -1,19 +1,19 @@
 import type { RpcResultFormat } from '@alien-rpc/client'
 import { ts } from '@ts-morph/bootstrap'
-import { debug } from './debug'
-import { ParsedRoutes, SupportingTypes } from './parse-routes.js'
+import { debug } from './debug.js'
+import { ParseResult, SupportingTypes } from './parse.js'
 import {
   isAsyncGeneratorType,
   isObjectType,
   printTypeLiteral,
-} from './util/ts-ast'
+} from './util/ts-ast.js'
 
-export function extractRoutes({
+export function analyzeRoutes({
   types,
   sourceFiles,
   typeChecker,
-}: ParsedRoutes) {
-  const routes: ExtractedRoute[] = []
+}: ParseResult) {
+  const routes: AnalyzedRoute[] = []
 
   for (const sourceFile of sourceFiles) {
     ts.forEachChild(sourceFile, node => {
@@ -40,7 +40,7 @@ export function extractRoutes({
 
       const routeName = symbol.getName()
       try {
-        const route = extractRoute(
+        const route = analyzeRoute(
           sourceFile.fileName,
           routeName,
           declaration,
@@ -61,7 +61,7 @@ export function extractRoutes({
   return routes
 }
 
-export type ExtractedRoute = {
+export type AnalyzedRoute = {
   fileName: string
   exportedName: string
   description: string | undefined
@@ -72,13 +72,13 @@ export type ExtractedRoute = {
   resolvedResult: string
 }
 
-function extractRoute(
+function analyzeRoute(
   fileName: string,
   routeName: string,
   declaration: ts.VariableDeclaration,
   typeChecker: ts.TypeChecker,
   types: SupportingTypes
-): ExtractedRoute | null {
+): AnalyzedRoute | null {
   const declarationType = typeChecker.getTypeAtLocation(declaration)
   if (!isObjectType(declarationType.symbol)) {
     return null

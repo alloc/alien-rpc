@@ -28,7 +28,7 @@ export default [
   {
     path: "/void",
     method: "post",
-    import: async () => (await import("../routes.js")).voidTest.handler,
+    import: async () => (await import("../routes.js")).voidTest,
     format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Undefined(),

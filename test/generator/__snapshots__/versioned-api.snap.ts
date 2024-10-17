@@ -42,7 +42,7 @@ export default [
     path: "/v1/fun-fact",
     method: "get",
     jsonParams: [],
-    import: async () => (await import("../routes.js")).funFact.handler,
+    import: async () => (await import("../routes.js")).funFact,
     format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.String(),

@@ -1,11 +1,10 @@
 import { createProject, Project, ts } from '@ts-morph/bootstrap'
 import { File } from 'jumpgen'
 import path from 'node:path'
-import { reportDiagnostic } from './debug'
 
-export type ParsedRoutes = Awaited<ReturnType<typeof parseRoutes>>
+export type ParseResult = Awaited<ReturnType<typeof parse>>
 
-export async function parseRoutes(files: File[]) {
+export async function parse(files: File[]) {
   const tsConfigFilePath = ts.findConfigFile(
     files[0].absolutePath,
     ts.sys.fileExists
@@ -27,25 +26,6 @@ export async function parseRoutes(files: File[]) {
 
   const program = project.createProgram()
   const typeChecker = program.getTypeChecker()
-
-  for (const sourceFile of sourceFiles) {
-    program.getSemanticDiagnostics(sourceFile).forEach(diagnostic => {
-      const message = ts.flattenDiagnosticMessageText(
-        diagnostic.messageText,
-        '\n'
-      )
-      if (diagnostic.file) {
-        const { line, character } =
-          diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start!)
-
-        reportDiagnostic(
-          `${message} (${diagnostic.file.fileName}:${line + 1}:${character + 1})`
-        )
-      } else {
-        reportDiagnostic(message)
-      }
-    })
-  }
 
   return {
     types,

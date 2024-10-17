@@ -9,6 +9,13 @@ export default defineConfig({
         inline: ['jumpgen'],
       },
     },
-    testTimeout: 10e3,
+    pool: 'threads',
+    poolOptions: {
+      threads: {
+        singleThread: true,
+      },
+    },
+    isolate: false,
+    testTimeout: 15e3,
   },
 })

@@ -1,11 +1,12 @@
 import type { TObject, TSchema } from '@sinclair/typebox'
 import { ts } from '@ts-morph/bootstrap'
-import { jumpgen } from 'jumpgen'
+import { jumpgen, type Context } from 'jumpgen'
 import path from 'path'
 import * as RoutePath from 'path-to-regexp'
 import { camel, isString, sift } from 'radashi'
-import { extractRoutes } from './extract-routes.js'
-import { parseRoutes } from './parse-routes.js'
+import { analyzeRoutes } from './analyze-routes.js'
+import { reportDiagnostics } from './diagnostics.js'
+import { parse, ParseResult } from './parse.js'
 import { TypeScriptToTypeBox } from './typebox-codegen/typescript/generator.js'
 
 export type Options = {
@@ -25,7 +26,7 @@ export type Options = {
    * Paths to modules that export route definitions. Glob patterns are
    * allowed. Negated glob patterns (e.g. `!foo`) are also supported.
    */
-  include: string | string[]
+  include: string[]
   /**
    * The directory to output the generated files.
    */
@@ -38,11 +39,17 @@ export type Options = {
    * @default 'client/api.ts'
    */
   clientOutFile?: string
+  /**
+   * When true, diagnostics for node_modules are printed to the console.
+   *
+   * @default false
+   */
+  verbose?: boolean
 }
 
 export default (options: Options) =>
   jumpgen('alien-rpc', async context => {
-    const { write, scan, dedent, root, changedFiles, File } = context
+    const { write, scan, dedent, root, File } = context
 
     const files = scan(options.include, {
       cwd: root,
@@ -51,7 +58,11 @@ export default (options: Options) =>
       return new File(path)
     })
 
-    const routes = extractRoutes(await parseRoutes(files))
+    const parseResult = await parse(files)
+    reportDiagnostics(parseResult.program, options.verbose)
+    watchDependencies(parseResult, context)
+
+    const routes = analyzeRoutes(parseResult)
 
     if (options.version) {
       for (const route of routes) {
@@ -351,4 +362,24 @@ function parseRoutePathParams(pathname: string) {
         return []
     }
   })
+}
+
+function watchDependencies(
+  { sourceFiles, program }: ParseResult,
+  { watch }: Context
+) {
+  const recurse = (sourceFile: ts.SourceFile) => {
+    sourceFile.statements.forEach(stmt => {
+      if (
+        ts.isImportDeclaration(stmt) &&
+        ts.isStringLiteral(stmt.moduleSpecifier)
+      ) {
+        console.log('%s -> %s', sourceFile.fileName, stmt.moduleSpecifier.text)
+        // watch(stmt.moduleSpecifier.text)
+      }
+    })
+  }
+  for (const sourceFile of sourceFiles) {
+    recurse(sourceFile)
+  }
 }

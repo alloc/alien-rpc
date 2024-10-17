@@ -58,7 +58,7 @@ export default [
     path: "/posts",
     method: "get",
     jsonParams: [],
-    import: async () => (await import("../routes.js")).getSortedPosts.handler,
+    import: async () => (await import("../routes.js")).getSortedPosts,
     format: "json",
     requestSchema: Type.Object({
       order: Type.Union([Type.Literal("asc"), Type.Literal("desc")]),

@@ -42,7 +42,7 @@ export default [
   {
     path: "/users",
     method: "post",
-    import: async () => (await import("../routes.js")).createUser.handler,
+    import: async () => (await import("../routes.js")).createUser,
     format: "json",
     requestSchema: Type.Object({
       name: Type.String(),

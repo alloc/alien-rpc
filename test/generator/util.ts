@@ -3,32 +3,39 @@ import { vol } from 'memfs'
 import fs from 'node:fs'
 import path from 'node:path'
 import prettier from 'prettier'
-import { isFunction, uid } from 'radashi'
+import { isFunction, sort, uid } from 'radashi'
 import { ExpectStatic } from 'vitest'
 
 export async function testGenerate(
   expect: ExpectStatic,
   sourceCode: string,
-  options?: Partial<Options>
+  options?: Partial<Options> & {
+    files?: Record<string, string>
+  }
 ) {
   const root = new URL('./__fixtures__/' + uid(12), import.meta.url).pathname
+  const sourceFiles = { ...options?.files, 'routes.ts': sourceCode }
 
-  vol.fromJSON({ 'routes.ts': sourceCode }, root)
+  vol.fromJSON(sourceFiles, root)
 
   const generator = create({
-    ...options,
-    include: 'routes.ts',
+    include: Object.keys(sourceFiles),
     outDir: '.',
+    ...options,
   })
 
-  await generator({ root })
+  try {
+    await generator({ root })
+  } catch (error) {
+    console.log(recursiveRead(root))
+    throw error
+  }
 
   const files = recursiveRead(root)
 
   const output = await Promise.all(
-    Object.entries(files)
-      .sort(prefer(([file]) => file === 'routes.ts'))
-      .map(async ([file, content]) => {
+    sort(Object.entries(files), ([file]) => file.split('/').length).map(
+      async ([file, content]) => {
         const fileInfo = await prettier.getFileInfo(file)
 
         if (fileInfo.inferredParser) {
@@ -39,7 +46,8 @@ export async function testGenerate(
         }
 
         return `/**\n * ${file}\n */\n${content}`
-      })
+      }
+    )
   ).then(files => {
     return '// @ts-nocheck\n\n' + files.join('\n')
   })

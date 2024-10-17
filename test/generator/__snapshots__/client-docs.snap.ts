@@ -44,7 +44,7 @@ export default [
     path: "/foo",
     method: "get",
     jsonParams: [],
-    import: async () => (await import("../routes.js")).foo.handler,
+    import: async () => (await import("../routes.js")).foo,
     format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Literal("foo"),

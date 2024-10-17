@@ -35,10 +35,10 @@ export const complexSearch = {
   (
     params: RequestParams<
       Record<string, never>,
-      { foo?: string | { bar?: string } | string[] }
+      { foo?: string | string[] | { bar?: string } }
     >,
     requestOptions?: RequestOptions,
-  ) => Promise<undefined | string | { bar?: undefined | string } | string[]>
+  ) => Promise<undefined | string | string[] | { bar?: undefined | string }>
 >;
 
 /**
@@ -51,26 +51,26 @@ export default [
     path: "/complex",
     method: "get",
     jsonParams: ["foo"],
-    import: async () => (await import("../routes.js")).complexSearch.handler,
+    import: async () => (await import("../routes.js")).complexSearch,
     format: "json",
     requestSchema: Type.Object({
       foo: Type.Optional(
         Type.Union([
           Type.String(),
+          Type.Array(Type.String()),
           Type.Object({
             bar: Type.Optional(Type.String()),
           }),
-          Type.Array(Type.String()),
         ]),
       ),
     }),
     responseSchema: Type.Union([
       Type.Undefined(),
       Type.String(),
+      Type.Array(Type.String()),
       Type.Object({
         bar: Type.Optional(Type.Union([Type.Undefined(), Type.String()])),
       }),
-      Type.Array(Type.String()),
     ]),
   },
 ] as const;

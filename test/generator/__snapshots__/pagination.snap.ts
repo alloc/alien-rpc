@@ -74,7 +74,7 @@ export default [
     path: "/posts",
     method: "get",
     jsonParams: [],
-    import: async () => (await import("../routes.js")).paginatedNumbers.handler,
+    import: async () => (await import("../routes.js")).paginatedNumbers,
     format: "json-seq",
     requestSchema: Type.Object({
       page: Type.Optional(Type.Number()),

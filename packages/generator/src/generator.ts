@@ -1,32 +1,20 @@
 import type { TObject, TSchema } from '@sinclair/typebox'
-import { ts } from '@ts-morph/bootstrap'
-import { jumpgen, type Context } from 'jumpgen'
+import { FileSystemHost, ts } from '@ts-morph/common'
+import { jumpgen } from 'jumpgen'
 import path from 'path'
 import * as RoutePath from 'path-to-regexp'
 import { camel, isString, sift } from 'radashi'
 import { analyzeRoutes } from './analyze-routes.js'
 import { reportDiagnostics } from './diagnostics.js'
-import { parse, ParseResult } from './parse.js'
+import { parse } from './parse.js'
 import { TypeScriptToTypeBox } from './typebox-codegen/typescript/generator.js'
+import { createSystem } from './typescript/system.js'
 
 export type Options = {
   /**
-   * Your API's current version. There is no convention for what this
-   * should be, but using the release date (e.g. `2024-10-31`) or a
-   * semantic major version (e.g. `v1` or `v2`) are popular choices. Note
-   * that its value is prefixed to every route pathname, so `/foo` becomes
-   * `/v1/foo`.
-   *
-   * If not defined, the API won't be versioned, which means breaking
-   * changes to your API could break active sessions in your client
-   * application.
+   * Path to the `tsconfig.json` file or its directory.
    */
-  version?: string
-  /**
-   * Paths to modules that export route definitions. Glob patterns are
-   * allowed. Negated glob patterns (e.g. `!foo`) are also supported.
-   */
-  include: string[]
+  projectPath: string
   /**
    * The directory to output the generated files.
    */
@@ -40,27 +28,40 @@ export type Options = {
    */
   clientOutFile?: string
   /**
+   * Your API's current version. There is no convention for what this
+   * should be, but using the release date (e.g. `2024-10-31`) or a
+   * semantic major version (e.g. `v1` or `v2`) are popular choices. Note
+   * that its value is prefixed to every route pathname, so `/foo` becomes
+   * `/v1/foo`.
+   *
+   * If not defined, the API won't be versioned, which means breaking
+   * changes to your API could break active sessions in your client
+   * application.
+   */
+  version?: string
+  /**
    * When true, diagnostics for node_modules are printed to the console.
    *
    * @default false
    */
   verbose?: boolean
+  /**
+   * @internal For testing purposes only.
+   */
+  fileSystem?: FileSystemHost
 }
 
 export default (options: Options) =>
   jumpgen('alien-rpc', async context => {
-    const { write, scan, dedent, root, File } = context
+    const { fs, dedent, root } = context
 
-    const files = scan(options.include, {
-      cwd: root,
-      absolute: true,
-    }).map(path => {
-      return new File(path)
-    })
+    const parseResult = await parse(
+      path.join(root, options.projectPath),
+      createSystem(context)
+    )
 
-    const parseResult = await parse(files)
     reportDiagnostics(parseResult.program, options.verbose)
-    watchDependencies(parseResult, context)
+    // watchDependencies(parseResult, context)
 
     const routes = analyzeRoutes(parseResult)
 
@@ -253,7 +254,7 @@ export default (options: Options) =>
         export default [${serverDefinitions.join(', ')}] as const
       `
 
-      write(outFile, content)
+      fs.write(outFile, content)
     }
 
     const writeClientDefinitions = (outFile: string) => {
@@ -277,7 +278,7 @@ export default (options: Options) =>
         ${clientDefinitions.join('\n\n')}
       `
 
-      write(outFile, content)
+      fs.write(outFile, content)
     }
 
     writeServerDefinitions(options.serverOutFile)
@@ -364,22 +365,46 @@ function parseRoutePathParams(pathname: string) {
   })
 }
 
-function watchDependencies(
-  { sourceFiles, program }: ParseResult,
-  { watch }: Context
-) {
-  const recurse = (sourceFile: ts.SourceFile) => {
-    sourceFile.statements.forEach(stmt => {
-      if (
-        ts.isImportDeclaration(stmt) &&
-        ts.isStringLiteral(stmt.moduleSpecifier)
-      ) {
-        console.log('%s -> %s', sourceFile.fileName, stmt.moduleSpecifier.text)
-        // watch(stmt.moduleSpecifier.text)
-      }
-    })
-  }
-  for (const sourceFile of sourceFiles) {
-    recurse(sourceFile)
-  }
-}
+// function watchDependencies(
+//   { sourceFiles, program }: ParseResult,
+//   { watch }: Context
+// ) {
+//   const recurse = (sourceFile: ts.SourceFile) => {
+//     const resolveModuleSpecifier = (specifier: string) => {
+//       ts.resolveModuleNameFromCache
+//       const resolved = program.resolveModuleName(
+//         specifier,
+//         sourceFile.fileName,
+//         ts.ModuleKind.CommonJS
+//       )
+//       if (resolved.resolvedModule) {
+//         return resolved.resolvedModule.fileName
+//       }
+//       return undefined
+//     }
+
+//     forEachDescendant(sourceFile, node => {
+//       let referencedFile: ts.SourceFile | undefined
+
+//       // Handle import type declarations.
+//       if (ts.isImportTypeNode(node)) {
+//         referencedFile = node.argument
+//       }
+//       // Handle import declarations.
+//       else if (ts.isImportDeclaration(node)) {
+//       }
+//       // Handle dynamic import expressions.
+//       else if (
+//         ts.isCallExpression(node) &&
+//         node.expression.kind === ts.SyntaxKind.ImportKeyword
+//       ) {
+//       }
+//       // Handle "export from" declarations.
+//       else if (ts.isExportDeclaration(node)) {
+//       }
+//     })
+//   }
+//   for (const sourceFile of sourceFiles) {
+//     recurse(sourceFile)
+//   }
+// }

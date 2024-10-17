@@ -22,11 +22,12 @@ export interface ProjectOptions {
   /** Compiler options */
   compilerOptions?: ts.CompilerOptions
   /** File path to the tsconfig.json file. */
-  tsConfigFilePath?: string
-  /** Whether to skip adding source files from the specified tsconfig.json. @default false */
-  skipAddingFilesFromTsConfig?: boolean
-  /** Skip resolving file dependencies when providing a ts config file path and adding the files from tsconfig. @default false */
-  skipFileDependencyResolution?: boolean
+  tsConfigFilePath: string
+  /**
+   * Whether to enable watch mode.
+   * @default false
+   */
+  watch?: boolean
   /**
    * Skip loading the lib files. Unlike the compiler API, ts-morph does not load these
    * from the node_modules folder, but instead loads them from some other JS code
@@ -54,7 +55,7 @@ export interface ProjectOptions {
   isKnownTypesPackageName?: ts.LanguageServiceHost['isKnownTypesPackageName']
 }
 
-export function createProject(options: ProjectOptions) {
+export async function createProject(options: ProjectOptions) {
   verifyOptions()
 
   const fileSystem = getFileSystem()
@@ -65,16 +66,11 @@ export function createProject(options: ProjectOptions) {
   })
 
   // get tsconfig info
-  const tsConfigResolver =
-    options.tsConfigFilePath == null
-      ? undefined
-      : new TsConfigResolver(
-          fileSystemWrapper,
-          fileSystemWrapper.getStandardizedAbsolutePath(
-            options.tsConfigFilePath
-          ),
-          getEncodingFromProvidedOptions()
-        )
+  const tsConfigResolver = new TsConfigResolver(
+    fileSystemWrapper,
+    fileSystemWrapper.getStandardizedAbsolutePath(options.tsConfigFilePath),
+    getEncodingFromProvidedOptions()
+  )
 
   const project = new Project(
     {
@@ -83,6 +79,12 @@ export function createProject(options: ProjectOptions) {
       tsConfigResolver,
     },
     options
+  )
+
+  await addSourceFilesForTsConfigResolver(
+    project,
+    tsConfigResolver,
+    project.compilerOptions.get()
   )
 
   return project
@@ -264,52 +266,6 @@ export class Project {
   }
 
   /**
-   * Asynchronously adds source files based on file globs.
-   * @param fileGlobs - File glob or globs to add files based on.
-   * @returns The matched source files.
-   */
-  async addSourceFilesByPaths(
-    fileGlobs: string | ReadonlyArray<string>
-  ): Promise<ts.SourceFile[]> {
-    if (typeof fileGlobs === 'string') fileGlobs = [fileGlobs]
-
-    const sourceFilePromises: Promise<void>[] = []
-    const sourceFiles: ts.SourceFile[] = []
-
-    for (const filePath of await this.#fileSystemWrapper.glob(fileGlobs)) {
-      sourceFilePromises.push(
-        this.addSourceFileAtPathIfExists(filePath).then(sourceFile => {
-          if (sourceFile != null) sourceFiles.push(sourceFile)
-        })
-      )
-    }
-
-    await Promise.all(sourceFilePromises)
-    return sourceFiles
-  }
-
-  /**
-   * Synchronously adds source files based on file globs.
-   * @param fileGlobs - File glob or globs to add files based on.
-   * @returns The matched source files.
-   * @remarks This is much slower than the asynchronous version.
-   */
-  addSourceFilesByPathsSync(
-    fileGlobs: string | ReadonlyArray<string>
-  ): ts.SourceFile[] {
-    if (typeof fileGlobs === 'string') fileGlobs = [fileGlobs]
-
-    const sourceFiles: ts.SourceFile[] = []
-
-    for (const filePath of this.#fileSystemWrapper.globSync(fileGlobs)) {
-      const sourceFile = this.addSourceFileAtPathIfExistsSync(filePath)
-      if (sourceFile != null) sourceFiles.push(sourceFile)
-    }
-
-    return sourceFiles
-  }
-
-  /**
    * Creates a source file at the specified file path with the specified text.
    *
    * Note: The file will not be created and saved to the file system until .save() is called on the source file.
@@ -327,76 +283,6 @@ export class Project {
       this.#fileSystemWrapper.getStandardizedAbsolutePath(filePath),
       sourceFileText || '',
       { scriptKind: options && options.scriptKind }
-    )
-  }
-
-  /**
-   * Updates the source file stored in the project at the specified path.
-   * @param filePath - File path of the source file.
-   * @param sourceFileText - Text of the source file.
-   * @param options - Options for updating the source file.
-   */
-  updateSourceFile(
-    filePath: string,
-    sourceFileText: string,
-    options?: { scriptKind?: ts.ScriptKind }
-  ): ts.SourceFile
-  /**
-   * Updates the source file stored in the project. The `fileName` of the source file object is used to tell which file to update.
-   * @param newSourceFile - The new source file.
-   */
-  updateSourceFile(newSourceFile: ts.SourceFile): ts.SourceFile
-  updateSourceFile(
-    filePathOrSourceFile: string | ts.SourceFile,
-    sourceFileText?: string,
-    options?: { scriptKind?: ts.ScriptKind }
-  ) {
-    if (typeof filePathOrSourceFile === 'string')
-      return this.createSourceFile(
-        filePathOrSourceFile,
-        sourceFileText,
-        options
-      )
-
-    // ensure this has the language service properties set
-    incrementVersion(filePathOrSourceFile)
-    ensureScriptSnapshot(filePathOrSourceFile)
-
-    return this.#sourceFileCache.setSourceFile(filePathOrSourceFile)
-
-    function incrementVersion(sourceFile: ts.SourceFile) {
-      let version = (sourceFile as any).version || '-1'
-      const parsedVersion = parseInt(version, 10)
-      if (isNaN(parsedVersion)) version = '0'
-      else version = (parsedVersion + 1).toString()
-      ;(sourceFile as any).version = version
-    }
-
-    function ensureScriptSnapshot(sourceFile: ts.SourceFile) {
-      if ((sourceFile as any).scriptSnapshot == null)
-        (sourceFile as any).scriptSnapshot = ts.ScriptSnapshot.fromString(
-          sourceFile.text
-        )
-    }
-  }
-
-  /**
-   * Removes the source file at the provided file path.
-   * @param filePath - File path of the source file.
-   */
-  removeSourceFile(filePath: string): void
-  /**
-   * Removes the provided source file based on its `fileName`.
-   * @param sourceFile - Source file to remove.
-   */
-  removeSourceFile(sourceFile: ts.SourceFile): void
-  removeSourceFile(filePathOrSourceFile: string | ts.SourceFile) {
-    this.#sourceFileCache.removeSourceFile(
-      this.#fileSystemWrapper.getStandardizedAbsolutePath(
-        typeof filePathOrSourceFile === 'string'
-          ? filePathOrSourceFile
-          : filePathOrSourceFile.fileName
-      )
     )
   }
 
@@ -420,8 +306,11 @@ export class Project {
    * Creates a new program.
    * Note: You should get a new program any time source files are added, removed, or changed.
    */
-  createProgram(options?: ts.CreateProgramOptions): ts.Program {
+  createProgram(
+    options?: ts.CreateProgramOptions & { watch?: boolean }
+  ): ts.Program {
     const oldProgram = this.#oldProgram
+
     const program = ts.createProgram({
       rootNames: Array.from(this.#sourceFileCache.getSourceFilePaths()),
       options: this.compilerOptions.get(),
@@ -600,4 +489,20 @@ export class Project {
       sourceFileContainer: this.#sourceFileCache,
     })
   }
+}
+
+async function addSourceFilesForTsConfigResolver(
+  project: Project,
+  tsConfigResolver: TsConfigResolver,
+  compilerOptions: ts.CompilerOptions
+) {
+  const sourceFiles: ts.SourceFile[] = []
+  await Promise.all(
+    tsConfigResolver
+      .getPaths(compilerOptions)
+      .filePaths.map(p =>
+        project.addSourceFileAtPath(p).then(s => sourceFiles.push(s))
+      )
+  )
+  return sourceFiles
 }

@@ -1,12 +1,12 @@
 import type { RpcResultFormat } from '@alien-rpc/client'
-import { ts } from '@ts-morph/bootstrap'
+import { ts } from '@ts-morph/common'
 import { debug } from './debug.js'
 import { ParseResult, SupportingTypes } from './parse.js'
 import {
   isAsyncGeneratorType,
   isObjectType,
   printTypeLiteral,
-} from './util/ts-ast.js'
+} from './typescript/utils.js'
 
 export function analyzeRoutes({
   types,

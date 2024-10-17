@@ -1,4 +1,4 @@
-import { ts } from '@ts-morph/bootstrap'
+import { ts } from '@ts-morph/common'
 
 /**
  * Convert a given type to its string representation, resolving any type

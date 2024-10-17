@@ -1,18 +1,18 @@
-import { createProject, Project, ts } from '@ts-morph/bootstrap'
-import { File } from 'jumpgen'
+import { ts } from '@ts-morph/common'
 import path from 'node:path'
+import { createProject, Project } from './typescript/bootstrap/Project.js'
 
 export type ParseResult = Awaited<ReturnType<typeof parse>>
 
-export async function parse(files: File[]) {
-  const tsConfigFilePath = ts.findConfigFile(
-    files[0].absolutePath,
-    ts.sys.fileExists
-  )
-  const project = await createProject({
+export async function parse(projectPath: string, system: ts.System) {
+  const tsConfigFilePath = projectPath.endsWith('.json')
+    ? projectPath
+    : path.join(projectPath, 'tsconfig.json')
+
+  const project = createProject({
     tsConfigFilePath,
-    skipAddingFilesFromTsConfig: true,
   })
+
   const types = createSupportingTypes(
     project,
     path.dirname(files[0].absolutePath)

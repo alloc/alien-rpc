@@ -1,4 +1,4 @@
-import { ts } from '@ts-morph/bootstrap'
+import { ts } from '@ts-morph/common'
 
 const reportDiagnostic = process.env.TEST
   ? (message: string): void => {

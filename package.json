@@ -11,6 +11,7 @@
     "@alloc/fast-rimraf": "^1.0.8",
     "@alloc/prettier-config": "^1.0.0",
     "@hattip/adapter-test": "^0.0.48",
+    "@ts-morph/common": "^0.25.0",
     "@types/node": "^22.7.4",
     "memfs": "^4.13.0",
     "prettier": "^3.2.5",

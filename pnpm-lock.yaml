@@ -30,6 +30,9 @@ importers:
       '@hattip/adapter-test':
         specifier: ^0.0.48
         version: 0.0.48
+      '@ts-morph/common':
+        specifier: ^0.25.0
+        version: 0.25.0
       '@types/node':
         specifier: ^22.7.4
         version: 22.7.5

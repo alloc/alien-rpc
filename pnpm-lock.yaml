@@ -81,9 +81,6 @@ importers:
       '@sinclair/typebox':
         specifier: '*'
         version: 0.33.16
-      '@ts-morph/bootstrap':
-        specifier: ^0.25.0
-        version: 0.25.0
       '@ts-morph/common':
         specifier: ^0.25.0
         version: 0.25.0
@@ -578,9 +575,6 @@ packages:
 
   '@sinclair/typebox@0.33.16':
     resolution: {integrity: sha512-jsz4f3LxXGh217hJE3MAOB+i3pzgr9wLGUBiCRNWaG/rRcVoS4+dzQok9SeZLtwNdmY44oGYQWlJCjIJxeLKEw==}
-
-  '@ts-morph/bootstrap@0.25.0':
-    resolution: {integrity: sha512-aAmcZg+ZJ77xAOH39sHdb36ms0/YOYMoDKjEACGAmKA7zHBeGnyUkVFonT67YgasZC2nvV2hE5TKruG4dXO0aQ==}
 
   '@ts-morph/common@0.25.0':
     resolution: {integrity: sha512-kMnZz+vGGHi4GoHnLmMhGNjm44kGtKUXGnOvrKmMwAuvNjM/PgKVGfUnL7IDvK7Jb2QQ82jq3Zmp04Gy+r3Dkg==}
@@ -1533,10 +1527,6 @@ snapshots:
     optional: true
 
   '@sinclair/typebox@0.33.16': {}
-
-  '@ts-morph/bootstrap@0.25.0':
-    dependencies:
-      '@ts-morph/common': 0.25.0
 
   '@ts-morph/common@0.25.0':
     dependencies:

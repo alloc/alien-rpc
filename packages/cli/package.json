@@ -13,7 +13,6 @@
   "devDependencies": {
   },
   "scripts": {
-    "typegen": "tsc -p . --outDir ../../dist/@alien-rpc/cli",
     "lint": "tsc -p . --outDir node_modules/.tmp"
   }
 }

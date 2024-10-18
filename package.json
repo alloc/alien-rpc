@@ -6,6 +6,7 @@
     "radashi": "12.2.0-beta.af825f4"
   },
   "devDependencies": {
+    "@aleclarson/watchlist": "^0.3.3",
     "@alien-rpc/client": "workspace:*",
     "@alien-rpc/generator": "workspace:*",
     "@alien-rpc/service": "workspace:*",
@@ -29,8 +30,13 @@
   ],
   "prettier": "@alloc/prettier-config",
   "scripts": {
-    "dev": "pnpm prebuild && tsup --watch --sourcemap",
+    "dev": "pnpm --stream m run build:dev && pnpm --parallel run dev",
     "prebuild": "rimraf dist && pnpm --stream m run typegen",
-    "build": "pnpm prebuild && tsup"
+    "build": "tsup --treeshake=smallest"
+  },
+  "pnpm": {
+    "overrides": {
+      "@sinclair/typebox": "$@sinclair/typebox"
+    }
   }
 }

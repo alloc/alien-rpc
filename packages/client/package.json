@@ -18,7 +18,9 @@
     "path-to-regexp": "workspace:^"
   },
   "scripts": {
-    "typegen": "tsc -p . --outDir ../../dist/@alien-rpc/client",
+    "dev": "watchlist src -- pnpm build:dev",
+    "build": "tsup --treeshake=smallest",
+    "build:dev": "tsup --sourcemap --no-treeshake",
     "lint": "tsc -p . --outDir node_modules/.tmp"
   }
 }

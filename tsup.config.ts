@@ -42,9 +42,9 @@ export default defineConfig(
     entry: pkg.entry.map(entry => `${pkg.root}/${entry}`),
     outDir: pkg.outDir,
     format: ['esm'],
+    dts: true,
     external: pkg.dependencies,
     splitting: pkg.entry.length > 1,
-    treeshake: 'smallest',
     plugins: [deleteOldFiles(pkg), linkPackages(pkg)],
   }))
 )

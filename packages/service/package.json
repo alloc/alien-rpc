@@ -18,12 +18,16 @@
     "@sinclair/typebox": "*"
   },
   "devDependencies": {
+    "@alien-rpc/client": "workspace:^",
     "@alien-rpc/juri": "workspace:^",
+    "@alien-rpc/typebox": "workspace:^",
     "@alloc/path-types": "^0.1.2",
     "path-to-regexp": "workspace:^"
   },
   "scripts": {
-    "typegen": "tsc -p . --outDir ../../dist/@alien-rpc/service",
+    "dev": "watchlist src -- pnpm build:dev",
+    "build": "tsup --treeshake=smallest",
+    "build:dev": "tsup --sourcemap --no-treeshake",
     "lint": "tsc -p . --outDir node_modules/.tmp"
   }
 }

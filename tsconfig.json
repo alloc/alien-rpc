@@ -1,5 +1,5 @@
 {
-  "include": ["*.config.ts"],
+  "include": ["**/*.config.ts"],
   "compilerOptions": {
     "strict": true,
     "lib": ["esnext"],

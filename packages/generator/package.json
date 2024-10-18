@@ -19,12 +19,15 @@
     "typescript": "*"
   },
   "devDependencies": {
+    "@alien-rpc/client": "workspace:^",
     "@alloc/path-types": "^0.1.2",
     "@types/debug": "^4.1.12",
     "path-to-regexp": "workspace:^"
   },
   "scripts": {
-    "typegen": "tsc -p . --outDir ../../dist/@alien-rpc/generator",
+    "dev": "watchlist src -- pnpm build:dev",
+    "build": "tsup --treeshake=smallest",
+    "build:dev": "tsup --sourcemap --no-treeshake",
     "lint": "tsc -p . --outDir node_modules/.tmp"
   }
 }

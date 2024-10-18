@@ -3,13 +3,9 @@
   "type": "module",
   "version": "0.0.0",
   "exports": {
-    ".": {
-      "types": "./dist/typebox.d.ts",
-      "import": "./dist/typebox.js"
-    }
+    ".": "./src/typebox.ts"
   },
   "scripts": {
-    "typegen": "tsc -p . --outDir ../../dist/@alien-rpc/typebox",
     "lint": "tsc -p . --outDir node_modules/.tmp"
   },
   "peerDependencies": {

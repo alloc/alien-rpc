@@ -1,25 +1,45 @@
 import create, { Options } from '@alien-rpc/generator'
 import { FileSystemHost, RuntimeDirEntry } from '@ts-morph/common'
 import { vol } from 'memfs'
-import fs from 'node:fs'
+import vfs from 'node:fs'
 import path from 'node:path'
+import { isMatch } from 'picomatch'
 import prettier from 'prettier'
 import { sort, uid } from 'radashi'
 import { globSync } from 'tinyglobby'
 import { ExpectStatic } from 'vitest'
 
 const fixturesDir = new URL('__fixtures__', import.meta.url).pathname
-const nodeModulesDir = new URL('../../node_modules', import.meta.url).pathname
+const nodeModulesDir = path.join(fixturesDir, 'node_modules')
+const fromNodeModulesDir = new URL('../../node_modules', import.meta.url)
+  .pathname
+
+const fs = await vi.importActual<typeof vfs>('node:fs')
+const nodeModulesFilter = (file: string) =>
+  /\/(@alien-rpc|@types\/node|undici-types)\//.test(file)
+
 vol.fromJSON(
-  recursiveRead(
-    nodeModulesDir,
-    undefined,
-    undefined,
-    await vi.importActual('node:fs'),
-    file => /\/(@alien-rpc|@types)\//.test(file)
-  ),
-  path.join(fixturesDir, 'node_modules')
+  recursiveRead(path.join(fromNodeModulesDir, '.pnpm'), {
+    filter: nodeModulesFilter,
+    fs,
+  }),
+  path.join(nodeModulesDir, '.pnpm')
 )
+
+const packageLinks = findPackageLinks(fromNodeModulesDir, {
+  filter: nodeModulesFilter,
+  fs,
+})
+
+for (const file of packageLinks) {
+  const target = fs.readlinkSync(path.join(fromNodeModulesDir, file))
+  console.log(file, '→', target)
+  const newFile = path.join(nodeModulesDir, file)
+  vfs.mkdirSync(path.dirname(newFile), {
+    recursive: true,
+  })
+  vfs.symlinkSync(target, newFile)
+}
 
 console.log(Object.keys(vol.toJSON()).join('\n'))
 
@@ -50,6 +70,10 @@ export async function testGenerate(
           types: ['node'],
         },
       }),
+      'package.json': JSON.stringify({
+        name: 'test',
+        type: 'module',
+      }),
     },
     root
   )
@@ -64,7 +88,7 @@ export async function testGenerate(
   try {
     await generator({ root })
   } catch (error) {
-    console.log(recursiveRead(root))
+    // console.log(recursiveRead(root))
     throw error
   }
 
@@ -95,32 +119,6 @@ export async function testGenerate(
   await expect(output).toMatchFileSnapshot(path.join('__snapshots__', testPath))
 }
 
-function recursiveRead(
-  dir: string,
-  files: Record<string, string> = {},
-  root = dir,
-  api: typeof fs = fs,
-  filter: (file: string) => boolean = () => true
-): Record<string, string> {
-  const { readdirSync, statSync, readFileSync } = api
-
-  for (const name of readdirSync(dir)) {
-    if (name === '.' || name === 'node_modules') continue
-
-    const file = path.join(dir, name)
-    const stat = statSync(file)
-
-    if (stat.isDirectory()) {
-      recursiveRead(file, files, root, api, filter)
-    } else if (filter(file)) {
-      const key = path.relative(root, file)
-      files[key] = readFileSync(file, 'utf8')
-    }
-  }
-
-  return files
-}
-
 class MemfsFileSystemHost implements FileSystemHost {
   constructor(private readonly root: string) {}
 
@@ -129,7 +127,8 @@ class MemfsFileSystemHost implements FileSystemHost {
   }
 
   readDirSync(dirPath: string): RuntimeDirEntry[] {
-    return fs
+    console.log('readDirSync:', dirPath)
+    return vfs
       .readdirSync(path.resolve(this.root, dirPath), {
         withFileTypes: true,
       })
@@ -152,7 +151,8 @@ class MemfsFileSystemHost implements FileSystemHost {
   }
 
   readFileSync(filePath: string, encoding = 'utf-8') {
-    return fs.readFileSync(
+    console.log('readFileSync:', filePath)
+    return vfs.readFileSync(
       path.resolve(this.root, filePath),
       encoding as BufferEncoding
     )
@@ -163,7 +163,8 @@ class MemfsFileSystemHost implements FileSystemHost {
   }
 
   fileExistsSync(filePath: string) {
-    const stat = fs.statSync(path.resolve(this.root, filePath), {
+    console.log('fileExistsSync:', filePath)
+    const stat = vfs.statSync(path.resolve(this.root, filePath), {
       throwIfNoEntry: false,
     })
     return stat !== undefined && stat.isFile()
@@ -174,7 +175,8 @@ class MemfsFileSystemHost implements FileSystemHost {
   }
 
   directoryExistsSync(dirPath: string): boolean {
-    const stat = fs.statSync(path.resolve(this.root, dirPath), {
+    // console.log('directoryExistsSync:', dirPath)
+    const stat = vfs.statSync(path.resolve(this.root, dirPath), {
       throwIfNoEntry: false,
     })
     return stat !== undefined && stat.isDirectory()
@@ -193,6 +195,7 @@ class MemfsFileSystemHost implements FileSystemHost {
   }
 
   globSync(patterns: ReadonlyArray<string>): string[] {
+    console.log('globSync:', patterns)
     return globSync(patterns as string[], { cwd: this.root })
   }
 
@@ -239,4 +242,102 @@ class MemfsFileSystemHost implements FileSystemHost {
 
 function notImplemented(methodName: string): never {
   throw new Error(`Method '${methodName}' is not implemented.`)
+}
+
+function findPackageLinks(
+  dir: string,
+  opts: {
+    links?: string[]
+    root?: string
+    fs?: typeof fs
+    recursive?: boolean
+    filter?: (file: string) => boolean
+  } = {}
+) {
+  const {
+    links = [],
+    root = dir,
+    fs = vfs,
+    recursive = true,
+    filter = () => true,
+  } = opts
+
+  const recursiveOptions = {
+    links,
+    root,
+    fs,
+    recursive: false,
+    filter,
+  }
+
+  for (const name of fs.readdirSync(dir)) {
+    const file = path.join(dir, name)
+    const stat = fs.lstatSync(file)
+    if (stat.isSymbolicLink()) {
+      if (filter(file)) {
+        links.push(path.relative(root, file))
+      }
+    }
+    // Recurse into “package scope” directories.
+    else if (recursive && name[0] === '@' && stat.isDirectory()) {
+      findPackageLinks(file, recursiveOptions)
+    }
+  }
+
+  return links
+}
+
+function recursiveRead(
+  dir: string,
+  opts: {
+    files?: Record<string, string>
+    root?: string
+    fs?: typeof fs
+    filter?: (file: string) => boolean
+    dot?: boolean
+    ignored?: string[]
+    ignoreSymlinks?: boolean
+  } = {}
+): Record<string, string> {
+  const {
+    files = {},
+    root = dir,
+    fs = vfs,
+    filter = () => true,
+    dot = false,
+    ignored = [],
+    ignoreSymlinks = false,
+  } = opts
+
+  const recursiveOptions = {
+    files,
+    root,
+    fs,
+    filter,
+    dot,
+    ignored,
+    ignoreSymlinks,
+  }
+
+  for (const name of fs.readdirSync(dir)) {
+    if (!dot && name === '.') {
+      continue
+    }
+    const file = path.join(dir, name)
+    if (isMatch(file, ignored)) {
+      continue
+    }
+    if (ignoreSymlinks && fs.lstatSync(file).isSymbolicLink()) {
+      continue
+    }
+    const stat = fs.statSync(file)
+    if (stat.isDirectory()) {
+      recursiveRead(file, recursiveOptions)
+    } else if (filter(file)) {
+      const key = path.relative(root, file)
+      files[key] = fs.readFileSync(file, 'utf8')
+    }
+  }
+
+  return files
 }

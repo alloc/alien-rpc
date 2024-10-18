@@ -93,6 +93,7 @@ export default (options: Options) =>
       for (const filePath of sourceFilePaths) {
         store.project.createSourceFile(filePath, fs.read(filePath, 'utf8'))
       }
+      store.routesByFile = new Map()
     } else {
       for (const { file, event } of changes) {
         if (event === 'add') {

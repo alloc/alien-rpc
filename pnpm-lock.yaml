@@ -45,9 +45,15 @@ importers:
       '@types/node':
         specifier: ^22.7.4
         version: 22.7.4
+      '@types/picomatch':
+        specifier: ^3.0.1
+        version: 3.0.1
       memfs:
         specifier: ^4.13.0
         version: 4.13.0
+      picomatch:
+        specifier: ^4.0.2
+        version: 4.0.2
       prettier:
         specifier: ^3.2.5
         version: 3.2.5
@@ -622,6 +628,9 @@ packages:
 
   '@types/node@22.7.4':
     resolution: {integrity: sha512-y+NPi1rFzDs1NdQHHToqeiX2TIS79SWEAw9GYhkkx8bD0ChpfqC+n2j5OXOCpzfojBEBt6DnEnnG9MY0zk1XLg==}
+
+  '@types/picomatch@3.0.1':
+    resolution: {integrity: sha512-1MRgzpzY0hOp9pW/kLRxeQhUWwil6gnrUYd3oEpeYBqp/FexhaCPv3F8LsYr47gtUU45fO2cm1dbwkSrHEo8Uw==}
 
   '@vitest/expect@2.1.2':
     resolution: {integrity: sha512-FEgtlN8mIUSEAAnlvn7mP8vzaWhEaAEvhSXCqrsijM7K6QqjB11qoRZYEd4AKSCDz8p0/+yH5LzhZ47qt+EyPg==}
@@ -1631,6 +1640,8 @@ snapshots:
   '@types/node@22.7.4':
     dependencies:
       undici-types: 6.19.8
+
+  '@types/picomatch@3.0.1': {}
 
   '@vitest/expect@2.1.2':
     dependencies:

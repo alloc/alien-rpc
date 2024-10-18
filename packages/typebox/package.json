@@ -9,6 +9,7 @@
     }
   },
   "scripts": {
+    "typegen": "tsc -p . --outDir ../../dist/@alien-rpc/typebox",
     "lint": "tsc -p . --outDir node_modules/.tmp"
   },
   "peerDependencies": {

@@ -1,6 +1,6 @@
 import { Value } from '@sinclair/typebox/value'
-import { JSON, Promisable } from '../internal/types'
-import { RouteDefinition, RouteResponder } from '../types'
+import type { JSON, Promisable } from '../internal/types'
+import type { RouteDefinition, RouteResponder } from '../types'
 
 type TDefinition = RouteDefinition<any, any, Promisable<JSON>>
 

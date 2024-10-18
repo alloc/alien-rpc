@@ -9,9 +9,6 @@
     },
     "./formats/*": "./dist/formats/*.js"
   },
-  "scripts": {
-    "lint": "tsc -p . --outDir node_modules/.tmp"
-  },
   "dependencies": {
     "ky": "^1.2.2"
   },
@@ -19,5 +16,9 @@
     "@alien-rpc/juri": "workspace:^",
     "@alloc/path-types": "^0.1.2",
     "path-to-regexp": "workspace:^"
+  },
+  "scripts": {
+    "typegen": "tsc -p . --outDir ../../dist/@alien-rpc/client",
+    "lint": "tsc -p . --outDir node_modules/.tmp"
   }
 }

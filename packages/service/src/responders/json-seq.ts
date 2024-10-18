@@ -1,9 +1,14 @@
-import { RequestContext } from '@hattip/compose'
-import { TAsyncIterator } from '@sinclair/typebox'
+import type { RequestContext } from '@hattip/compose'
+import type { TAsyncIterator } from '@sinclair/typebox'
 import { Value } from '@sinclair/typebox/value'
-import { JSON, Promisable } from '../internal/types'
+import type { JSON, Promisable } from '../internal/types'
 import { resolvePaginationLink } from '../pagination'
-import { Route, RouteDefinition, RouteIterator, RouteResponder } from '../types'
+import type {
+  Route,
+  RouteDefinition,
+  RouteIterator,
+  RouteResponder,
+} from '../types'
 
 type TDefinition = RouteDefinition<any, any, Promisable<RouteIterator>>
 

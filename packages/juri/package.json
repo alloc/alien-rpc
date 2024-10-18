@@ -9,6 +9,7 @@
     }
   },
   "scripts": {
+    "typegen": "tsc -p . --outDir ../../dist/@alien-rpc/juri",
     "lint": "tsc -p . --outDir node_modules/.tmp"
   }
 }

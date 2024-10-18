@@ -61,14 +61,14 @@ export type Options = {
   fileSystem?: FileSystemHost
 }
 
-interface Memory {
+interface Store {
   project: Project
   types: SupportingTypes
   routesByFile: Map<ts.SourceFile, AnalyzedRoute[]>
 }
 
 export default (options: Options) =>
-  jumpgen<Memory, void>('alien-rpc', async context => {
+  jumpgen<Store, void>('alien-rpc', async context => {
     const { fs, dedent, root, store, changes, File } = context
 
     const sourceFilePaths = fs.scan(options.include, {

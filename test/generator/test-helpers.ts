@@ -8,6 +8,21 @@ import { sort, uid } from 'radashi'
 import { globSync } from 'tinyglobby'
 import { ExpectStatic } from 'vitest'
 
+const fixturesDir = new URL('__fixtures__', import.meta.url).pathname
+const nodeModulesDir = new URL('../../node_modules', import.meta.url).pathname
+vol.fromJSON(
+  recursiveRead(
+    nodeModulesDir,
+    undefined,
+    undefined,
+    await vi.importActual('node:fs'),
+    file => /\/(@alien-rpc|@types)\//.test(file)
+  ),
+  path.join(fixturesDir, 'node_modules')
+)
+
+console.log(Object.keys(vol.toJSON()).join('\n'))
+
 export async function testGenerate(
   expect: ExpectStatic,
   sourceCode: string,
@@ -31,11 +46,7 @@ export async function testGenerate(
           lib: ['esnext'],
           module: 'esnext',
           moduleResolution: 'bundler',
-          baseUrl: './',
-          paths: {
-            '@alien-rpc/service': ['../../../../packages/service/src/index.ts'],
-          },
-          typeRoots: ['../../../../node_modules/@types'],
+          typeRoots: ['../node_modules/@types'],
           types: ['node'],
         },
       }),
@@ -87,21 +98,26 @@ export async function testGenerate(
 function recursiveRead(
   dir: string,
   files: Record<string, string> = {},
-  root = dir
+  root = dir,
+  api: typeof fs = fs,
+  filter: (file: string) => boolean = () => true
 ): Record<string, string> {
-  fs.readdirSync(dir).forEach(name => {
-    if (name === '.' || name === 'node_modules') return
+  const { readdirSync, statSync, readFileSync } = api
+
+  for (const name of readdirSync(dir)) {
+    if (name === '.' || name === 'node_modules') continue
 
     const file = path.join(dir, name)
-    const stat = fs.statSync(file)
+    const stat = statSync(file)
 
     if (stat.isDirectory()) {
-      recursiveRead(file, files, root)
-    } else {
+      recursiveRead(file, files, root, api, filter)
+    } else if (filter(file)) {
       const key = path.relative(root, file)
-      files[key] = fs.readFileSync(file, 'utf8')
+      files[key] = readFileSync(file, 'utf8')
     }
-  })
+  }
+
   return files
 }
 

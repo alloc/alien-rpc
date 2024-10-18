@@ -44,6 +44,7 @@ export default defineConfig(
     format: ['esm'],
     external: pkg.dependencies,
     splitting: pkg.entry.length > 1,
+    treeshake: 'smallest',
     plugins: [deleteOldFiles(pkg), linkPackages(pkg)],
   }))
 )
@@ -55,7 +56,11 @@ function deleteOldFiles(pkg: PkgData): Plugin {
     name: 'delete-old-files',
     buildEnd({ writtenFiles }) {
       const neededFiles = writtenFiles.map(file => file.name)
-      const presentFiles = globSync([pkg.outDir + '/**', '!**/package.json'])
+      const presentFiles = globSync([
+        pkg.outDir + '/**',
+        '!**/package.json',
+        '!**/*.d.ts',
+      ])
 
       const oldFiles = diff(presentFiles, neededFiles)
       const oldDirs = new Set<string>()

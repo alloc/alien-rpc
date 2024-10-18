@@ -23,6 +23,7 @@
     "path-to-regexp": "workspace:^"
   },
   "scripts": {
+    "typegen": "tsc -p . --outDir ../../dist/@alien-rpc/service",
     "lint": "tsc -p . --outDir node_modules/.tmp"
   }
 }

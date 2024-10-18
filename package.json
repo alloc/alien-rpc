@@ -2,12 +2,13 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@sinclair/typebox": "^0.33.16",
+    "@sinclair/typebox": "^0.33.17",
     "radashi": "12.2.0-beta.af825f4"
   },
   "devDependencies": {
     "@alien-rpc/client": "workspace:*",
     "@alien-rpc/generator": "workspace:*",
+    "@alien-rpc/service": "workspace:*",
     "@alloc/fast-rimraf": "^1.0.8",
     "@alloc/prettier-config": "^1.0.0",
     "@hattip/adapter-test": "^0.0.48",
@@ -28,7 +29,8 @@
   ],
   "prettier": "@alloc/prettier-config",
   "scripts": {
-    "dev": "tsup --watch --sourcemap",
-    "build": "tsup"
+    "dev": "pnpm prebuild && tsup --watch --sourcemap",
+    "prebuild": "rimraf dist && pnpm --stream m run typegen",
+    "build": "pnpm prebuild && tsup"
   }
 }

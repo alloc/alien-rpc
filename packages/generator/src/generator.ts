@@ -1,7 +1,7 @@
 import type { TObject, TSchema } from '@sinclair/typebox'
 import { createProject, Project } from '@ts-morph/bootstrap'
 import { FileSystemHost, ts } from '@ts-morph/common'
-import { jumpgen } from 'jumpgen'
+import { jumpgen, JumpgenFS } from 'jumpgen'
 import path from 'path'
 import * as RoutePath from 'path-to-regexp'
 import { camel, isString, sift } from 'radashi'
@@ -69,7 +69,7 @@ interface Store {
 
 export default (options: Options) =>
   jumpgen<Store, void>('alien-rpc', async context => {
-    const { fs, dedent, root, store, changes, File } = context
+    const { fs, dedent, root, store, changes } = context
 
     const sourceFilePaths = fs.scan(options.include, {
       cwd: root,
@@ -120,6 +120,8 @@ export default (options: Options) =>
 
     const program = project.createProgram()
     const typeChecker = program.getTypeChecker()
+    const compilerOptions = program.getCompilerOptions()
+    const moduleResolutionHost = project.getModuleResolutionHost()
 
     reportDiagnostics(program, options.verbose)
 
@@ -129,16 +131,23 @@ export default (options: Options) =>
       .flatMap(sourceFile => {
         let routes = routesByFile.get(sourceFile)
         if (!routes) {
-          console.log('Analyzing', sourceFile.fileName)
           routes = analyzeRoutes(sourceFile, typeChecker, types)
+          routesByFile.set(sourceFile, routes)
+
+          // Prepend the API version to all route pathnames.
           if (options.version) {
             for (const route of routes) {
               route.resolvedPathname = `/${options.version}${route.resolvedPathname}`
             }
           }
-          routesByFile.set(sourceFile, routes)
-          const imports = (sourceFile as any).imports as ts.StringLiteral[]
-          console.log('%s imports:', sourceFile.fileName, imports)
+
+          watchDependencies(
+            sourceFile,
+            compilerOptions,
+            moduleResolutionHost,
+            project,
+            fs
+          )
         }
         return routes
       })
@@ -437,46 +446,72 @@ function parseRoutePathParams(pathname: string) {
   })
 }
 
-// function watchDependencies(
-//   { sourceFiles, program }: ParseResult,
-//   { watch }: Context
-// ) {
-//   const recurse = (sourceFile: ts.SourceFile) => {
-//     const resolveModuleSpecifier = (specifier: string) => {
-//       ts.resolveModuleNameFromCache
-//       const resolved = program.resolveModuleName(
-//         specifier,
-//         sourceFile.fileName,
-//         ts.ModuleKind.CommonJS
-//       )
-//       if (resolved.resolvedModule) {
-//         return resolved.resolvedModule.fileName
-//       }
-//       return undefined
-//     }
+function watchDependencies(
+  sourceFile: ts.SourceFile,
+  compilerOptions: ts.CompilerOptions,
+  moduleResolutionHost: ts.ModuleResolutionHost,
+  project: Project,
+  fs: JumpgenFS,
+  seen = new Set<ts.SourceFile>()
+): Set<ts.SourceFile> {
+  if (seen.has(sourceFile)) return seen
+  seen.add(sourceFile)
 
-//     forEachDescendant(sourceFile, node => {
-//       let referencedFile: ts.SourceFile | undefined
+  // Use a private API to get the referenced modules.
+  const imports = (sourceFile as any).imports as ts.StringLiteral[]
 
-//       // Handle import type declarations.
-//       if (ts.isImportTypeNode(node)) {
-//         referencedFile = node.argument
-//       }
-//       // Handle import declarations.
-//       else if (ts.isImportDeclaration(node)) {
-//       }
-//       // Handle dynamic import expressions.
-//       else if (
-//         ts.isCallExpression(node) &&
-//         node.expression.kind === ts.SyntaxKind.ImportKeyword
-//       ) {
-//       }
-//       // Handle "export from" declarations.
-//       else if (ts.isExportDeclaration(node)) {
-//       }
-//     })
-//   }
-//   for (const sourceFile of sourceFiles) {
-//     recurse(sourceFile)
-//   }
-// }
+  for (const specifier of imports) {
+    // Note: We *could* watch failedLookupLocations, but the memory
+    // cost may not be worth it and I'm too lazy to check, so let's
+    // just do less to be safe.
+    const { resolvedModule, affectingLocations } = ts.resolveModuleName(
+      specifier.text,
+      sourceFile.fileName,
+      compilerOptions,
+      moduleResolutionHost
+    ) as {
+      resolvedModule?: ts.ResolvedModuleFull
+      failedLookupLocations: string[]
+      affectingLocations?: string[]
+    }
+
+    if (resolvedModule) {
+      const resolvedPath = resolvedModule.resolvedFileName
+
+      // There's no need to watch certain dependencies that won't influence
+      // the inferred type of a route.
+      if (/\/node_modules\/(@sinclair\/typebox)\//.test(resolvedPath)) {
+        return seen
+      }
+
+      fs.watch(resolvedPath, {
+        cause: sourceFile.fileName,
+      })
+
+      // An original path will exist if the import resolved to a symlink.
+      // In that case, originalPath is the symlink location.
+      const originalPath = (resolvedModule as any).originalPath
+      if (originalPath) {
+        fs.watch(originalPath, {
+          cause: sourceFile.fileName,
+        })
+      }
+
+      watchDependencies(
+        project.getSourceFileOrThrow(resolvedPath),
+        compilerOptions,
+        moduleResolutionHost,
+        project,
+        fs,
+        seen
+      )
+    }
+
+    if (affectingLocations)
+      fs.watch(affectingLocations, {
+        cause: sourceFile.fileName,
+      })
+  }
+
+  return seen
+}

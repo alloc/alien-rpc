@@ -1,7 +1,7 @@
 {
   "extends": "../tsconfig.json",
   "include": ["./"],
-  "exclude": ["__snapshots__"],
+  "exclude": ["**/__snapshots__/**", "**/__fixtures__/**"],
   "compilerOptions": {
     "types": ["node", "vitest/globals"]
   }

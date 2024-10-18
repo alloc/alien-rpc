@@ -25,7 +25,7 @@ export const streamNumbers = {
   format: jsonSeq,
 } as RpcRoute<
   "numbers",
-  (requestOptions?: RequestOptions) => ResponseStream<1 | 3 | 2>
+  (requestOptions?: RequestOptions) => ResponseStream<1 | 2 | 3>
 >;
 
 /**
@@ -42,7 +42,7 @@ export default [
     format: "json-seq",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.AsyncIterator(
-      Type.Union([Type.Literal(1), Type.Literal(3), Type.Literal(2)]),
+      Type.Union([Type.Literal(1), Type.Literal(2), Type.Literal(3)]),
     ),
   },
 ] as const;

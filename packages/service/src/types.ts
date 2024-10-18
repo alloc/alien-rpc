@@ -1,4 +1,3 @@
-import type { RpcResultFormat } from '@alien-rpc/client'
 import { Type } from '@alien-rpc/typebox'
 import { RequestContext } from '@hattip/compose'
 import { TObject, TSchema } from '@sinclair/typebox'
@@ -28,6 +27,8 @@ declare module '@hattip/compose' {
 }
 
 export type RouteMethod = 'get' | 'post'
+
+export type RouteResultFormat = 'json' | 'json-seq' | 'response'
 
 export type RouteIterator<
   TParams extends object = Record<string, Type.JsonValue>,
@@ -68,7 +69,7 @@ export interface Route<TDefinition extends RouteDefinition = RouteDefinition> {
   /** Exists on GET routes only. */
   jsonParams?: string[]
   pathParams?: string[]
-  format: RpcResultFormat
+  format: RouteResultFormat
   requestSchema: TObject
   responseSchema: TSchema
 }

@@ -1,0 +1,3 @@
+import { RequestOptions, RequestParams, RpcRoute } from '@alien-rpc/client'
+
+export const getPost = {path: "posts/:id", method: "get", jsonParams: [], pathParams: ["id"], arity: 2, format: "json"} as RpcRoute<"posts/:id", (params: RequestParams<{ id: string }, Record<string, never>>, requestOptions?: RequestOptions) => Promise<{ id: string; title: string; body: string; author: { id: string; name: string } }>>

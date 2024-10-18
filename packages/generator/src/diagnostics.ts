@@ -9,6 +9,21 @@ const reportDiagnostic = process.env.TEST
   : console.warn
 
 export function reportDiagnostics(program: ts.Program, verbose?: boolean) {
+  program.getGlobalDiagnostics().forEach(diagnostic => {
+    reportDiagnostic(
+      ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+    )
+  })
+  program.getOptionsDiagnostics().forEach(diagnostic => {
+    reportDiagnostic(
+      ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+    )
+  })
+  program.getConfigFileParsingDiagnostics().forEach(diagnostic => {
+    reportDiagnostic(
+      ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+    )
+  })
   for (const sourceFile of program.getSourceFiles()) {
     if (sourceFile.fileName.includes('/typescript/lib/')) {
       continue

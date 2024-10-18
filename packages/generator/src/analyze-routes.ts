@@ -1,62 +1,57 @@
 import type { RpcResultFormat } from '@alien-rpc/client'
 import { ts } from '@ts-morph/common'
 import { debug } from './debug.js'
-import { ParseResult, SupportingTypes } from './parse.js'
-import {
-  isAsyncGeneratorType,
-  isObjectType,
-  printTypeLiteral,
-} from './typescript/utils.js'
+import { printTypeLiteral } from './typescript/print-type-literal.js'
+import { SupportingTypes } from './typescript/supporting-types.js'
+import { isAsyncGeneratorType, isObjectType } from './typescript/utils.js'
 
-export function analyzeRoutes({
-  types,
-  sourceFiles,
-  typeChecker,
-}: ParseResult) {
+export function analyzeRoutes(
+  sourceFile: ts.SourceFile,
+  typeChecker: ts.TypeChecker,
+  types: SupportingTypes
+) {
   const routes: AnalyzedRoute[] = []
 
-  for (const sourceFile of sourceFiles) {
-    ts.forEachChild(sourceFile, node => {
-      if (
-        !ts.isVariableStatement(node) ||
-        !node.modifiers ||
-        node.modifiers.every(
-          modifier => modifier.kind !== ts.SyntaxKind.ExportKeyword
-        )
-      ) {
-        return
-      }
+  ts.forEachChild(sourceFile, node => {
+    if (
+      !ts.isVariableStatement(node) ||
+      !node.modifiers ||
+      node.modifiers.every(
+        modifier => modifier.kind !== ts.SyntaxKind.ExportKeyword
+      )
+    ) {
+      return
+    }
 
-      const declaration = node.declarationList.declarations[0]
-      if (!ts.isVariableDeclaration(declaration)) {
-        return
-      }
+    const declaration = node.declarationList.declarations[0]
+    if (!ts.isVariableDeclaration(declaration)) {
+      return
+    }
 
-      const symbol =
-        declaration.name && typeChecker.getSymbolAtLocation(declaration.name)
-      if (!symbol) {
-        return
-      }
+    const symbol =
+      declaration.name && typeChecker.getSymbolAtLocation(declaration.name)
+    if (!symbol) {
+      return
+    }
 
-      const routeName = symbol.getName()
-      try {
-        const route = analyzeRoute(
-          sourceFile.fileName,
-          routeName,
-          declaration,
-          typeChecker,
-          types
-        )
-        if (route) {
-          debug('extracted route', route)
-          routes.push(route)
-        }
-      } catch (error: any) {
-        Object.assign(error, { routeName })
-        throw error
+    const routeName = symbol.getName()
+    try {
+      const route = analyzeRoute(
+        sourceFile.fileName,
+        routeName,
+        declaration,
+        typeChecker,
+        types
+      )
+      if (route) {
+        debug('extracted route', route)
+        routes.push(route)
       }
-    })
-  }
+    } catch (error: any) {
+      Object.assign(error, { routeName })
+      throw error
+    }
+  })
 
   return routes
 }

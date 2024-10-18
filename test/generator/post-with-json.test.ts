@@ -1,4 +1,4 @@
-import { testGenerate } from './util.js'
+import { testGenerate } from './test-helpers.js'
 
 test.concurrent('POST route with JSON payload', async ({ expect }) => {
   await testGenerate(

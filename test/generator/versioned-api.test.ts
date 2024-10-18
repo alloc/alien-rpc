@@ -1,4 +1,4 @@
-import { testGenerate } from './util.js'
+import { testGenerate } from './test-helpers.js'
 
 test.concurrent('versioned API', async ({ expect }) => {
   await testGenerate(

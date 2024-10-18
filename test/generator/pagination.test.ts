@@ -1,4 +1,4 @@
-import { testGenerate } from './util.js'
+import { testGenerate } from './test-helpers.js'
 
 test.concurrent('GET route with pagination', async ({ expect }) => {
   await testGenerate(

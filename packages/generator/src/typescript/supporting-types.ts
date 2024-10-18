@@ -1,39 +1,5 @@
-import { ts } from '@ts-morph/common'
+import { Project, ts } from '@ts-morph/bootstrap'
 import path from 'node:path'
-import { createProject, Project } from './typescript/bootstrap/Project.js'
-
-export type ParseResult = Awaited<ReturnType<typeof parse>>
-
-export async function parse(projectPath: string, system: ts.System) {
-  const tsConfigFilePath = projectPath.endsWith('.json')
-    ? projectPath
-    : path.join(projectPath, 'tsconfig.json')
-
-  const project = createProject({
-    tsConfigFilePath,
-  })
-
-  const types = createSupportingTypes(
-    project,
-    path.dirname(files[0].absolutePath)
-  )
-  const sourceFiles = files.map(file =>
-    project.createSourceFile(file.absolutePath, file.read('utf8'))
-  )
-
-  // All source files should have been added to the project by now.
-  project.resolveSourceFileDependencies()
-
-  const program = project.createProgram()
-  const typeChecker = program.getTypeChecker()
-
-  return {
-    types,
-    sourceFiles,
-    typeChecker,
-    program,
-  }
-}
 
 export type SupportingTypes = ReturnType<typeof createSupportingTypes>
 
@@ -42,7 +8,7 @@ export type SupportingTypes = ReturnType<typeof createSupportingTypes>
  * client and server. They help us ensure that the routes don't use any
  * unsupported types.
  */
-function createSupportingTypes(project: Project, rootDir: string) {
+export function createSupportingTypes(project: Project, rootDir: string) {
   const typeDeclarations = {
     AnyNonNull: '{}',
     Response: 'globalThis.Response',

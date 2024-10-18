@@ -1,4 +1,4 @@
-import { testGenerate } from './util.js'
+import { testGenerate } from './test-helpers.js'
 
 test.concurrent('GET route with nullable JSON result', async ({ expect }) => {
   await testGenerate(

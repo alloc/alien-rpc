@@ -1,4 +1,4 @@
-import { testGenerate } from '../util.js'
+import { testGenerate } from '../test-helpers.js'
 
 test.concurrent('complex search parameter', async ({ expect }) => {
   await testGenerate(

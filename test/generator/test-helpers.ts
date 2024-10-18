@@ -19,16 +19,32 @@ export async function testGenerate(
   const sourceFiles = {
     ...options?.files,
     'routes.ts': sourceCode,
-    'tsconfig.json': JSON.stringify({
-      extends: '../../tsconfig.json',
-      include: ['**/*.ts'],
-    }),
   }
 
-  vol.fromJSON(sourceFiles, root)
+  vol.fromJSON(
+    {
+      ...sourceFiles,
+      'tsconfig.json': JSON.stringify({
+        include: ['./'],
+        compilerOptions: {
+          strict: true,
+          lib: ['esnext'],
+          module: 'esnext',
+          moduleResolution: 'bundler',
+          baseUrl: './',
+          paths: {
+            '@alien-rpc/service': ['../../../../packages/service/src/index.ts'],
+          },
+          typeRoots: ['../../../../node_modules/@types'],
+          types: ['node'],
+        },
+      }),
+    },
+    root
+  )
 
   const generator = create({
-    projectPath: '.',
+    include: Object.keys(sourceFiles),
     outDir: '.',
     fileSystem: new MemfsFileSystemHost(root),
     ...options,
@@ -74,7 +90,7 @@ function recursiveRead(
   root = dir
 ): Record<string, string> {
   fs.readdirSync(dir).forEach(name => {
-    if (name === '.') return
+    if (name === '.' || name === 'node_modules') return
 
     const file = path.join(dir, name)
     const stat = fs.statSync(file)

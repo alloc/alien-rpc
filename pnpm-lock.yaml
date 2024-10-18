@@ -66,9 +66,6 @@ importers:
         specifier: ^1.2.2
         version: 1.7.2
     devDependencies:
-      '@aleclarson/json-stream':
-        specifier: ^0.1.22
-        version: 0.1.22
       '@alien-rpc/juri':
         specifier: workspace:^
         version: link:../juri
@@ -84,6 +81,9 @@ importers:
       '@sinclair/typebox':
         specifier: '*'
         version: 0.33.16
+      '@ts-morph/bootstrap':
+        specifier: ^0.25.0
+        version: 0.25.0
       '@ts-morph/common':
         specifier: ^0.25.0
         version: 0.25.0
@@ -91,8 +91,8 @@ importers:
         specifier: ^4.3.7
         version: 4.3.7
       jumpgen:
-        specifier: 0.1.0-beta.7
-        version: 0.1.0-beta.7
+        specifier: 0.1.0-beta.8
+        version: 0.1.0-beta.8
       typescript:
         specifier: '*'
         version: 5.6.3
@@ -137,9 +137,6 @@ importers:
         version: 0.33.16
 
 packages:
-
-  '@aleclarson/json-stream@0.1.22':
-    resolution: {integrity: sha512-DKdS8kOMRc4P4v+s5ioiHOpZiOkx+LIAdXbw0MjDROc3XJMACOo7K9j5rHFKuc4bkCverP/x/HmntesZyN/Ftg==}
 
   '@alloc/fast-rimraf@1.0.8':
     resolution: {integrity: sha512-TsRTRLLDW6Q4fWBAYlbkcaHQDAANKsI0smrhS/1x7/GHcjVxo+r+2VRbqrWaYpmjdhvCp5v7n2wtwkMYp+Kivw==}
@@ -579,6 +576,9 @@ packages:
   '@sinclair/typebox@0.33.16':
     resolution: {integrity: sha512-jsz4f3LxXGh217hJE3MAOB+i3pzgr9wLGUBiCRNWaG/rRcVoS4+dzQok9SeZLtwNdmY44oGYQWlJCjIJxeLKEw==}
 
+  '@ts-morph/bootstrap@0.25.0':
+    resolution: {integrity: sha512-aAmcZg+ZJ77xAOH39sHdb36ms0/YOYMoDKjEACGAmKA7zHBeGnyUkVFonT67YgasZC2nvV2hE5TKruG4dXO0aQ==}
+
   '@ts-morph/common@0.25.0':
     resolution: {integrity: sha512-kMnZz+vGGHi4GoHnLmMhGNjm44kGtKUXGnOvrKmMwAuvNjM/PgKVGfUnL7IDvK7Jb2QQ82jq3Zmp04Gy+r3Dkg==}
 
@@ -845,8 +845,8 @@ packages:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
     engines: {node: '>=10'}
 
-  jumpgen@0.1.0-beta.7:
-    resolution: {integrity: sha512-3LbGMW1mqbLRBVySatXo0L9uIjg0XA8q5ACILq6cVi8jzSYVFFcotsAkBwxzz0zb8x96hzx+PDYgm7pg8B1N8Q==}
+  jumpgen@0.1.0-beta.8:
+    resolution: {integrity: sha512-q5cH9w0oTm0alIts8EXvkipZQX+tL26P37b7q64K3G5Z09ZOAbmTUmv048fix5eIpNMA50lWg8BlItiWSaHyVw==}
 
   ky@1.7.2:
     resolution: {integrity: sha512-OzIvbHKKDpi60TnF9t7UUVAF1B4mcqc02z5PIvrm08Wyb+yOcz63GRvEuVxNT18a9E1SrNouhB4W2NNLeD7Ykg==}
@@ -1266,8 +1266,6 @@ packages:
 
 snapshots:
 
-  '@aleclarson/json-stream@0.1.22': {}
-
   '@alloc/fast-rimraf@1.0.8': {}
 
   '@alloc/path-types@0.1.2': {}
@@ -1530,6 +1528,10 @@ snapshots:
     optional: true
 
   '@sinclair/typebox@0.33.16': {}
+
+  '@ts-morph/bootstrap@0.25.0':
+    dependencies:
+      '@ts-morph/common': 0.25.0
 
   '@ts-morph/common@0.25.0':
     dependencies:
@@ -1835,7 +1837,7 @@ snapshots:
 
   joycon@3.1.1: {}
 
-  jumpgen@0.1.0-beta.7:
+  jumpgen@0.1.0-beta.8:
     dependencies:
       chokidar: 4.0.1
       picomatch: 4.0.2

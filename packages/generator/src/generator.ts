@@ -1,20 +1,30 @@
 import type { TObject, TSchema } from '@sinclair/typebox'
+import { createProject, Project } from '@ts-morph/bootstrap'
 import { FileSystemHost, ts } from '@ts-morph/common'
 import { jumpgen } from 'jumpgen'
 import path from 'path'
 import * as RoutePath from 'path-to-regexp'
 import { camel, isString, sift } from 'radashi'
-import { analyzeRoutes } from './analyze-routes.js'
+import { AnalyzedRoute, analyzeRoutes } from './analyze-routes.js'
 import { reportDiagnostics } from './diagnostics.js'
-import { parse } from './parse.js'
 import { TypeScriptToTypeBox } from './typebox-codegen/typescript/generator.js'
-import { createSystem } from './typescript/system.js'
+import {
+  createSupportingTypes,
+  SupportingTypes,
+} from './typescript/supporting-types.js'
 
 export type Options = {
   /**
-   * Path to the `tsconfig.json` file or its directory.
+   * Paths to modules that export route definitions. Glob patterns are
+   * allowed. Negated glob patterns (e.g. `!foo`) are also supported.
    */
-  projectPath: string
+  include: string | string[]
+  /**
+   * Path to the `tsconfig.json` file. Relative to the root directory.
+   *
+   * @default "tsconfig.json"
+   */
+  tsConfigFile?: string
   /**
    * The directory to output the generated files.
    */
@@ -51,25 +61,86 @@ export type Options = {
   fileSystem?: FileSystemHost
 }
 
+interface Memory {
+  project: Project
+  types: SupportingTypes
+  routesByFile: Map<ts.SourceFile, AnalyzedRoute[]>
+}
+
 export default (options: Options) =>
-  jumpgen('alien-rpc', async context => {
-    const { fs, dedent, root } = context
+  jumpgen<Memory, void>('alien-rpc', async context => {
+    const { fs, dedent, root, store, changes, File } = context
 
-    const parseResult = await parse(
-      path.join(root, options.projectPath),
-      createSystem(context)
-    )
+    const sourceFilePaths = fs.scan(options.include, {
+      cwd: root,
+      absolute: true,
+    })
 
-    reportDiagnostics(parseResult.program, options.verbose)
-    // watchDependencies(parseResult, context)
-
-    const routes = analyzeRoutes(parseResult)
-
-    if (options.version) {
-      for (const route of routes) {
-        route.resolvedPathname = `/${options.version}${route.resolvedPathname}`
+    if (store.project == null) {
+      const tsConfigFilePath = path.resolve(
+        root,
+        options.tsConfigFile ?? 'tsconfig.json'
+      )
+      store.project = await createProject({
+        tsConfigFilePath,
+        skipAddingFilesFromTsConfig: true,
+        fileSystem: options.fileSystem,
+      })
+      store.types = createSupportingTypes(
+        store.project,
+        path.dirname(tsConfigFilePath)
+      )
+      for (const filePath of sourceFilePaths) {
+        store.project.createSourceFile(filePath, fs.read(filePath, 'utf8'))
+      }
+    } else {
+      for (const { file, event } of changes) {
+        if (event === 'add') {
+          store.project.createSourceFile(
+            path.join(root, file),
+            fs.read(file, 'utf8')
+          )
+        } else if (event === 'unlink') {
+          store.project.removeSourceFile(path.join(root, file))
+        } else if (event === 'change') {
+          const sourceFile = store.project.getSourceFile(path.join(root, file))
+          if (sourceFile) {
+            sourceFile.text = fs.read(file, 'utf8')
+            store.project.updateSourceFile(sourceFile)
+            store.routesByFile.delete(sourceFile)
+          }
+        }
       }
     }
+
+    const { project, types, routesByFile } = store
+
+    project.resolveSourceFileDependencies()
+
+    const program = project.createProgram()
+    const typeChecker = program.getTypeChecker()
+
+    reportDiagnostics(program, options.verbose)
+
+    const routes = project
+      .getSourceFiles()
+      .filter(file => sourceFilePaths.includes(file.fileName))
+      .flatMap(sourceFile => {
+        let routes = routesByFile.get(sourceFile)
+        if (!routes) {
+          console.log('Analyzing', sourceFile.fileName)
+          routes = analyzeRoutes(sourceFile, typeChecker, types)
+          if (options.version) {
+            for (const route of routes) {
+              route.resolvedPathname = `/${options.version}${route.resolvedPathname}`
+            }
+          }
+          routesByFile.set(sourceFile, routes)
+          const imports = (sourceFile as any).imports as ts.StringLiteral[]
+          console.log('%s imports:', sourceFile.fileName, imports)
+        }
+        return routes
+      })
 
     options = { ...options }
 

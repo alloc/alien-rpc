@@ -1,3 +1,4 @@
+import os from 'os'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
@@ -9,7 +10,12 @@ export default defineConfig({
         singleThread: true,
       },
     },
+    // sequence: {
+    //   concurrent: true,
+    //   shuffle: true,
+    // },
     isolate: false,
-    testTimeout: 15e3,
+    testTimeout: 0,
+    maxConcurrency: os.cpus().length - 1,
   },
 })

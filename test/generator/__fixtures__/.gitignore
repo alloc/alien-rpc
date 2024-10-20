@@ -1,3 +1,4 @@
+/api.d.ts
+tmp-*
+api.ts
 tsconfig.json
-client/api.ts
-server/api.ts

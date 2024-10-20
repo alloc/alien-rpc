@@ -1,4 +1,4 @@
-import { route, paginate } from '@alien-rpc/service'
+import { paginate, route } from '@alien-rpc/service'
 
 type Post = {
   id: number
@@ -8,10 +8,13 @@ type Post = {
 
 declare const db: {
   countPosts: () => Promise<number>
-  streamPosts: (args: {page: number; limit: number}) => AsyncGenerator<Post, void, unknown>
+  streamPosts: (args: {
+    page: number
+    limit: number
+  }) => AsyncGenerator<Post, void, unknown>
 }
 
-export const paginatedNumbers = route.get(
+export const listPosts = route.get(
   '/posts',
   async function* (
     {},

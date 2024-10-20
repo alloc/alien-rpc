@@ -24,22 +24,22 @@ export const complexSearch = route.get(
  */
 import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
 
-export const complexSearch = {
+export const complexSearch: RpcRoute<
+  "complex",
+  (
+    params: RequestParams<
+      Record<string, never>,
+      { foo?: string | { bar?: string } | string[] }
+    >,
+    requestOptions?: RequestOptions,
+  ) => Promise<undefined | string | { bar?: undefined | string } | string[]>
+> = {
   path: "complex",
   method: "get",
   jsonParams: ["foo"],
   arity: 2,
   format: "json",
-} as RpcRoute<
-  "complex",
-  (
-    params: RequestParams<
-      Record<string, never>,
-      { foo?: string | string[] | { bar?: string } }
-    >,
-    requestOptions?: RequestOptions,
-  ) => Promise<undefined | string | string[] | { bar?: undefined | string }>
->;
+} as any;
 
 /**
  * server/api.ts
@@ -57,20 +57,20 @@ export default [
       foo: Type.Optional(
         Type.Union([
           Type.String(),
-          Type.Array(Type.String()),
           Type.Object({
             bar: Type.Optional(Type.String()),
           }),
+          Type.Array(Type.String()),
         ]),
       ),
     }),
     responseSchema: Type.Union([
       Type.Undefined(),
       Type.String(),
-      Type.Array(Type.String()),
       Type.Object({
         bar: Type.Optional(Type.Union([Type.Undefined(), Type.String()])),
       }),
+      Type.Array(Type.String()),
     ]),
   },
 ] as const;

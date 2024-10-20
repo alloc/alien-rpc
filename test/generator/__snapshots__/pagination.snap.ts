@@ -3,7 +3,7 @@
 /**
  * routes.ts
  */
-import { route, paginate } from "@alien-rpc/service";
+import { paginate, route } from "@alien-rpc/service";
 
 type Post = {
   id: number;
@@ -19,7 +19,7 @@ declare const db: {
   }) => AsyncGenerator<Post, void, unknown>;
 };
 
-export const paginatedNumbers = route.get(
+export const listPosts = route.get(
   "/posts",
   async function* (
     {},
@@ -47,13 +47,7 @@ import {
 } from "@alien-rpc/client";
 import jsonSeq from "@alien-rpc/client/formats/json-seq";
 
-export const paginatedNumbers = {
-  path: "posts",
-  method: "get",
-  jsonParams: [],
-  arity: 2,
-  format: jsonSeq,
-} as RpcRoute<
+export const listPosts: RpcRoute<
   "posts",
   (
     params: RequestParams<
@@ -62,7 +56,13 @@ export const paginatedNumbers = {
     >,
     requestOptions?: RequestOptions,
   ) => ResponseStream<{ id: number; title: string; content: string }>
->;
+> = {
+  path: "posts",
+  method: "get",
+  jsonParams: [],
+  arity: 2,
+  format: jsonSeq,
+} as any;
 
 /**
  * server/api.ts
@@ -74,7 +74,7 @@ export default [
     path: "/posts",
     method: "get",
     jsonParams: [],
-    import: async () => (await import("../routes.js")).paginatedNumbers,
+    import: async () => (await import("../routes.js")).listPosts,
     format: "json-seq",
     requestSchema: Type.Object({
       page: Type.Optional(Type.Number()),

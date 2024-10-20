@@ -1,5 +1,5 @@
 import { juri } from '@alien-rpc/juri'
-import { KindGuard, TSchema, Type } from '@alien-rpc/typebox'
+import { KindGuard, TSchema, Type } from '@sinclair/typebox'
 import { SchemaOptions, TUnion } from '@sinclair/typebox/type'
 import { Value } from '@sinclair/typebox/value'
 import { isString, pick } from 'radashi'
@@ -21,7 +21,7 @@ export function transformRequestSchema(route: Route) {
         entry[1] = transformQueryParameter(type) || type
         return entry
       })
-    ) as Type.TJsonProperties,
+    ),
     extractSchemaOptions(route.requestSchema)
   )
 }

@@ -21,16 +21,16 @@ export const funFact = route.get("/fun-fact", () => {
  */
 import { RequestOptions, RpcRoute } from "@alien-rpc/client";
 
-export const funFact = {
+export const funFact: RpcRoute<
+  "v1/fun-fact",
+  (requestOptions?: RequestOptions) => Promise<string>
+> = {
   path: "v1/fun-fact",
   method: "get",
   jsonParams: [],
   arity: 1,
   format: "json",
-} as RpcRoute<
-  "v1/fun-fact",
-  (requestOptions?: RequestOptions) => Promise<string>
->;
+} as any;
 
 /**
  * server/api.ts

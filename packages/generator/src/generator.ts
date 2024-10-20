@@ -1,6 +1,6 @@
 import type { TObject, TSchema } from '@sinclair/typebox'
 import { createProject, Project } from '@ts-morph/bootstrap'
-import { FileSystemHost, ts } from '@ts-morph/common'
+import { ts } from '@ts-morph/common'
 import { jumpgen, JumpgenFS } from 'jumpgen'
 import path from 'path'
 import * as RoutePath from 'path-to-regexp'
@@ -48,17 +48,13 @@ export type Options = {
    * changes to your API could break active sessions in your client
    * application.
    */
-  version?: string
+  versionPrefix?: string
   /**
    * When true, diagnostics for node_modules are printed to the console.
    *
    * @default false
    */
   verbose?: boolean
-  /**
-   * @internal For testing purposes only.
-   */
-  fileSystem?: FileSystemHost
 }
 
 interface Store {
@@ -67,9 +63,11 @@ interface Store {
   routesByFile: Map<ts.SourceFile, AnalyzedRoute[]>
 }
 
+type Event = { type: 'route'; route: AnalyzedRoute }
+
 export default (options: Options) =>
-  jumpgen<Store, void>('alien-rpc', async context => {
-    const { fs, dedent, root, store, changes } = context
+  jumpgen<Store, Event, void>('alien-rpc', async context => {
+    const { fs, dedent, root, store, emit, changes } = context
 
     const sourceFilePaths = fs.scan(options.include, {
       cwd: root,
@@ -84,7 +82,6 @@ export default (options: Options) =>
       store.project = await createProject({
         tsConfigFilePath,
         skipAddingFilesFromTsConfig: true,
-        fileSystem: options.fileSystem,
       })
       store.types = createSupportingTypes(
         store.project,
@@ -95,20 +92,17 @@ export default (options: Options) =>
       }
       store.routesByFile = new Map()
     } else {
-      for (const { file, event } of changes) {
+      for (let { file, event } of changes) {
+        file = path.join(root, file)
+
         if (event === 'add') {
-          store.project.createSourceFile(
-            path.join(root, file),
-            fs.read(file, 'utf8')
-          )
-        } else if (event === 'unlink') {
-          store.project.removeSourceFile(path.join(root, file))
-        } else if (event === 'change') {
-          const sourceFile = store.project.getSourceFile(path.join(root, file))
-          if (sourceFile) {
-            sourceFile.text = fs.read(file, 'utf8')
-            store.project.updateSourceFile(sourceFile)
-            store.routesByFile.delete(sourceFile)
+          store.project.createSourceFile(file, fs.read(file, 'utf8'))
+        } else {
+          store.routesByFile.delete(store.project.getSourceFileOrThrow(file))
+          if (event === 'unlink') {
+            store.project.removeSourceFile(file)
+          } else {
+            store.project.updateSourceFile(file, fs.read(file, 'utf8'))
           }
         }
       }
@@ -123,7 +117,15 @@ export default (options: Options) =>
     const compilerOptions = program.getCompilerOptions()
     const moduleResolutionHost = project.getModuleResolutionHost()
 
-    reportDiagnostics(program, options.verbose)
+    reportDiagnostics(program, options.verbose, (specifier, importer) => {
+      watchMissingImport(
+        importer,
+        specifier,
+        compilerOptions,
+        moduleResolutionHost,
+        fs
+      )
+    })
 
     const routes = project
       .getSourceFiles()
@@ -135,19 +137,24 @@ export default (options: Options) =>
           routesByFile.set(sourceFile, routes)
 
           // Prepend the API version to all route pathnames.
-          if (options.version) {
+          if (options.versionPrefix) {
             for (const route of routes) {
-              route.resolvedPathname = `/${options.version}${route.resolvedPathname}`
+              route.resolvedPathname = `/${options.versionPrefix}${route.resolvedPathname}`
             }
           }
 
-          watchDependencies(
-            sourceFile,
-            compilerOptions,
-            moduleResolutionHost,
-            project,
-            fs
-          )
+          routes.forEach(route => {
+            emit({ type: 'route', route })
+          })
+
+          if (context.isWatchMode)
+            watchDependencies(
+              sourceFile,
+              compilerOptions,
+              moduleResolutionHost,
+              project,
+              fs
+            )
         }
         return routes
       })
@@ -169,9 +176,10 @@ export default (options: Options) =>
       const requestSchemaDecl = generateRuntimeValidator(
         `type Request = ${route.resolvedArguments[1]}`
       )
-      const responseSchemaDecl = generateRuntimeValidator(
-        `type Response = ${route.resolvedResult}`
-      )
+      const responseSchemaDecl =
+        route.resolvedFormat === 'response'
+          ? `Type.Any()`
+          : generateRuntimeValidator(`type Response = ${route.resolvedResult}`)
 
       let jsonEncodedParams: string[] | undefined
 
@@ -324,7 +332,7 @@ export default (options: Options) =>
       clientFormats.add(route.resolvedFormat)
       clientDefinitions.push(
         (description || '') +
-          `export const ${route.exportedName} = {${clientProperties.join(', ')}} as RpcRoute<"${clientPathname}", (${clientArgs.join(', ')}) => ${clientReturn}>`
+          `export const ${route.exportedName}: RpcRoute<"${clientPathname}", (${clientArgs.join(', ')}) => ${clientReturn}> = {${clientProperties.join(', ')}} as any`
       )
     }
 
@@ -444,6 +452,35 @@ function parseRoutePathParams(pathname: string) {
         return []
     }
   })
+}
+
+function watchMissingImport(
+  sourceFile: ts.SourceFile,
+  specifier: string,
+  compilerOptions: ts.CompilerOptions,
+  moduleResolutionHost: ts.ModuleResolutionHost,
+  fs: JumpgenFS
+) {
+  const { failedLookupLocations, affectingLocations } = ts.resolveModuleName(
+    specifier,
+    sourceFile.fileName,
+    compilerOptions,
+    moduleResolutionHost
+  ) as unknown as {
+    failedLookupLocations: string[]
+    affectingLocations?: string[]
+  }
+
+  const watchPaths = [
+    ...(failedLookupLocations ?? []),
+    ...(affectingLocations ?? []),
+  ]
+
+  if (watchPaths.length > 0) {
+    fs.watch(watchPaths, {
+      cause: sourceFile.fileName,
+    })
+  }
 }
 
 function watchDependencies(

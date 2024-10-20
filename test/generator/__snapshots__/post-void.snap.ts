@@ -12,12 +12,10 @@ export const voidTest = route.post("/void", async () => {});
  */
 import { RequestOptions, RpcRoute } from "@alien-rpc/client";
 
-export const voidTest = {
-  path: "void",
-  method: "post",
-  arity: 1,
-  format: "json",
-} as RpcRoute<"void", (requestOptions?: RequestOptions) => Promise<undefined>>;
+export const voidTest: RpcRoute<
+  "void",
+  (requestOptions?: RequestOptions) => Promise<undefined>
+> = { path: "void", method: "post", arity: 1, format: "json" } as any;
 
 /**
  * server/api.ts

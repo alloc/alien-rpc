@@ -1,4 +1,3 @@
-import { Type } from '@alien-rpc/typebox'
 import { RequestContext } from '@hattip/compose'
 import { TObject, TSchema } from '@sinclair/typebox'
 import { JSON, Promisable } from './internal/types'
@@ -30,13 +29,11 @@ export type RouteMethod = 'get' | 'post'
 
 export type RouteResultFormat = 'json' | 'json-seq' | 'response'
 
-export type RouteIterator<
-  TParams extends object = Record<string, Type.JsonValue>,
-> = AsyncIterator<JSON, PaginationLinks<TParams> | null | void>
+export type RouteIterator<TParams extends object = Record<string, JSON>> =
+  AsyncIterator<JSON, PaginationLinks<TParams> | null | void>
 
-export type RouteResult<
-  TParams extends object = Record<string, Type.JsonValue>,
-> = Promisable<JSON | Response | RouteIterator<TParams> | void>
+export type RouteResult<TParams extends object = Record<string, JSON>> =
+  Promisable<JSON | Response | RouteIterator<TParams> | void>
 
 export type RouteHandler<
   TParams extends object = object,

@@ -17,20 +17,20 @@ export const getUserById = route.get("/users/:id", async ({ id }, {}) => {
  */
 import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
 
-export const getUserById = {
+export const getUserById: RpcRoute<
+  "users/:id",
+  (
+    params: RequestParams<{ id: string }, Record<string, never>>,
+    requestOptions?: RequestOptions,
+  ) => Promise<null | { id: number; name: string }>
+> = {
   path: "users/:id",
   method: "get",
   jsonParams: [],
   pathParams: ["id"],
   arity: 2,
   format: "json",
-} as RpcRoute<
-  "users/:id",
-  (
-    params: RequestParams<{ id: string }, Record<string, never>>,
-    requestOptions?: RequestOptions,
-  ) => Promise<null | { id: number; name: string }>
->;
+} as any;
 
 /**
  * server/api.ts

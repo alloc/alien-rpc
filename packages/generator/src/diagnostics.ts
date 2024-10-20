@@ -8,7 +8,11 @@ const reportDiagnostic = process.env.TEST
     }
   : console.warn
 
-export function reportDiagnostics(program: ts.Program, verbose?: boolean) {
+export function reportDiagnostics(
+  program: ts.Program,
+  verbose: boolean | undefined,
+  onModuleNotFound: (specifier: string, importer: ts.SourceFile) => void
+) {
   program.getGlobalDiagnostics().forEach(diagnostic => {
     reportDiagnostic(
       ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
@@ -43,6 +47,11 @@ export function reportDiagnostics(program: ts.Program, verbose?: boolean) {
         reportDiagnostic(
           `${message} (${diagnostic.file.fileName}:${line + 1}:${character + 1})`
         )
+
+        const specifierMatch = message.match(/Cannot find module '(.+)'/)
+        if (specifierMatch) {
+          onModuleNotFound(specifierMatch[1], diagnostic.file)
+        }
       } else {
         reportDiagnostic(message)
       }

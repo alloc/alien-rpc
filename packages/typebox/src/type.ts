@@ -1,7 +1,7 @@
-import { JsonValue } from './type/json'
+import { JsonValue } from '../../service/src/typebox/json'
 
 export * from '@sinclair/typebox/type'
-export * from './type/json'
+export * from '../../service/src/typebox/json'
 export * from './type/nullable'
 export * from './type/option'
 

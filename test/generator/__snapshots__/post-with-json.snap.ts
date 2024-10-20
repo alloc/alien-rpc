@@ -20,18 +20,13 @@ export const createUser = route.post(
  */
 import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
 
-export const createUser = {
-  path: "users",
-  method: "post",
-  arity: 2,
-  format: "json",
-} as RpcRoute<
+export const createUser: RpcRoute<
   "users",
   (
     params: RequestParams<Record<string, never>, { name: string }>,
     requestOptions?: RequestOptions,
   ) => Promise<number>
->;
+> = { path: "users", method: "post", arity: 2, format: "json" } as any;
 
 /**
  * server/api.ts

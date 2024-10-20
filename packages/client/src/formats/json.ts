@@ -1,6 +1,6 @@
 import { RpcResultFormatter } from '../types.js'
 
-type JSON = { [key: string]: JSON } | readonly JSON[] | JSONValue
+type JSON = { [key: string]: JSON | undefined } | readonly JSON[] | JSONValue
 type JSONValue = string | number | boolean | null
 
 export default {

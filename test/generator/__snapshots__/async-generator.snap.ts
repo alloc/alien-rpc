@@ -17,16 +17,16 @@ export const streamNumbers = route.get("/numbers", async function* () {
 import { RequestOptions, ResponseStream, RpcRoute } from "@alien-rpc/client";
 import jsonSeq from "@alien-rpc/client/formats/json-seq";
 
-export const streamNumbers = {
+export const streamNumbers: RpcRoute<
+  "numbers",
+  (requestOptions?: RequestOptions) => ResponseStream<1 | 2 | 3>
+> = {
   path: "numbers",
   method: "get",
   jsonParams: [],
   arity: 1,
   format: jsonSeq,
-} as RpcRoute<
-  "numbers",
-  (requestOptions?: RequestOptions) => ResponseStream<1 | 2 | 3>
->;
+} as any;
 
 /**
  * server/api.ts

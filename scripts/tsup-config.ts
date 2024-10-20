@@ -32,9 +32,12 @@ function readPackage(pkgPath: string) {
   if (!metadata.exports) {
     throw new Error(`Package ${metadata.name} has no exports`)
   }
+
   let dts = false
-  const entryGlobs = Object.values(metadata.exports as PackageExports).flatMap(
-    function extractEntries(value): string | string[] {
+
+  const entryGlobs = Object.values(metadata.exports as PackageExports)
+    .concat(metadata.bin ? Object.values(metadata.bin) : [])
+    .flatMap(function extractEntries(value): string | string[] {
       if (!isString(value)) {
         if ('types' in value) {
           dts = true
@@ -42,8 +45,8 @@ function readPackage(pkgPath: string) {
         return Object.values(value).flatMap(extractEntries)
       }
       return value.replace('dist/', 'src/').replace(/.js$/, '.ts')
-    }
-  )
+    })
+
   return {
     entry: globSync(entryGlobs, {
       cwd: path.dirname(pkgPath),

@@ -44,30 +44,32 @@ async function* generateJsonTextSequence(
   const yieldSchema = (route.responseSchema as TAsyncIterator).items
   const encoder = new TextEncoder()
 
-  while (true) {
-    const iteration = await iterator.next()
+  try {
+    while (true) {
+      const iteration = await iterator.next()
 
-    let value: JSON
-    if (iteration.done) {
-      const links = iteration.value
-      if (!links) {
+      let value: JSON
+      if (iteration.done) {
+        const links = iteration.value
+        if (!links) {
+          return
+        }
+
+        value = {
+          $prev: links.prev ? resolvePaginationLink(ctx.url, links.prev) : null,
+          $next: links.next ? resolvePaginationLink(ctx.url, links.next) : null,
+        }
+      } else {
+        value = Value.Encode(yieldSchema, iteration.value)
+      }
+
+      yield encoder.encode('\u001E') // ASCII record separator
+      yield encoder.encode(JSON.stringify(value))
+      yield encoder.encode('\n')
+
+      if (iteration.done) {
         return
       }
-
-      value = {
-        $prev: links.prev ? resolvePaginationLink(ctx.url, links.prev) : null,
-        $next: links.next ? resolvePaginationLink(ctx.url, links.next) : null,
-      }
-    } else {
-      value = Value.Encode(yieldSchema, iteration.value)
     }
-
-    yield encoder.encode('\u001E') // ASCII record separator
-    yield encoder.encode(JSON.stringify(value))
-    yield encoder.encode('\n')
-
-    if (iteration.done) {
-      return
-    }
-  }
+  } catch (error: any) {}
 }

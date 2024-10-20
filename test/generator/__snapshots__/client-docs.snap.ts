@@ -26,13 +26,16 @@ import { RequestOptions, RpcRoute } from "@alien-rpc/client";
  * @returns "foo"
  * @see https://en.wikipedia.org/wiki/Foo_(disambiguation)
  */
-export const foo = {
+export const foo: RpcRoute<
+  "foo",
+  (requestOptions?: RequestOptions) => Promise<"foo">
+> = {
   path: "foo",
   method: "get",
   jsonParams: [],
   arity: 1,
   format: "json",
-} as RpcRoute<"foo", (requestOptions?: RequestOptions) => Promise<"foo">>;
+} as any;
 
 /**
  * server/api.ts

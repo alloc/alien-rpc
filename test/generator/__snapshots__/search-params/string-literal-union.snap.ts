@@ -31,13 +31,7 @@ export const getSortedPosts = route.get("/posts", ({}, opts: PostSort) => {
  */
 import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
 
-export const getSortedPosts = {
-  path: "posts",
-  method: "get",
-  jsonParams: [],
-  arity: 2,
-  format: "json",
-} as RpcRoute<
+export const getSortedPosts: RpcRoute<
   "posts",
   (
     params: RequestParams<
@@ -46,7 +40,13 @@ export const getSortedPosts = {
     >,
     requestOptions?: RequestOptions,
   ) => Promise<Post[]>
->;
+> = {
+  path: "posts",
+  method: "get",
+  jsonParams: [],
+  arity: 2,
+  format: "json",
+} as any;
 
 /**
  * server/api.ts

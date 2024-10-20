@@ -44,14 +44,7 @@ export const getPost = route.get(
  */
 import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
 
-export const getPost = {
-  path: "posts/:id",
-  method: "get",
-  jsonParams: [],
-  pathParams: ["id"],
-  arity: 2,
-  format: "json",
-} as RpcRoute<
+export const getPost: RpcRoute<
   "posts/:id",
   (
     params: RequestParams<{ id: string }, Record<string, never>>,
@@ -62,7 +55,14 @@ export const getPost = {
     body: string;
     author: { id: string; name: string };
   }>
->;
+> = {
+  path: "posts/:id",
+  method: "get",
+  jsonParams: [],
+  pathParams: ["id"],
+  arity: 2,
+  format: "json",
+} as any;
 
 /**
  * server/api.ts

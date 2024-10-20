@@ -1,6 +1,10 @@
 export type Promisable<T> = T | Promise<T>
 
-export type JSON = { [key: string]: JSON } | readonly JSON[] | JSONValue
+export type JSON =
+  | { [key: string]: JSON | undefined }
+  | readonly JSON[]
+  | JSONValue
+
 export type JSONValue = string | number | boolean | null
 
 // https://github.com/microsoft/TypeScript/issues/14829#issuecomment-504042546

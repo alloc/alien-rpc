@@ -1,5 +1,5 @@
 import { juri } from '@alien-rpc/juri'
-import { Static, Type } from '@alien-rpc/typebox'
+import { Static, Type } from '@sinclair/typebox'
 import { ParamData } from 'path-to-regexp'
 import { isArray, isObject, isString } from 'radashi'
 import {
@@ -7,6 +7,7 @@ import {
   parseRoutePathParams,
   renderRoutePath,
 } from './routeMetadata'
+import { JsonValue } from './typebox/json'
 import type { InferRouteParams } from './types'
 
 // The object created by the `get` and `post` functions.
@@ -19,7 +20,7 @@ const RouteDefinition = Type.Object(
   { additionalProperties: false }
 )
 
-const PaginationLinkParams = Type.Record(Type.String(), Type.Any())
+const PaginationLinkParams = Type.Record(Type.String(), JsonValue())
 
 /**
  * If a pagination link is defined without a route, the current route is

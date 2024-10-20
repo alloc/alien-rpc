@@ -35,7 +35,7 @@ export type Client<
 
 export function defineClient<API extends Record<string, RpcRoute>>(
   routes: API,
-  options: ClientOptions
+  options: ClientOptions = {}
 ): Client<API> {
   const { resultCache = new Map(), ...defaults } = options
   const { hooks } = defaults

@@ -1,15 +1,15 @@
 import { TypeGuard } from '@sinclair/typebox'
 import * as Type from '@sinclair/typebox/type'
 import {
-    SchemaOptions,
-    TAny,
-    TNull,
-    TOptional,
-    TSchema,
-    TUndefined,
-    TUnion,
+  SchemaOptions,
+  TAny,
+  TNull,
+  TOptional,
+  TSchema,
+  TUndefined,
+  TUnion,
 } from '@sinclair/typebox/type'
-import { TJsonProperties } from './json'
+import { TJsonProperties } from '../../../service/src/typebox/json'
 
 export const Options = <T extends TJsonProperties>(properties: T) =>
   Type.Partial(Type.Object(properties))

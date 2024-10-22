@@ -10,6 +10,11 @@ export function transformRequestSchema(route: Route) {
     // JSON request body doesn't need custom handling.
     return route.requestSchema
   }
+  if (KindGuard.IsRecord(route.requestSchema)) {
+    // The only supported record type is Record<string, never> which
+    // doesn't need to be transformed.
+    return route.requestSchema
+  }
   const properties = Object.entries(route.requestSchema.properties)
   if (properties.length === 0) {
     return route.requestSchema

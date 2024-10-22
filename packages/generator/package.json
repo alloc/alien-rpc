@@ -12,7 +12,7 @@
     "@ts-morph/bootstrap": "^0.25.0",
     "@ts-morph/common": "^0.25.0",
     "debug": "^4.3.7",
-    "jumpgen": "0.1.0-beta.12"
+    "jumpgen": "0.1.0-beta.13"
   },
   "peerDependencies": {
     "@sinclair/typebox": "*",
@@ -26,8 +26,8 @@
   },
   "scripts": {
     "dev": "watchlist src -- pnpm build:dev",
-    "build": "tsup --treeshake=smallest",
-    "build:dev": "tsup --sourcemap --no-treeshake",
+    "build": "rimraf dist && PROD=1 tsup --treeshake=smallest",
+    "build:dev": "rimraf dist && tsup --sourcemap --no-treeshake",
     "lint": "tsc -p . --outDir node_modules/.tmp"
   }
 }

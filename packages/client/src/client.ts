@@ -45,6 +45,7 @@ export function defineClient<API extends Record<string, RpcRoute>>(
     resultCache,
     ky.create({
       ...defaults,
+      prefixUrl: defaults.prefixUrl ?? '/',
       hooks: {
         ...hooks,
         beforeError: mergeHooks(hooks?.beforeError, extendHTTPError, 'start'),
@@ -118,7 +119,13 @@ function createRouteFunction(
   ) => {
     let params: Record<string, any> | undefined
     if (route.arity === 2 && arg != null) {
-      params = isObject(arg) ? arg : { [pathParams[0]]: arg }
+      if (isObject(arg)) {
+        params = arg
+      } else if (pathParams.length) {
+        params = { [pathParams[0]]: arg }
+      } else {
+        throw new Error('No path parameters found for route: ' + route.path)
+      }
     }
 
     const path = buildPath ? buildPath(params!) : route.path

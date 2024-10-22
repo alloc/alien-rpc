@@ -417,6 +417,9 @@ function resolveImportPath(fromPath: string, toPath: string) {
 }
 
 function arePropertiesOptional(objectLiteralType: string): boolean {
+  if (objectLiteralType === 'Record<string, never>') {
+    return true
+  }
   const typeNode = parseTypeLiteral(objectLiteralType)
   if (ts.isTypeLiteralNode(typeNode)) {
     return typeNode.members.every(member => {

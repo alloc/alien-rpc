@@ -1,5 +1,5 @@
 import { RequestContext } from '@hattip/compose'
-import { TObject, TSchema } from '@sinclair/typebox'
+import { TObject, TRecord, TSchema } from '@sinclair/typebox'
 import { JSON, Promisable } from './internal/types'
 import { PaginationLinks } from './pagination'
 
@@ -64,10 +64,10 @@ export interface Route<TDefinition extends RouteDefinition = RouteDefinition> {
   path: string
   import: () => Promise<TDefinition>
   /** Exists on GET routes only. */
-  jsonParams?: string[]
-  pathParams?: string[]
+  jsonParams?: readonly string[]
+  pathParams?: readonly string[]
   format: RouteResultFormat
-  requestSchema: TObject
+  requestSchema: TObject | TRecord
   responseSchema: TSchema
 }
 

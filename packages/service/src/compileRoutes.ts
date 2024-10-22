@@ -4,10 +4,13 @@ import { ValueError } from '@sinclair/typebox/errors'
 import { compileRoute } from './compileRoute.js'
 import { Route } from './types'
 
-export function compileRoutes(routes: Route[]) {
+export function compileRoutes(
+  routes: readonly Route[],
+  options: { returnNotFound?: boolean } = {}
+) {
   const compiledRoutes = routes.map(compileRoute)
 
-  return async (ctx: RequestContext) => {
+  return async (ctx: RequestContext): Promise<Response | undefined> => {
     const { url, request } = ctx
     const isOptionsRequest = request.method === 'options'
 
@@ -69,6 +72,10 @@ export function compileRoutes(routes: Route[]) {
             'Access-Control-Allow-Origin': allowOrigin || '',
           },
         })
+      }
+
+      if (options.returnNotFound) {
+        return new Response(null, { status: 404 })
       }
     } catch (error: any) {
       console.error(error)

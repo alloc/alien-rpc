@@ -21,6 +21,7 @@
     "prettier": "^3.2.5",
     "tinyglobby": "^0.2.9",
     "tinyrun": "^1.0.1",
+    "tinyspawn": "^1.3.3",
     "tsup": "^8.0.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.2"
@@ -33,8 +34,7 @@
   "prettier": "@alloc/prettier-config",
   "scripts": {
     "dev": "pnpm --stream m run build:dev && pnpm --parallel run dev",
-    "prebuild": "rimraf dist && pnpm --stream m run typegen",
-    "build": "tsup --treeshake=smallest"
+    "build": "pnpm --stream m run build"
   },
   "pnpm": {
     "overrides": {

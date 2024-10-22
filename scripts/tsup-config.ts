@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { diff, isString } from 'radashi'
+import { diff, isString, noop, sift } from 'radashi'
 import { globSync } from 'tinyglobby'
+import spawn from 'tinyspawn'
 import { defineConfig, Options } from 'tsup'
 
 // https://github.com/egoist/tsup/issues/1233
@@ -13,13 +14,17 @@ function defineBuild(importer: string, overrides?: Options) {
 
   return defineConfig({
     format: ['esm'],
-    dts: pkg.dts,
     splitting: pkg.entry.length > 1,
     ...overrides,
+    dts: !!process.env.PROD && pkg.dts,
     entry: pkg.entry,
     outDir: pkg.outDir,
     external: pkg.dependencies,
-    plugins: (overrides?.plugins || []).concat(deleteOldFiles(pkg)),
+    plugins: sift([
+      overrides?.plugins,
+      deleteOldFiles(pkg),
+      !process.env.PROD && pkg.dts && dtsPlugin(pkg),
+    ]).flat(),
   })
 }
 
@@ -35,6 +40,10 @@ function readPackage(pkgPath: string) {
 
   let dts = false
 
+  type PackageExports = {
+    [k: string]: string | PackageExports
+  }
+
   const entryGlobs = Object.values(metadata.exports as PackageExports)
     .concat(metadata.bin ? Object.values(metadata.bin) : [])
     .flatMap(function extractEntries(value): string | string[] {
@@ -48,6 +57,7 @@ function readPackage(pkgPath: string) {
     })
 
   return {
+    root: path.dirname(pkgPath),
     entry: globSync(entryGlobs, {
       cwd: path.dirname(pkgPath),
     }),
@@ -93,6 +103,46 @@ function deleteOldFiles(pkg: Package): Plugin {
   }
 }
 
-type PackageExports = {
-  [k: string]: string | PackageExports
+function dtsPlugin(pkg: Package): Plugin {
+  let tscProcess: ReturnType<typeof spawn>
+
+  return {
+    name: 'dts',
+    buildStart() {
+      tscProcess = spawn(
+        'tsc',
+        [
+          '-p',
+          '.',
+          '--emitDeclarationOnly',
+          '--declarationMap',
+          '--outDir',
+          pkg.outDir,
+        ],
+        {
+          cwd: pkg.root,
+        }
+      )
+      tscProcess.catch(noop)
+    },
+    async buildEnd({ writtenFiles }) {
+      console.log('Emitting type declarations...')
+      await tscProcess.catch(error => {
+        if ('stdout' in error) {
+          throw new Error(error.stdout)
+        }
+        throw error
+      })
+      const outputs = globSync(pkg.outDir + '/**/*.d.ts', {
+        cwd: pkg.root,
+      })
+      for (const name of outputs) {
+        const stat = fs.statSync(path.join(pkg.root, name))
+        writtenFiles.push({
+          name,
+          size: stat.size,
+        })
+      }
+    },
+  }
 }

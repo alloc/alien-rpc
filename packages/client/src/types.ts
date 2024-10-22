@@ -109,11 +109,20 @@ export type RequestParams<
   TSearchParams extends object,
 > =
   | MergeParams<TPathParams, TSearchParams>
-  | (object extends TSearchParams
+  | (HasNoRequiredKeys<TSearchParams> extends true
       ? HasSingleKey<TPathParams> extends true
-        ? ExcludeObject<TPathParams[keyof TPathParams]>
+        ? Exclude<
+            ExcludeObject<TPathParams[keyof TPathParams]>,
+            null | undefined
+          >
         : never
       : never)
+
+type HasNoRequiredKeys<T extends object> = object extends T
+  ? true
+  : Record<string, never> extends T
+    ? true
+    : false
 
 /**
  * Exclude object types from the type, except for arrays.

@@ -4,6 +4,7 @@ import {
   TLiteral,
   TOptional,
   TSchema,
+  TUndefined,
   TUnsafe,
   Type,
 } from '@sinclair/typebox'
@@ -23,7 +24,7 @@ export const JsonValue = (options?: SchemaOptions): TUnsafe<JsonValue> =>
   Type.Recursive(JsonValue => {
     return Type.Union([
       ...primitiveTypes,
-      Type.Record(Type.String(), JsonValue),
+      Type.Record(Type.String(), Type.Union([JsonValue, Type.Undefined()])),
       Type.Array(JsonValue),
     ])
   }, options) as any
@@ -56,16 +57,16 @@ export type TJsonPrimitive =
 
 export type TJsonObject = TSchema & {
   properties: TJsonProperties
-  static: { [key: string]: JsonValue }
+  static: { [key: string]: JsonValue | undefined }
 }
 
 export type TJsonProperties = {
-  [key: string]: TJsonValue | TOptional<TJsonValue>
+  [key: string]: TJsonValue | TOptional<TJsonValue> | TUndefined
 }
 
 export type TJsonArray = TSchema & {
   items: TJsonValue
-  static: JsonValue[]
+  static: readonly JsonValue[]
 }
 
 export type TJsonUnion = TSchema & {

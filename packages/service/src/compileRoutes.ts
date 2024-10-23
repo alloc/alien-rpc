@@ -1,6 +1,9 @@
 import { RequestContext } from '@hattip/compose'
-import { TypeBoxError } from '@sinclair/typebox'
 import { ValueError } from '@sinclair/typebox/errors'
+import {
+  TransformDecodeCheckError,
+  TransformDecodeError,
+} from '@sinclair/typebox/value'
 import { compileRoute } from './compileRoute.js'
 import { Route } from './types'
 
@@ -12,7 +15,7 @@ export function compileRoutes(
 
   return async (ctx: RequestContext): Promise<Response | undefined> => {
     const { url, request } = ctx
-    const isOptionsRequest = request.method === 'options'
+    const isOptionsRequest = request.method === 'OPTIONS'
 
     type RequestStep = 'match' | 'decode' | 'respond'
 
@@ -88,9 +91,14 @@ export function compileRoutes(
       }
 
       // Check for a ValueError from TypeBox.
-      if (step === 'decode' && isValueError(error)) {
-        const { message, path, value } = firstLeafError(error)
-        return new ErrorResponse(400, { message, path, value })
+      if (step === 'decode') {
+        if (isDecodeError(error)) {
+          error = error.error
+        }
+        if (isDecodeCheckError(error)) {
+          const { message, path, value } = firstLeafError(error.error)
+          return new ErrorResponse(400, { message, path, value })
+        }
       }
 
       // Otherwise, it's a malformed request.
@@ -111,8 +119,12 @@ class ErrorResponse extends Response {
   }
 }
 
-function isValueError(error: any): error is ValueError {
-  return error instanceof TypeBoxError && 'errors' in error
+function isDecodeError(error: any): error is TransformDecodeError {
+  return error instanceof TransformDecodeError
+}
+
+function isDecodeCheckError(error: any): error is TransformDecodeCheckError {
+  return error instanceof TransformDecodeCheckError
 }
 
 function firstLeafError(error: ValueError) {

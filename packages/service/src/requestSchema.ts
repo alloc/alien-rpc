@@ -1,7 +1,12 @@
 import { juri } from '@alien-rpc/juri'
 import { KindGuard, TSchema, Type } from '@sinclair/typebox'
 import { SchemaOptions, TUnion } from '@sinclair/typebox/type'
-import { Value } from '@sinclair/typebox/value'
+import {
+  TransformDecodeCheckError,
+  TransformEncodeCheckError,
+  Value,
+  ValueErrorType,
+} from '@sinclair/typebox/value'
 import { isString, pick } from 'radashi'
 import { Route } from './types'
 
@@ -22,8 +27,12 @@ export function transformRequestSchema(route: Route) {
   return Type.Object(
     Object.fromEntries(
       properties.map(entry => {
-        const type = entry[1]
-        entry[1] = transformQueryParameter(type) || type
+        const propertySchema = entry[1]
+        entry[1] =
+          preserveOptional(
+            propertySchema,
+            transformQueryParameter(propertySchema)
+          ) || propertySchema
         return entry
       })
     ),
@@ -31,41 +40,57 @@ export function transformRequestSchema(route: Route) {
   )
 }
 
-function transformQueryParameter(type: TSchema): TSchema | undefined {
+function transformQueryParameter(schema: TSchema): TSchema | undefined {
   // Raw strings are URL encoded.
-  if (KindGuard.IsString(type)) {
+  if (KindGuard.IsString(schema)) {
     return
   }
 
-  if (KindGuard.IsUnion(type)) {
+  if (KindGuard.IsUnion(schema)) {
     // Raw strings are URL encoded.
-    if (unionEvery(type, KindGuard.IsString)) {
+    if (unionEvery(schema, KindGuard.IsString)) {
       return
     }
 
     return Type.Union(
-      type.anyOf.map(
+      schema.anyOf.map(
         variant =>
           transformQueryParameter(variant) ||
           // When a string type is wrapped in a union with non-string
           // types, it must be JSON encoded.
           JsonTransform(variant)
       ),
-      extractSchemaOptions(type)
+      extractSchemaOptions(schema)
     )
   }
 
-  if (isJuriEncoded(type)) {
-    return JuriObjectTransform(type)
+  if (isJuriEncoded(schema)) {
+    return JuriObjectTransform(schema)
   }
 
   // Root-level primitives are JSON encoded. Even though JSON is less
   // compact than JURI encoding, it's more human-readable and faster.
-  return JsonTransform(type)
+  return JsonTransform(schema)
+}
+
+/**
+ * If the given `schema` is an optional property, then the `newSchema` must
+ * also be optional.
+ */
+function preserveOptional(schema: TSchema, newSchema: TSchema | undefined) {
+  if (newSchema && KindGuard.IsOptional(schema)) {
+    return Type.Optional(newSchema)
+  }
+  return newSchema
 }
 
 function JuriObjectTransform(schema: TSchema) {
-  return Type.Transform(Type.String({ pattern: '^\\(' }))
+  return Type.Transform(
+    Type.String({
+      ...extractSchemaOptions(schema),
+      pattern: '^\\(',
+    })
+  )
     .Decode(value => {
       return Value.Decode(schema, juri.decode(value))
     })
@@ -77,10 +102,35 @@ function JuriObjectTransform(schema: TSchema) {
 function JsonTransform(schema: TSchema) {
   return Type.Transform(Type.String(extractSchemaOptions(schema)))
     .Decode(value => {
-      return Value.Decode(schema, JSON.parse(value))
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(value)
+      } catch (error: any) {
+        throw new TransformDecodeCheckError(schema, value, {
+          type: ValueErrorType.String,
+          message: error.message,
+          errors: [],
+          schema,
+          path: '/',
+          value,
+        })
+      }
+      return Value.Decode(schema, parsed)
     })
     .Encode(value => {
-      return JSON.stringify(Value.Encode(schema, value))
+      value = Value.Encode(schema, value)
+      try {
+        return JSON.stringify(value)
+      } catch (error: any) {
+        throw new TransformEncodeCheckError(schema, value, {
+          type: ValueErrorType.String,
+          message: error.message,
+          errors: [],
+          schema,
+          path: '/',
+          value,
+        })
+      }
     })
 }
 

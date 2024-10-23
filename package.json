@@ -13,6 +13,7 @@
     "@alloc/fast-rimraf": "^1.0.8",
     "@alloc/prettier-config": "^1.0.0",
     "@hattip/adapter-test": "^0.0.48",
+    "@hattip/compose": "^0.0.48",
     "@ts-morph/common": "^0.25.0",
     "@types/node": "^22.7.4",
     "@types/picomatch": "^3.0.1",
@@ -33,7 +34,7 @@
   ],
   "prettier": "@alloc/prettier-config",
   "scripts": {
-    "dev": "pnpm --stream m run build:dev && pnpm --parallel run dev",
+    "dev": "pnpm --parallel run clean && pnpm --stream m run build:dev && pnpm --parallel run dev",
     "build": "pnpm --stream m run build"
   },
   "pnpm": {

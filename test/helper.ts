@@ -23,10 +23,10 @@ export type TestGenerator = {
 
 export type TestContext = ReturnType<typeof createTestContext>
 
-export function createTestContext() {
+export function createTestContext(config: { tempDir?: boolean } = {}) {
   const generators: Record<string, TestGenerator> = {}
 
-  function get(fixturesDir: string, overrides?: Partial<Options>) {
+  function get(root: string, overrides?: Partial<Options>) {
     const options: Options = {
       include: ['routes.ts'],
       outDir: '.',
@@ -34,12 +34,17 @@ export function createTestContext() {
     }
 
     const optionsHash = getOptionsHash(options)
-    const root = join(fixturesDir, 'tmp-' + optionsHash)
+    if (config.tempDir !== false) {
+      root = join(root, 'tmp-' + optionsHash)
+    }
 
     let generator = generators[optionsHash]
     if (!generator) {
-      rmSync(root, { recursive: true, force: true })
-      mkdirSync(root)
+      if (config.tempDir !== false) {
+        rmSync(root, { recursive: true, force: true })
+        mkdirSync(root)
+      }
+
       writeFileSync(
         join(root, 'tsconfig.json'),
         JSON.stringify({

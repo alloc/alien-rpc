@@ -15,10 +15,13 @@ export function compileRoute(route: Route) {
         : await request.json()
     )
 
+  console.log(route.method, route.path)
+  console.dir(requestSchema, { depth: null })
+
   const responder = supportedResponders[route.format](route)
 
   return {
-    method: route.method,
+    method: route.method.toUpperCase(),
     /**
      * Match the request path against the route's path pattern.
      */

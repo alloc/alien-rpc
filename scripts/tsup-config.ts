@@ -137,11 +137,17 @@ function dtsPlugin(pkg: Package): Plugin {
         cwd: pkg.root,
       })
       for (const name of outputs) {
+        // Delete files older than 2 seconds. Add the rest to writtenFiles,
+        // so they get logged.
         const stat = fs.statSync(path.join(pkg.root, name))
-        writtenFiles.push({
-          name,
-          size: stat.size,
-        })
+        if (stat.mtimeMs > Date.now() - 2000) {
+          writtenFiles.push({
+            name,
+            size: stat.size,
+          })
+        } else {
+          fs.rmSync(path.join(pkg.root, name))
+        }
       }
     },
   }

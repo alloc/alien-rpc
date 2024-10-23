@@ -55,9 +55,13 @@ export function defineClient<API extends Record<string, RpcRoute>>(
 }
 
 async function extendHTTPError(error: HTTPError) {
-  const { response } = error
+  const { request, response } = error
   if (response.headers.get('Content-Type') === 'application/json') {
-    Object.assign(error, await response.json())
+    const errorInfo = await response.json()
+    Object.assign(error, errorInfo)
+    if ('path' in errorInfo) {
+      error.message += `\n     Path: ${errorInfo.path}\n    Value: ${errorInfo.value}\n  Request: ${request.method} ${request.url}`
+    }
   }
   return error
 }
@@ -128,32 +132,26 @@ function createRouteFunction(
       }
     }
 
-    const path = buildPath ? buildPath(params!) : route.path
+    let path = buildPath ? buildPath(params!) : route.path
 
     if (route.method === 'get') {
-      let cacheKey = path
-
-      const searchParams = encodeJsonSearch(
+      // The search params are sorted to ensure consistent cache keys.
+      const search = encodeJsonSearch(
         params as Record<string, any>,
         pathParams,
         route.jsonParams!
       )
-      if (searchParams) {
-        options ||= {}
-        options.searchParams = searchParams
-
-        // The search params are sorted to ensure consistent cache keys.
-        cacheKey += '?' + searchParams.toString()
+      if (search) {
+        path += '?' + search
       }
-
-      if (responseCache.has(cacheKey)) {
-        return format.mapCachedResult(responseCache.get(cacheKey), client)
+      if (responseCache.has(path)) {
+        return format.mapCachedResult(responseCache.get(path), client)
       }
     }
 
     const promisedResponse = request(path, {
       ...options,
-      ...(route.method !== 'get' && { json: params }),
+      json: route.method !== 'get' ? params : undefined,
       method: route.method,
     })
 
@@ -196,7 +194,7 @@ function encodeJsonSearch(
   if (!params) {
     return
   }
-  let searchParams: URLSearchParams | undefined
+  let result = ''
   for (const key of Object.keys(params).sort()) {
     if (pathParams.includes(key)) {
       continue
@@ -205,17 +203,15 @@ function encodeJsonSearch(
     if (value == null) {
       continue
     }
-    searchParams ||= new URLSearchParams()
-    searchParams.append(
-      key,
+    result += `${result ? '&' : ''}${key}=${
       !isString(value) || jsonParams.includes(key)
         ? isArray(value) || isObject(value)
           ? juri.encode(value)
           : JSON.stringify(value)
         : value
-    )
+    }`
   }
-  return searchParams
+  return result
 }
 
 function isObject(arg: unknown) {

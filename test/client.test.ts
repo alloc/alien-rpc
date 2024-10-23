@@ -1,8 +1,8 @@
 import { defineClient } from '@alien-rpc/client'
 import { compileRoutes } from '@alien-rpc/service'
 import { createTestClient, CreateTestClientArgs } from '@hattip/adapter-test'
-import { copyFileSync, globSync, mkdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { compose } from '@hattip/compose'
+import { join } from 'node:path'
 import { createTestContext, TestContext } from './helper.js'
 
 describe.concurrent('client', async () => {
@@ -12,24 +12,9 @@ describe.concurrent('client', async () => {
     const fixturesDir = join(__dirname, 'client/__fixtures__')
     const testDir = join(fixturesDir, 'kitchen-sink')
 
-    generators = createTestContext()
-    const generator = generators.get(fixturesDir)
-    generator.resetFiles(testDir)
+    generators = createTestContext({ tempDir: false })
+    const generator = generators.get(testDir)
     await generator.start()
-
-    // Copy the generated files back to the test directory
-    const outputFiles = globSync(['tsconfig.json', '**/api.ts'], {
-      cwd: generator.root,
-    })
-    for (const file of outputFiles) {
-      const outFile = join(testDir, file)
-      mkdirSync(dirname(outFile), { recursive: true })
-      copyFileSync(join(generator.root, file), outFile)
-    }
-  })
-
-  afterAll(async () => {
-    // await generators.clear()
   })
 
   test('route with no parameters', async () => {
@@ -57,6 +42,19 @@ describe.concurrent('client', async () => {
     result = await client.getAllPosts()
     expect(result).toEqual([0, 1, 2, 3, 4])
   })
+
+  test('route with a complex search parameter', async () => {
+    const client = await getTestClient()
+
+    let result = await client.getLength({ val: [1, 2, 3] })
+    expect(result).toBe(3)
+
+    result = await client.getLength({ val: 'hello' })
+    expect(result).toBe(5)
+
+    result = await client.getLength({ val: { length: 0 } })
+    expect(result).toBe(0)
+  })
 })
 
 async function getTestClient() {
@@ -67,6 +65,8 @@ async function getTestClient() {
     './client/__fixtures__/kitchen-sink/server/api.js'
   )
 
+  console.log(clientRoutes)
+
   const handler = compileRoutes(serverRoutes, {
     returnNotFound: true,
   })
@@ -74,7 +74,7 @@ async function getTestClient() {
   return defineClient(clientRoutes, {
     prefixUrl: 'http://example.com/',
     fetch: createTestClient({
-      handler: handler as CreateTestClientArgs['handler'],
+      handler: compose(handler) as CreateTestClientArgs['handler'],
     }),
   })
 }

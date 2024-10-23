@@ -39,6 +39,9 @@ importers:
       '@hattip/adapter-test':
         specifier: ^0.0.48
         version: 0.0.48
+      '@hattip/compose':
+        specifier: ^0.0.48
+        version: 0.0.48
       '@ts-morph/common':
         specifier: ^0.25.0
         version: 0.25.0

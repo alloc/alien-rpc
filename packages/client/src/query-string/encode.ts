@@ -1,3 +1,5 @@
+type CodableObject = { [key: string]: CodableValue }
+
 type CodableValue =
   | string
   | number
@@ -6,10 +8,7 @@ type CodableValue =
   | null
   | undefined
   | CodableObject
-  | CodableArray
-
-type CodableObject = { [key: string]: CodableValue }
-type CodableArray = CodableValue[]
+  | readonly CodableValue[]
 
 export type EncodeOptions = {
   /**
@@ -49,10 +48,11 @@ function encodeValue(value: CodableValue): string {
   ) {
     return String(value)
   }
-  if (typeof value === 'bigint') {
-  }
   if (typeof value === 'string') {
     return encodeString(value)
+  }
+  if (typeof value === 'bigint') {
+    return String(value) + 'n'
   }
   if (Array.isArray(value)) {
     return encodeArray(value)

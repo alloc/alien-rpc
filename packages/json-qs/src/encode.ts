@@ -2,15 +2,8 @@ import { isArray } from 'radashi'
 import { KEY_RESERVED_CHARS, keyReservedCharEncoder } from './reserved.js'
 import { CodableObject, CodableValue } from './types.js'
 
-const alwaysTrue = () => true
-
 export type EncodeOptions = {
   skippedKeys?: string[]
-  /**
-   * Called when a string is encountered for a parameter value. Return
-   * falsy to use `encodeURIComponent` instead of the default encoding.
-   */
-  shouldEncodeString?: (key: string) => boolean
 }
 
 export function encode(obj: CodableObject, options?: EncodeOptions): string {
@@ -19,7 +12,6 @@ export function encode(obj: CodableObject, options?: EncodeOptions): string {
     '&',
     '=',
     encodeURIComponent,
-    options?.shouldEncodeString,
     options?.skippedKeys
   )
 }
@@ -29,7 +21,6 @@ function encodeProperties(
   separator: string,
   delimiter: string,
   encodeKey: (key: string) => string,
-  shouldEncodeString: (key: string) => boolean = alwaysTrue,
   skippedKeys?: string[]
 ): string {
   let result = ''
@@ -38,7 +29,7 @@ function encodeProperties(
       continue
     }
     if (obj[key] !== undefined) {
-      result += `${result ? separator : ''}${encodeKey(key)}${delimiter}${typeof obj[key] !== 'string' || shouldEncodeString(key) ? encodeValue(obj[key]) : encodeURIComponent(obj[key])}`
+      result += `${result ? separator : ''}${encodeKey(key)}${delimiter}${encodeValue(obj[key])}`
     }
   }
   return result

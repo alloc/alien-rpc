@@ -2,29 +2,12 @@
 import { keyReservedCharDecoder } from './reserved.js'
 import { CodableObject, CodableValue } from './types.js'
 
-const alwaysTrue = () => true
-
-export type DecodeOptions = {
-  /**
-   * Called when a string value is encountered.
-   * Return falsy to use `decodeURIComponent` instead of the default
-   * decoding.
-   */
-  shouldDecodeString?: (key: string) => boolean
-}
-
-export function decode(
-  input: URLSearchParams,
-  options?: DecodeOptions
-): CodableObject {
-  const shouldDecodeString = options?.shouldDecodeString ?? alwaysTrue
+export function decode(input: URLSearchParams): CodableObject {
   const result: CodableObject = {}
   let key: string | undefined
-  let value: string
   try {
     for (key of input.keys()) {
-      value = input.get(key)!
-      result[key] = shouldDecodeString(key) ? parse(value) : value
+      result[key] = parse(input.get(key)!)
     }
   } catch (error: any) {
     if (key !== undefined) {

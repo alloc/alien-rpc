@@ -181,7 +181,7 @@ export default (options: Options) =>
           ? `Type.Any()`
           : generateRuntimeValidator(`type Response = ${route.resolvedResult}`)
 
-      let jsonEncodedParams: string[] | undefined
+      let stringParams: string[] | undefined
 
       if (route.resolvedMethod === 'get') {
         const { Type, KindGuard } = await import('@sinclair/typebox')
@@ -190,18 +190,15 @@ export default (options: Options) =>
          * Find a schema that matches the predicate. Recurse into any
          * encountered union schemas.
          */
-        const reduceTypeUnion = <T>(
+        const forEachTypeInUnion = (
           schema: TSchema,
-          reduce: (currentValue: T, schema: TSchema) => T,
-          currentValue: T
-        ): T =>
+          forEach: (schema: TSchema) => void
+        ): void =>
           KindGuard.IsUnion(schema)
-            ? schema.anyOf.reduce(
-                (currentValue, variant) =>
-                  reduceTypeUnion(variant, reduce, currentValue),
-                currentValue
+            ? schema.anyOf.forEach(variant =>
+                forEachTypeInUnion(variant, forEach)
               )
-            : reduce(currentValue, schema)
+            : forEach(schema)
 
         const isStringType = (schema: TSchema): boolean =>
           isString(schema.type) && schema.type === 'string'
@@ -213,13 +210,13 @@ export default (options: Options) =>
           'return ' + requestSchemaDecl
         )(Type) as TObject
 
-        jsonEncodedParams = []
+        stringParams = []
 
         for (const key in requestSchema.properties) {
           const propertySchema = requestSchema.properties[key]
 
           if (isStringType(propertySchema)) {
-            // Simple string types don't need JSON encoding.
+            stringParams.push(key)
             continue
           }
 
@@ -228,20 +225,16 @@ export default (options: Options) =>
           let foundString = false
           let foundNonString = false
 
-          const reducer = (done: boolean, schema: TSchema) => {
-            if (done) {
-              return done
-            }
+          forEachTypeInUnion(propertySchema, (schema: TSchema) => {
             if (isStringType(schema)) {
-              foundString ||= true
+              foundString = true
             } else {
-              foundNonString ||= true
+              foundNonString = true
             }
-            return foundString && foundNonString
-          }
+          })
 
-          if (reduceTypeUnion(propertySchema, reducer, false)) {
-            jsonEncodedParams.push(key)
+          if (foundString && !foundNonString) {
+            stringParams.push(key)
           }
         }
       }
@@ -255,7 +248,7 @@ export default (options: Options) =>
 
       const sharedProperties = sift([
         `method: "${route.resolvedMethod}"`,
-        jsonEncodedParams && `jsonParams: ${JSON.stringify(jsonEncodedParams)}`,
+        stringParams && `stringParams: ${JSON.stringify(stringParams)}`,
         pathParams.length && `pathParams: ${JSON.stringify(pathParams)}`,
       ])
 

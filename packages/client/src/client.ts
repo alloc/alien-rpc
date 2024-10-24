@@ -136,10 +136,10 @@ function createRouteFunction(
 
     if (route.method === 'get') {
       if (params) {
-        const jsonParams = route.jsonParams!
+        const stringParams = route.stringParams!
         const query = jsonQS.encode(params, {
           skippedKeys: pathParams,
-          shouldEncodeString: key => jsonParams.includes(key),
+          shouldEncodeString: key => !stringParams.includes(key),
         })
         if (query) {
           path += '?' + query

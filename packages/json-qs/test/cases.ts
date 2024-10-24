@@ -15,6 +15,16 @@ export const cases: Record<string, Case | Case[]> = {
     decoded: { a: { b: 1, c: 2 } },
     encoded: 'a=(b:1,c:2)',
   },
+  'empty property name': [
+    {
+      decoded: { '': 1 },
+      encoded: '=1',
+    },
+    {
+      decoded: { a: { '': 1 } },
+      encoded: 'a=(~0:1)',
+    },
+  ],
   'special property names at root level': [
     {
       decoded: { 'foo&bar': 1 },
@@ -36,7 +46,7 @@ export const cases: Record<string, Case | Case[]> = {
     },
     {
       decoded: { a: { "'~:(),=": 1 } },
-      encoded: "a=(''~0~1~2~3~4%3D:1)",
+      encoded: "a=(''~1~2~3~4~5%3D:1)",
     },
     {
       decoded: { a: { "'": 0, "''": 1 } },
@@ -96,6 +106,20 @@ export const cases: Record<string, Case | Case[]> = {
     },
     encoded: 'a=((0,1),(2,3))',
   },
+  'object in array': [
+    {
+      decoded: { a: [{ b: 0 }] },
+      encoded: 'a=((b:0))',
+    },
+    {
+      decoded: { a: [{ b: 0 }, { c: 1 }] },
+      encoded: 'a=((b:0),(c:1))',
+    },
+    {
+      decoded: { a: [{ b: [{ c: 1 }] }] },
+      encoded: 'a=((b:((c:1))))',
+    },
+  ],
   'sparse arrays': [
     {
       decoded: { a: [0, , 2] },
@@ -168,6 +192,14 @@ export const cases: Record<string, Case | Case[]> = {
     {
       decoded: { num: -42.5 },
       encoded: 'num=-42.5',
+    },
+    {
+      decoded: { num: 1e100 },
+      encoded: 'num=1e100',
+    },
+    {
+      decoded: { num: 1e-100 },
+      encoded: 'num=1e-100',
     },
     {
       decoded: { num: 0 },

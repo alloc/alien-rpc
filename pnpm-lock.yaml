@@ -51,9 +51,6 @@ importers:
       '@types/picomatch':
         specifier: ^3.0.1
         version: 3.0.1
-      alien-rpc:
-        specifier: workspace:^
-        version: link:packages/alien-rpc
       picomatch:
         specifier: ^4.0.2
         version: 4.0.2

@@ -19,7 +19,7 @@ export function decode(
 ): CodableObject {
   const shouldDecodeString = options?.shouldDecodeString ?? alwaysTrue
   const result: CodableObject = {}
-  let key: string
+  let key: string | undefined
   let value: string
   try {
     for (key of input.keys()) {
@@ -27,8 +27,10 @@ export function decode(
       result[key] = shouldDecodeString(key) ? parse(value) : value
     }
   } catch (error: any) {
-    cursor.pos = 0
-    error.message = `Failed to decode value for '${key!}' key: ${error.message}`
+    if (key !== undefined) {
+      cursor.pos = 0
+      error.message = `Failed to decode value for '${key}' key: ${error.message}`
+    }
     throw error
   }
   return result
@@ -68,7 +70,8 @@ const constantsMap: Record<string, CodableValue> = {
 
 /**
  * The `cursor` object is used by nested `parse` calls to pass the current
- * position in the input string back to the parent object.
+ * position in the input string back to the parent object. To avoid
+ * unnecessary object allocations, it's a singleton.
  */
 const cursor = { pos: 0 }
 
@@ -187,10 +190,15 @@ function parse(input: string): CodableValue {
 
     case ValueMode.NumberOrBigint: {
       pos = nested ? findEndPos(input, pos + 1) : input.length
-      result =
-        input.charCodeAt(pos - 1) === LOWER_N
-          ? BigInt(input.slice(startPos, pos - 1))
-          : Number(input.slice(startPos, pos))
+      if (input.charCodeAt(pos - 1) === LOWER_N) {
+        result = BigInt(input.slice(startPos, pos - 1))
+      } else {
+        const slice = input.slice(startPos, pos)
+        result = Number(slice)
+        if (Number.isNaN(result) && slice !== 'NaN') {
+          throw new SyntaxError(`Invalid number at position ${startPos}`)
+        }
+      }
       break
     }
 
@@ -253,7 +261,7 @@ function parse(input: string): CodableValue {
 
         if (charCode === TILDE) {
           const decodedChar = keyReservedCharDecoder[input[pos + 1]]
-          if (!decodedChar) {
+          if (decodedChar === undefined) {
             throw new SyntaxError(
               `Unexpected character '${input[pos + 1]}' at position ${pos + 1}`
             )

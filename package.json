@@ -17,7 +17,6 @@
     "@ts-morph/common": "^0.25.0",
     "@types/node": "^22.7.4",
     "@types/picomatch": "^3.0.1",
-    "alien-rpc": "workspace:^",
     "picomatch": "^4.0.2",
     "prettier": "^3.2.5",
     "tinyglobby": "^0.2.9",

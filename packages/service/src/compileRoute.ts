@@ -1,23 +1,17 @@
 import { RequestContext } from '@hattip/compose'
-import { Value } from '@sinclair/typebox/value'
+import { KindGuard, Type } from '@sinclair/typebox'
+import { TypeCompiler } from '@sinclair/typebox/compiler'
+import {
+  TransformDecodeCheckError,
+  ValueErrorType,
+} from '@sinclair/typebox/value'
+import jsonQS from 'json-qs/decode'
 import { match } from 'path-to-regexp'
-import { transformRequestSchema } from './requestSchema.js'
 import { supportedResponders } from './responders/index.js'
 import { Route } from './types.js'
 
 export function compileRoute(route: Route) {
-  const requestSchema = transformRequestSchema(route)
-  const decodeRequestData = async ({ request, url }: RequestContext) =>
-    Value.Decode(
-      requestSchema,
-      route.method === 'get'
-        ? Object.fromEntries(url.searchParams)
-        : await request.json()
-    )
-
-  console.log(route.method, route.path)
-  console.dir(requestSchema, { depth: null })
-
+  const decodeRequestData = compileRequestSchema(route)
   const responder = supportedResponders[route.format](route)
 
   return {
@@ -50,5 +44,46 @@ export function compileRoute(route: Route) {
       const data = await decodeRequestData(ctx)
       return responder(params, data, ctx)
     },
+  }
+}
+
+function compileRequestSchema(
+  route: Route
+): (ctx: RequestContext) => Promise<object> {
+  const requestSchema = TypeCompiler.Compile(route.requestSchema)
+
+  // Since non-GET requests receive a JSON request body, we can simply
+  // decode it using only the request schema.
+  if (route.method !== 'get') {
+    return async ({ request }) => requestSchema.Decode(await request.json())
+  }
+
+  // The only supported record type is Record<string, never> which doesn't
+  // need special handling.
+  if (KindGuard.IsRecord(route.requestSchema)) {
+    return ({ url }) =>
+      requestSchema.Decode(Object.fromEntries(url.searchParams))
+  }
+
+  const stringParams = route.stringParams!
+  const options: jsonQS.DecodeOptions = {
+    shouldDecodeString: key => !stringParams.includes(key),
+  }
+
+  return ({ url }) => {
+    try {
+      var data = jsonQS.decode(url.searchParams, options)
+    } catch (error: any) {
+      const schema = Type.String()
+      throw new TransformDecodeCheckError(schema, url.search, {
+        type: ValueErrorType.String,
+        message: error.message,
+        errors: [],
+        schema,
+        path: '/',
+        value: url.search,
+      })
+    }
+    return requestSchema.Decode(data)
   }
 }

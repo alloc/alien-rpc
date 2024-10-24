@@ -1,7 +1,7 @@
-import { juri } from '@alien-rpc/juri'
 import { Static, Type } from '@sinclair/typebox'
+import jsonQS from 'json-qs/encode'
 import { ParamData } from 'path-to-regexp'
-import { isArray, isObject, isString } from 'radashi'
+import { isString } from 'radashi'
 import {
   getRouteData,
   parseRoutePathParams,
@@ -89,10 +89,8 @@ export function resolvePaginationLink(
         key,
         // This should match the logic found in the `encodeJsonSearch`
         // function of the `@alien-rpc/client` package.
-        !isString(value) || route.jsonParams?.includes(key)
-          ? isArray(value) || isObject(value)
-            ? juri.encode(value)
-            : JSON.stringify(value)
+        !isString(value) || route.stringParams?.includes(key)
+          ? jsonQS.encode(value)
           : value
       )
     }

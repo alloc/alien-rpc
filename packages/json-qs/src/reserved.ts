@@ -7,15 +7,17 @@ export const keyReservedCharEncoder = /* @__PURE__ */ (() => {
     "'": "''",
   }
   for (const [index, char] of keyReservedChars.split('').entries()) {
-    charMap[char] = '~' + index
+    charMap[char] = '~' + (index + 1)
   }
   return charMap
 })()
 
 export const keyReservedCharDecoder = /* @__PURE__ */ (() => {
-  const charMap: Record<string, string> = {}
+  const charMap: Record<string, string> = {
+    '0': '',
+  }
   for (const [index, char] of keyReservedChars.split('').entries()) {
-    charMap[index] = char
+    charMap[index + 1] = char
   }
   return charMap
 })()

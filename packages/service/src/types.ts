@@ -64,7 +64,7 @@ export interface Route<TDefinition extends RouteDefinition = RouteDefinition> {
   path: string
   import: () => Promise<TDefinition>
   /** Exists on GET routes only. */
-  jsonParams?: readonly string[]
+  stringParams?: readonly string[]
   pathParams?: readonly string[]
   format: RouteResultFormat
   requestSchema: TObject | TRecord

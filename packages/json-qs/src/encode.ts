@@ -45,12 +45,11 @@ function encodeProperties(
 }
 
 function encodeValue(value: CodableValue): string {
-  if (
-    value === null ||
-    typeof value === 'boolean' ||
-    typeof value === 'number'
-  ) {
+  if (value === null || typeof value === 'boolean') {
     return String(value)
+  }
+  if (typeof value === 'number') {
+    return String(value).replace('e+', 'e')
   }
   if (typeof value === 'string') {
     return encodeString(value)
@@ -76,6 +75,9 @@ function encodeArray(value: readonly CodableValue[]): string {
 }
 
 function encodeObjectKey(key: string): string {
+  if (key === '') {
+    return '~0'
+  }
   if (KEY_RESERVED_CHARS.test(key)) {
     key = key.replace(KEY_RESERVED_CHARS, char => keyReservedCharEncoder[char])
   }
@@ -96,12 +98,12 @@ function encodeString(str: string): string {
 
 function encodeCharacter(char: string): string {
   if (Number.isNaN(char.charCodeAt(1))) {
-    const code = char.charCodeAt(0)
-    if (code > 127) {
+    const charCode = char.charCodeAt(0)
+    if (charCode > 127) {
       // Accented letters, Chinese, Japanese, etc.
       return encodeURIComponent(char)
     }
-    switch (code) {
+    switch (charCode) {
       case 32: // space
         return '+'
       case 35: // hash

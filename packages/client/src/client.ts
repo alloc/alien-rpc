@@ -1,8 +1,8 @@
 /// <reference lib="dom.asynciterable" />
-import { juri } from '@alien-rpc/juri'
+import jsonQS from 'json-qs/encode'
 import ky, { HTTPError } from 'ky'
 import { compile, parse, Token } from 'path-to-regexp'
-import { isArray, isString } from 'radashi'
+import { isString } from 'radashi'
 import jsonFormat from './formats/json.js'
 import responseFormat from './formats/response.js'
 import {
@@ -135,14 +135,15 @@ function createRouteFunction(
     let path = buildPath ? buildPath(params!) : route.path
 
     if (route.method === 'get') {
-      // The search params are sorted to ensure consistent cache keys.
-      const search = encodeJsonSearch(
-        params as Record<string, any>,
-        pathParams,
-        route.jsonParams!
-      )
-      if (search) {
-        path += '?' + search
+      if (params) {
+        const jsonParams = route.jsonParams!
+        const query = jsonQS.encode(params, {
+          skippedKeys: pathParams,
+          shouldEncodeString: key => jsonParams.includes(key),
+        })
+        if (query) {
+          path += '?' + query
+        }
       }
       if (responseCache.has(path)) {
         return format.mapCachedResult(responseCache.get(path), client)
@@ -184,34 +185,6 @@ function resolveResultFormat(format: RpcRoute['format']): RpcResultFormatter {
     throw new Error('Unsupported route format: ' + format)
   }
   return format
-}
-
-function encodeJsonSearch(
-  params: Record<string, any> | undefined,
-  pathParams: string[],
-  jsonParams: string[]
-) {
-  if (!params) {
-    return
-  }
-  let result = ''
-  for (const key of Object.keys(params).sort()) {
-    if (pathParams.includes(key)) {
-      continue
-    }
-    const value = params[key]
-    if (value == null) {
-      continue
-    }
-    result += `${result ? '&' : ''}${key}=${
-      !isString(value) || jsonParams.includes(key)
-        ? isArray(value) || isObject(value)
-          ? juri.encode(value)
-          : JSON.stringify(value)
-        : value
-    }`
-  }
-  return result
 }
 
 function isObject(arg: unknown) {

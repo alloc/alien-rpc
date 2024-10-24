@@ -103,12 +103,12 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2
     devDependencies:
-      '@alien-rpc/juri':
-        specifier: workspace:^
-        version: link:../juri
       '@alloc/path-types':
         specifier: ^0.1.2
         version: 0.1.2
+      json-qs:
+        specifier: workspace:^
+        version: link:../json-qs
       path-to-regexp:
         specifier: workspace:^
         version: link:../path-to-regexp
@@ -147,7 +147,7 @@ importers:
         specifier: workspace:^
         version: link:../path-to-regexp
 
-  packages/juri: {}
+  packages/json-qs: {}
 
   packages/path-to-regexp: {}
 
@@ -160,15 +160,15 @@ importers:
         specifier: ^0.33.17
         version: 0.33.17
     devDependencies:
-      '@alien-rpc/juri':
-        specifier: workspace:^
-        version: link:../juri
       '@alien-rpc/typebox':
         specifier: workspace:^
         version: link:../typebox
       '@alloc/path-types':
         specifier: ^0.1.2
         version: 0.1.2
+      json-qs:
+        specifier: workspace:^
+        version: link:../json-qs
       path-to-regexp:
         specifier: workspace:^
         version: link:../path-to-regexp

@@ -5,13 +5,12 @@
 - Type-safe RPC routes with TypeScript and compile-time code generation
 - HTTP client powered by [ky](https://github.com/sindresorhus/ky) and a [Proxy](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy) wrapper for low memory footprint
 - REST semantics with explicitly defined HTTP methods and URIs for each route
-- No batched requests or funneling through a single endpoint
+- No batched requests or funneling through a single endpoint, allowing for easy debugging and usage tracking
 - Request/response validators are auto-generated at compile-time from your TypeScript definitions (powered by [typebox](https://github.com/sinclairzx81/typebox) and [typebox-codegen](https://github.com/sinclairzx81/typebox-codegen))
-- Automatic API versioning that allows for gradual deprecation of older versions
-- [NDJSON](https://github.com/ndjson/ndjson-spec) response streams powered by [async generators](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AsyncGenerator)
+- Streaming JSON responses powered by [async generators](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AsyncGenerator) and the [JSON Text Sequence](https://www.rfc-editor.org/rfc/rfc7464.html) RFC
 - Express-style “path parameters” (e.g. `/users/:id`) via [path-to-regexp](https://github.com/pillarjs/path-to-regexp)
-- Compact serialization of complex URI search parameters via [JURI](/packages/@alien-rpc/juri)
-- Based on [Hattip.js](https://github.com/hattipjs/hattip) for HTTP server and middleware
+- Full JSON support in compact query strings via [json-qs](./packages/json-qs)
+- Based on [Hattip.js](https://github.com/hattipjs/hattip) for HTTP server and middleware, with adapters for many target platforms
 
 ## Guide
 

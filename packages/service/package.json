@@ -18,9 +18,9 @@
     "@sinclair/typebox": "*"
   },
   "devDependencies": {
-    "@alien-rpc/juri": "workspace:^",
     "@alien-rpc/typebox": "workspace:^",
     "@alloc/path-types": "^0.1.2",
+    "json-qs": "workspace:^",
     "path-to-regexp": "workspace:^"
   },
   "scripts": {

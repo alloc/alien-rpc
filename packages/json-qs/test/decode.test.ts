@@ -1,4 +1,4 @@
-import { castArray, zipToObject } from 'radashi'
+import { castArray, zip } from 'radashi'
 import { decode } from '../src/decode.js'
 import { cases } from './cases.js'
 
@@ -17,20 +17,7 @@ describe('json-qs', () => {
     }
 
     test('throws on malformed input', () => {
-      const cases = [
-        'a',
-        'a=',
-        'a=(',
-        'a=((',
-        'a=(1',
-        'a=(::)',
-        'a=(b:)',
-        "a=(b:1,':2)",
-        'a=(~9:1)',
-        'a=1.n',
-        'a=N',
-        'a=b',
-      ]
+      const cases = ['a=(', 'a=((', 'a=(b', 'a={b:', 'a={b}', 'a={:}', 'a=1.n']
       const results: any[] = []
       for (const input of cases) {
         try {
@@ -39,20 +26,15 @@ describe('json-qs', () => {
           results.push(error)
         }
       }
-      expect(zipToObject(cases, results)).toMatchInlineSnapshot(`
-        {
-          "a": [SyntaxError: Failed to decode value for 'a' key: Unexpected end of input],
-          "a=": [SyntaxError: Failed to decode value for 'a' key: Unexpected end of input],
-          "a=(": [SyntaxError: Failed to decode value for 'a' key: Unterminated input from position 1],
-          "a=((": [SyntaxError: Failed to decode value for 'a' key: Unterminated input from position 2],
-          "a=(1": [SyntaxError: Failed to decode value for 'a' key: Unterminated input from position 1],
-          "a=(::)": [SyntaxError: Failed to decode value for 'a' key: Expected ')' after ':' at position 2],
-          "a=(b:)": [SyntaxError: Failed to decode value for 'a' key: Unexpected character ')' at position 3],
-          "a=(b:1,':2)": [SyntaxError: Failed to decode value for 'a' key: Unexpected quote at position 5],
-          "a=(~9:1)": [SyntaxError: Failed to decode value for 'a' key: Unexpected character '9' at position 2],
-          "a=1.n": [SyntaxError: Failed to decode value for 'a' key: Cannot convert 1. to a BigInt],
-          "a=N": [SyntaxError: Failed to decode value for 'a' key: Invalid number at position 0],
-          "a=b": [SyntaxError: Failed to decode value for 'a' key: Unexpected character 'b' at position 0],
+      expect(new Map(zip(cases, results))).toMatchInlineSnapshot(`
+        Map {
+          "a=(" => [SyntaxError: Failed to decode value for 'a' key: Unterminated input from position 0],
+          "a=((" => [SyntaxError: Failed to decode value for 'a' key: Unterminated input from position 1],
+          "a=(b" => [SyntaxError: Failed to decode value for 'a' key: Unterminated input from position 1],
+          "a={b:" => [SyntaxError: Failed to decode value for 'a' key: Unterminated input from position 3],
+          "a={b}" => [SyntaxError: Failed to decode value for 'a' key: Unterminated key at position 2],
+          "a={:}" => [SyntaxError: Failed to decode value for 'a' key: Unexpected end of string at position 2],
+          "a=1.n" => [SyntaxError: Failed to decode value for 'a' key: Cannot convert 1. to a BigInt],
         }
       `)
     })

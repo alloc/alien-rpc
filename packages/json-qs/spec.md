@@ -2,7 +2,11 @@
 
 For a kitchen sink example, see [Kitchen Sink](#kitchen-sink) at the bottom of this document.
 
-## Encoding Objects
+## Objects
+
+The root object is unbounded, its properties are separated by ampersands (`&`), and its property names end with an equals sign (`=`).
+
+Nested objects are bounded by curly braces (`{}`), their properties are separated by commas (`,`), and their property names end with a colon (`:`).
 
 The following object…
 
@@ -17,22 +21,14 @@ The following object…
 …is encoded into the following query string:
 
 ```
-a=(b:0)
+a={b:0}
 ```
 
 #### Property names
 
 At the root level, property names are percent-encoded.
 
-Nested property names are encoded using the following rules:
-
-- An empty property name becomes `~0`.
-- Some characters need replacement:
-  - `~` becomes `~1`
-  - `:` becomes `~2`
-  - `(` becomes `~3`
-  - `)` becomes `~4`
-  - `,` becomes `~5`
+In nested objects, property names are encoded as strings if they contain any of the following characters: `:`, `(`, `)`, `,`, or `'`.
 
 Percent-encoding alone cannot be relied on, since the decoder is designed to work with strings already parsed by the `URLSearchParams` API.
 
@@ -50,7 +46,7 @@ The following object…
 a=0&b=1
 ```
 
-But if the object was nested in another…
+But if an object is nested in another object…
 
 ```js
 { a: { b: 1, c: 2 } }
@@ -59,42 +55,60 @@ But if the object was nested in another…
 …then it would be encoded into the following query string:
 
 ```
-a=(b:1,c:2)
+a={b:1,c:2}
 ```
 
 #### Empty objects
 
-An empty object is encoded as `(:)`.
+An empty object is encoded as `{}`.
 
-## Encoding Strings
+## Strings
 
 The following string…
 
 ```js
 {
-  a: '(b:0)'
+  a: '{b:0}'
 }
 ```
 
 …is encoded into the following query string:
 
 ```
-a='(b:0)'
+a=\{b:0\}
 ```
 
-With strings, some characters must be percent-encoded:
+Some characters have special meaning in query strings, so they must be percent-encoded:
 
 - ampersands `&`
 - percent signs `%`
 - plus signs `+`
-- non-ASCII characters
+- hash signs `#`
 
-Additionally, the following characters are specially encoded:
+Note that while non-ASCII characters (e.g. accented letters, Chinese, Japanese, emojis, etc.) are not explicitly handled by this specification, they will be percent-encoded by the `fetch` API or similar.
 
-- apostrophes `'` are escaped by doubling them
-- spaces are encoded as `+`
+Since strings aren't wrapped in quotes, many characters require special handling.
 
-## Encoding Arrays
+Other characters are _always_ escaped with a backslash (`\`):
+
+- curly braces
+- parentheses
+- commas
+- colons
+
+Finally, these characters are escaped if they are the first character in a string:
+
+- digits (implying a number)
+- hyphens (implying a negative number)
+- backslashes (implying an escape sequence)
+
+#### Empty strings
+
+An empty string is encoded as nothing.
+
+## Arrays
+
+Arrays are bounded by parentheses `()` and their elements are separated by commas `,`.
 
 The following array…
 
@@ -110,59 +124,50 @@ The following array…
 a=(0,1)
 ```
 
+#### Why use parentheses and not square brackets?
+
+While square brackets are more aligned with the JSON syntax, using them here would require escaping square brackets in JSON paths, because we don't wrap string values with quotes or some other delimiter.
+
+We've decided it's better for readability if JSON paths aren't littered with escapes as often.
+
 #### Empty arrays
 
 An empty array is encoded as `()`.
 
-#### Arrays vs objects
+## Undefined Values
 
-_“How do you differentiate between an array and an object if both use parentheses?”_
+Like in JSON, undefined values are ignored in objects.
 
-Good question. Sometimes, the first character after the opening parenthesis is enough to differentiate between an array and an object. This is true for the following characters:
-
-- `:` marks an empty object
-- `)` marks an empty array
-- `(` marks an array, since a nested array or object is implied
-- `,` marks a sparse array
-
-If none of those are found, check for a string literal, which marks an array.
-
-Finally, if still unsure, look ahead for a colon, which marks an object. If no colon is found before a closing parenthesis or comma is found, then it's an array.
-
-## Encoding `undefined`
-
-Undefined values are ignored everywhere except in arrays, where they're encoded as holes, creating a sparse array.
-
-The following array…
-
-```js
+```ts
 {
-  a: [0, undefined, 1]
+  a: undefined,
+  b: 2,
 }
 ```
 
 …is encoded into the following query string:
 
 ```
-a=(0,,1)
+b=2
 ```
 
-An extra comma is required for an undefined value at the end of an array.
+#### Arrays with undefined values
+
+Like in JSON, undefined values are coerced to `null` in arrays.
 
 ```js
 {
-  a: [0, undefined],
-  b: [0, , ]
+  a: [undefined]
 }
 ```
 
 …is encoded into the following query string:
 
 ```
-a=(0,,)&b=(0,,)
+a=(null)
 ```
 
-## Encoding Bigints
+## Bigints
 
 Bigints are simply stringified with an `"n"` suffix.
 
@@ -207,12 +212,11 @@ The following object…
   false: false,
   null: null,
   undefined: undefined,
-  bigint: 9007199254740992n,
-  nan: NaN,
   infinity: Infinity,
-  negInfinity: -Infinity,
+  nan: NaN,
+  bigint: 9007199254740992n,
   sciNotation: 1e100,
-  sparseArray: [undefined, 1, ,],
+  sparseArray: [,,],
   nestedArray: [[0, 1], [2, 3]],
   objectInArray: [{ a: 0 }],
   emptyArray: [],
@@ -223,23 +227,22 @@ The following object…
 …is encoded into the following query string (formatted for readability):
 
 ```
-object = (a:0,b:1)
-& array = (0,-1)
-& string = 'hello'
-& fraction = 1.23
-& true = true
-& false = false
-& null = null
-& bigint = 9007199254740992n
-& nan = NaN
-& infinity = Infinity
-& negInfinity = -Infinity
-& sciNotation = 1e100
-& sparseArray = (,1,,)
-& nestedArray = ((0,1),(2,3))
-& objectInArray = ((a:0))
-& emptyArray = ()
-& emptyObject = (:)
+object={a:0,b:1}
+&array=(0,-1)
+&string=hello
+&fraction=1.23
+&true=true
+&false=false
+&null=null
+&infinity=null
+&nan=null
+&bigint=9007199254740992n
+&sciNotation=1e100
+&sparseArray=(null,null)
+&nestedArray=((0,1),(2,3))
+&objectInArray=({a:0})
+&emptyArray=()
+&emptyObject={}
 ```
 
 Note the lack of `undefined` in the output.

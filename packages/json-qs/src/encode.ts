@@ -1,5 +1,4 @@
 import { isArray } from 'radashi'
-import { KEY_RESERVED_CHARS, keyReservedCharEncoder } from './reserved.js'
 import { CodableObject, CodableValue } from './types.js'
 
 export type EncodeOptions = {
@@ -7,46 +6,70 @@ export type EncodeOptions = {
 }
 
 export function encode(obj: CodableObject, options?: EncodeOptions): string {
-  return encodeProperties(
-    obj,
-    '&',
-    '=',
-    encodeURIComponent,
-    options?.skippedKeys
-  )
+  return encodeProperties(obj, false, options?.skippedKeys)
 }
 
 function encodeProperties(
   obj: CodableObject,
-  separator: string,
-  delimiter: string,
-  encodeKey: (key: string) => string,
+  nested: boolean,
   skippedKeys?: string[]
 ): string {
+  let separator: string
+  let delimiter: string
+  let encodeKey: (key: string) => string
+  let filterKey: ((key: string) => boolean) | undefined
+
+  if (nested) {
+    separator = ','
+    delimiter = ':'
+    encodeKey = encodeString
+  } else {
+    separator = '&'
+    delimiter = '='
+    encodeKey = encodeURIComponent
+    if (skippedKeys) {
+      filterKey = key => obj[key] !== undefined && !skippedKeys.includes(key)
+    }
+  }
+
+  const keys = Object.keys(obj)
+    .filter(filterKey || (key => obj[key] !== undefined))
+    .sort()
+
+  let key: string
   let result = ''
-  for (const key of Object.keys(obj).sort()) {
-    if (skippedKeys?.includes(key)) {
-      continue
-    }
-    if (obj[key] !== undefined) {
-      result += `${result ? separator : ''}${encodeKey(key)}${delimiter}${encodeValue(obj[key])}`
-    }
+
+  for (let i = 0; i < keys.length; i++) {
+    key = keys[i]
+    result +=
+      (result ? separator : '') +
+      encodeKey(key) +
+      delimiter +
+      (nested && obj[key] === ''
+        ? i !== keys.length - 1
+          ? ''
+          : ','
+        : encodeValue(obj[key]))
   }
   return result
 }
 
 function encodeValue(value: CodableValue): string {
-  if (value === null || typeof value === 'boolean') {
+  if (value === null || value === true || value === false) {
     return String(value)
   }
-  if (typeof value === 'number') {
-    return String(value).replace('e+', 'e')
-  }
   if (typeof value === 'string') {
+    // Strings equal to these constants must be escaped.
+    if (value === 'null' || value === 'true' || value === 'false') {
+      return '\\' + value
+    }
     return encodeString(value)
   }
-  if (typeof value === 'bigint') {
-    return String(value) + 'n'
+  if (typeof value === 'number') {
+    if (Number.isNaN(value) || !Number.isFinite(value)) {
+      return 'null'
+    }
+    return String(value).replace('e+', 'e')
   }
   if (isArray(value)) {
     return encodeArray(value)
@@ -54,64 +77,78 @@ function encodeValue(value: CodableValue): string {
   if (typeof value === 'object') {
     return encodeObject(value)
   }
+  if (typeof value === 'bigint') {
+    return String(value) + 'n'
+  }
   throw new Error(`Unsupported value type: ${typeof value}`)
 }
 
-function encodeArray(value: readonly CodableValue[]): string {
+function encodeArray(array: readonly CodableValue[]): string {
   let result = ''
-  for (let i = 0; i < value.length; i++) {
-    result += `${i !== 0 ? ',' : ''}${value[i] !== undefined ? encodeValue(value[i]) : i !== value.length - 1 ? '' : ','}`
+  for (let i = 0; i < array.length; i++) {
+    result +=
+      (result ? ',' : '') +
+      (array[i] === undefined
+        ? null
+        : array[i] === ''
+          ? i !== array.length - 1
+            ? ''
+            : ','
+          : encodeValue(array[i]))
   }
   return `(${result})`
 }
 
-function encodeObjectKey(key: string): string {
-  if (key === '') {
-    return '~0'
-  }
-  if (KEY_RESERVED_CHARS.test(key)) {
-    key = key.replace(KEY_RESERVED_CHARS, char => keyReservedCharEncoder[char])
-  }
-  return encodeURIComponent(key)
+function encodeObject(obj: CodableObject): string {
+  return `{${encodeProperties(obj, true)}}`
 }
 
-function encodeObject(obj: CodableObject): string {
-  return `(${encodeProperties(obj, ',', ':', encodeObjectKey) || ':'})`
+function isCharacterSniffable(charCode: number): boolean {
+  return (
+    // digit (implies a number)
+    (charCode >= 48 && charCode <= 57) ||
+    // hyphen (implies a negative number)
+    charCode === 45 ||
+    // backslash (implies an escape sequence)
+    charCode === 92
+  )
 }
 
 function encodeString(str: string): string {
-  let result = ''
+  // For the first character in a string, we need to escape characters that
+  // are used to sniff other data types.
+  let result = isCharacterSniffable(str.charCodeAt(0)) ? '\\' : ''
   for (const char of str) {
-    result += encodeCharacter(char)
+    // By using `for..of`, we may receive a multi-code unit character.
+    // These are never encoded, since the HTTP client handles it
+    // automatically.
+    result += char.length > 1 ? char : encodeCharacter(char)
   }
-  return `'${result}'`
+  return result
 }
 
 function encodeCharacter(char: string): string {
-  if (Number.isNaN(char.charCodeAt(1))) {
-    const charCode = char.charCodeAt(0)
-    if (charCode > 127) {
-      // Accented letters, Chinese, Japanese, etc.
-      return encodeURIComponent(char)
-    }
-    switch (charCode) {
-      case 32: // space
-        return '+'
-      case 35: // hash
-        return '%23'
-      case 37: // percent sign
-        return '%25'
-      case 38: // ampersand
-        return '%26'
-      case 39: // apostrophe
-        return "''"
-      case 43: // plus
-        return '%2B'
-    }
+  const charCode = char.charCodeAt(0)
+  if (charCode > 127) {
+    // Non-ASCII characters are never encoded, since the HTTP client
+    // handles it automatically.
     return char
   }
-  // Since we use `for..of` to iterate over the string, a character might
-  // contain multiple code units. In this case, it's obviously a non-ASCII
-  // character, so we need to encode it.
-  return encodeURIComponent(char)
+  switch (charCode) {
+    case 32: // space
+      return '+'
+    case 35: // hash
+    case 37: // percent
+    case 38: // ampersand
+    case 43: // plus
+      return encodeURIComponent(char)
+    case 40: // opening parenthesis
+    case 41: // closing parenthesis
+    case 44: // comma
+    case 58: // colon
+    case 123: // opening curly bracket
+    case 125: // closing curly bracket
+      return '\\' + char
+  }
+  return char
 }

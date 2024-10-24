@@ -1,5 +1,4 @@
 /// <reference types="node" />
-import { keyReservedCharDecoder } from './reserved.js'
 import { CodableObject, CodableValue } from './types.js'
 
 export function decode(input: URLSearchParams): CodableObject {
@@ -7,7 +6,7 @@ export function decode(input: URLSearchParams): CodableObject {
   let key: string | undefined
   try {
     for (key of input.keys()) {
-      result[key] = parse(input.get(key)!)
+      result[key] = decodeValue(input.get(key)!)
     }
   } catch (error: any) {
     if (key !== undefined) {
@@ -20,7 +19,6 @@ export function decode(input: URLSearchParams): CodableObject {
 
 const enum ValueMode {
   Unknown,
-  ArrayOrObject,
   Array,
   Object,
   NumberOrBigint,
@@ -32,17 +30,15 @@ const toCharCode = (c: string) => c.charCodeAt(0)
 const QUOTE = toCharCode("'"),
   OPEN_PAREN = toCharCode('('),
   CLOSE_PAREN = toCharCode(')'),
+  OPEN_CURLY = toCharCode('{'),
+  CLOSE_CURLY = toCharCode('}'),
   DIGIT_MIN = toCharCode('0'),
   DIGIT_MAX = toCharCode('9'),
   MINUS = toCharCode('-'),
   COMMA = toCharCode(','),
-  TILDE = toCharCode('~'),
   COLON = toCharCode(':'),
   LOWER_N = toCharCode('n'),
-  LOWER_F = toCharCode('f'),
-  LOWER_T = toCharCode('t'),
-  UPPER_I = toCharCode('I'),
-  UPPER_N = toCharCode('N')
+  ESCAPE = toCharCode('\\')
 
 const constantsMap: Record<string, CodableValue> = {
   null: null,
@@ -50,7 +46,7 @@ const constantsMap: Record<string, CodableValue> = {
   true: true,
 }
 
-function parse(input: string, cursor = { pos: 0 }): CodableValue {
+function decodeValue(input: string, cursor = { pos: 0 }): CodableValue {
   const startPos = cursor.pos
   const nested = startPos > 0
 
@@ -59,106 +55,70 @@ function parse(input: string, cursor = { pos: 0 }): CodableValue {
 
   let pos = startPos
   let charCode = input.charCodeAt(pos)
+  let endPos: number | undefined
 
   // Try to deduce the value type.
   switch (charCode) {
     case QUOTE:
       mode = ValueMode.String
       break
+
     case OPEN_PAREN:
-      mode = ValueMode.ArrayOrObject
+      mode = ValueMode.Array
       break
+
+    case OPEN_CURLY:
+      mode = ValueMode.Object
+      break
+
     case MINUS:
-    case UPPER_I:
-    case UPPER_N:
       mode = ValueMode.NumberOrBigint
       break
-    case LOWER_N:
-    case LOWER_F:
-    case LOWER_T: {
-      const endPos = nested ? findEndPos(input, pos) : input.length
-      result = constantsMap[input.slice(pos, endPos)]
-      if (result === undefined) {
-        throw new SyntaxError(`Unknown constant at position ${pos}`)
-      }
-      cursor.pos = endPos
-      return result
-    }
-  }
-  if (mode === ValueMode.Unknown) {
-    if (charCode >= DIGIT_MIN && charCode <= DIGIT_MAX) {
-      mode = ValueMode.NumberOrBigint
-    } else {
-      throw new SyntaxError(
-        startPos < input.length
-          ? `Unexpected character '${input[startPos]}' at position ${startPos}`
-          : `Unexpected end of input`
-      )
-    }
-  }
 
-  if (mode === ValueMode.ArrayOrObject) {
-    pos += 1
+    default:
+      if (charCode >= DIGIT_MIN && charCode <= DIGIT_MAX) {
+        mode = ValueMode.NumberOrBigint
+      } else {
+        endPos = nested ? findEndPos(input, pos) : input.length
 
-    switch (input.charCodeAt(pos)) {
-      case CLOSE_PAREN: // Empty array
-        result = []
-        break
-
-      case COLON: // Empty object
-        if (input.charCodeAt(pos + 1) !== CLOSE_PAREN) {
-          throw new SyntaxError(`Expected ')' after ':' at position ${pos + 1}`)
+        // Check for a constant.
+        if (charCode !== ESCAPE && endPos > pos && endPos - pos <= 5) {
+          result = constantsMap[input.slice(pos, endPos)]
+          if (result !== undefined) {
+            cursor.pos = endPos
+            return result
+          }
         }
-        result = {}
-        break
-
-      case OPEN_PAREN: // Nested array or object
-      case COMMA: // Sparse array with empty first element
-        mode = ValueMode.Array
-        pos -= 1
-        break
-
-      // Either a string literal or a weird property name.
-      case QUOTE:
-        // The first condition checks for a possible escaped quote. If the
-        // second condition fails, that's what it is. Otherwise, if a comma
-        // is found, it's actually an empty string literal. When both
-        // conditions pass, an array is implied.
-        if (
-          input.charCodeAt(pos + 1) !== QUOTE ||
-          input.charCodeAt(pos + 2) === COMMA ||
-          input.charCodeAt(pos + 2) === CLOSE_PAREN
-        ) {
-          mode = ValueMode.Array
-          pos -= 1
-          break
-        }
-
-      // At this point, we still don't know if it's an array or object, so
-      // look for a colon as proof of an object.
-      default: {
-        const endPos = findEndPos(input, pos)
-        const colonPos = findCharCode(input, pos, endPos, COLON)
-
-        mode = colonPos >= 0 ? ValueMode.Object : ValueMode.Array
-        pos -= 1
+        // Default to a string.
+        mode = ValueMode.String
       }
-    }
   }
 
   switch (mode) {
     case ValueMode.String: {
-      let string = ''
-      while (++pos < input.length) {
-        if (input.charCodeAt(pos) === QUOTE) {
-          pos += 1
-
-          if (input.charCodeAt(pos) !== QUOTE) {
-            result = string
+      result = ''
+      let open = true
+      while (open && pos < input.length) {
+        switch (input.charCodeAt(pos)) {
+          case CLOSE_CURLY:
+          case CLOSE_PAREN:
+            if (!result) {
+              throw new SyntaxError(
+                `Unexpected end of string at position ${pos}`
+              )
+            }
+          case COLON:
+          case COMMA:
+            open = false
             break
-          }
+
+          case ESCAPE:
+            pos += 1 // Skip the escape and append the next character.
+
+          default:
+            result += input[pos]
+            pos += 1
         }
-        string += input[pos]
       }
       break
     }
@@ -168,9 +128,8 @@ function parse(input: string, cursor = { pos: 0 }): CodableValue {
       if (input.charCodeAt(pos - 1) === LOWER_N) {
         result = BigInt(input.slice(startPos, pos - 1))
       } else {
-        const slice = input.slice(startPos, pos)
-        result = Number(slice)
-        if (Number.isNaN(result) && slice !== 'NaN') {
+        result = Number(input.slice(startPos, pos))
+        if (Number.isNaN(result)) {
           throw new SyntaxError(`Invalid number at position ${startPos}`)
         }
       }
@@ -181,72 +140,69 @@ function parse(input: string, cursor = { pos: 0 }): CodableValue {
       const array: CodableValue[] = []
 
       while (++pos < input.length) {
-        if (input.charCodeAt(pos) === COMMA) {
-          array.push(undefined)
-          if (input.charCodeAt(pos + 1) === CLOSE_PAREN) {
-            pos += 1
-          } else {
-            continue
-          }
-        } else {
-          cursor.pos = pos
-          array.push(parse(input, cursor))
-          pos = cursor.pos
-        }
+        charCode = input.charCodeAt(pos)
 
-        if (input.charCodeAt(pos) === CLOSE_PAREN) {
-          pos += 1
+        if (charCode === COMMA) {
+          array.push('')
+        } else if (charCode === CLOSE_PAREN) {
+          pos += 2
           result = array
           break
+        } else {
+          cursor.pos = pos
+          array.push(decodeValue(input, cursor))
+          pos = cursor.pos
+
+          if (input.charCodeAt(pos) === CLOSE_PAREN) {
+            pos += 1
+            result = array
+            break
+          }
         }
       }
       break
     }
 
     case ValueMode.Object: {
-      const object: CodableObject = {}
+      result = {} as CodableObject
       let key = ''
-
-      while (++pos < input.length) {
+      let open = true
+      while (open && ++pos < input.length) {
         charCode = input.charCodeAt(pos)
 
+        // Colon marks the end of a key and the beginning of a value.
         if (charCode === COLON) {
           cursor.pos = pos + 1
-          object[key] = parse(input, cursor)
+          result[key] = decodeValue(input, cursor)
           pos = cursor.pos
-
-          if (input.charCodeAt(pos) === CLOSE_PAREN) {
-            pos += 1
-            result = object
-            break
-          }
-
           key = ''
-          continue
-        }
 
-        if (charCode === QUOTE) {
-          if (input.charCodeAt(pos + 1) !== QUOTE) {
-            throw new SyntaxError(`Unexpected quote at position ${pos}`)
+          // Skip past the comma that ended the value.
+          charCode = input.charCodeAt(pos)
+          if (charCode === COMMA) {
+            continue
           }
-          pos += 1
-          key += "'"
-          continue
         }
 
-        if (charCode === TILDE) {
-          const decodedChar = keyReservedCharDecoder[input[pos + 1]]
-          if (decodedChar === undefined) {
-            throw new SyntaxError(
-              `Unexpected character '${input[pos + 1]}' at position ${pos + 1}`
-            )
-          }
-          pos += 1
-          key += decodedChar
-          continue
-        }
+        switch (charCode) {
+          case CLOSE_CURLY:
+            if (key.length) {
+              throw new SyntaxError(`Unterminated key at position ${pos}`)
+            }
+            open = false
+            pos += 1
+            break
 
-        key += input[pos]
+          case COMMA:
+            result[key] = key = ''
+            break
+
+          case ESCAPE:
+            pos += 1 // Skip the escape and append the next character.
+
+          default:
+            key += input[pos]
+        }
       }
       break
     }
@@ -257,44 +213,25 @@ function parse(input: string, cursor = { pos: 0 }): CodableValue {
   }
 
   // At this point, the `pos` variable is assumed to be one character past
-  // the last character of the parsed value.
+  // the last character of the decoded value.
   cursor.pos = pos
 
   return result
 }
 
-function isEndChar(charCode: number) {
-  return charCode === COMMA || charCode === CLOSE_PAREN
-}
-
 /**
- * Find the next comma or closing parenthesis.
+ * Find the end of a value that is nested in an array or object.
  */
 function findEndPos(input: string, startPos: number) {
   for (let pos = startPos; pos < input.length; pos++) {
-    if (isEndChar(input.charCodeAt(pos))) {
+    const charCode = input.charCodeAt(pos)
+    if (
+      charCode === COMMA ||
+      charCode === CLOSE_PAREN ||
+      charCode === CLOSE_CURLY
+    ) {
       return pos
     }
   }
   throw new SyntaxError(`Unterminated input from position ${startPos}`)
-}
-
-/**
- * Search the characters between `startPos` and `endPos` for the given
- * character code. The `endPos` is exclusive, so it's not included in the
- * search.
- */
-function findCharCode(
-  input: string,
-  startPos: number,
-  endPos: number,
-  charCode: number
-) {
-  const direction = startPos < endPos ? 1 : -1
-  for (let pos = startPos; pos !== endPos; pos += direction) {
-    if (input.charCodeAt(pos) === charCode) {
-      return pos
-    }
-  }
-  return -1
 }

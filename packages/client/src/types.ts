@@ -36,13 +36,6 @@ export type RpcRoute<
    */
   arity: 1 | 2
   /**
-   * An array of parameter names that can only ever be strings, so they
-   * don't need to be specially encoded with json-qs.
-   *
-   * Defined only for GET routes.
-   */
-  stringParams?: string[]
-  /**
    * The route's signature type. This property never actually exists at
    * runtime.
    */

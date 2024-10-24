@@ -1,7 +1,6 @@
 import { Static, Type } from '@sinclair/typebox'
-import jsonQS from 'json-qs/encode'
+import * as jsonQS from 'json-qs'
 import { ParamData } from 'path-to-regexp'
-import { isString } from 'radashi'
 import {
   getRouteData,
   parseRoutePathParams,
@@ -69,32 +68,15 @@ export function resolvePaginationLink(
     throw new Error('Pagination links are only supported for GET routes.')
   }
 
-  const pageURL = new URL(
-    renderRoutePath(data.route, data.params as ParamData),
-    currentURL
-  )
-
   const pathParams = parseRoutePathParams(data.route)
+  const query = jsonQS.encode(data.params, {
+    skippedKeys: pathParams,
+  })
 
-  for (const key in data.params) {
-    if (pathParams.includes(key)) {
-      continue
-    }
-
-    const value = data.params[key]
-    if (value === null) {
-      pageURL.searchParams.delete(key)
-    } else {
-      pageURL.searchParams.set(
-        key,
-        // This should match the logic found in the `encodeJsonSearch`
-        // function of the `@alien-rpc/client` package.
-        !isString(value) || route.stringParams?.includes(key)
-          ? jsonQS.encode(value)
-          : value
-      )
-    }
+  let path = renderRoutePath(data.route, data.params as ParamData)
+  if (query) {
+    path += '?' + query
   }
 
-  return pageURL.pathname + pageURL.search
+  return new URL(path, currentURL).pathname
 }

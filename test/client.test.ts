@@ -65,8 +65,6 @@ async function getTestClient() {
     './client/__fixtures__/kitchen-sink/server/api.js'
   )
 
-  console.log(clientRoutes)
-
   const handler = compileRoutes(serverRoutes, {
     returnNotFound: true,
   })

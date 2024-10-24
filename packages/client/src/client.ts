@@ -1,5 +1,5 @@
 /// <reference lib="dom.asynciterable" />
-import jsonQS from 'json-qs/encode'
+import * as jsonQS from 'json-qs'
 import ky, { HTTPError } from 'ky'
 import { compile, parse, Token } from 'path-to-regexp'
 import { isString } from 'radashi'
@@ -136,10 +136,8 @@ function createRouteFunction(
 
     if (route.method === 'get') {
       if (params) {
-        const stringParams = route.stringParams!
         const query = jsonQS.encode(params, {
           skippedKeys: pathParams,
-          shouldEncodeString: key => !stringParams.includes(key),
         })
         if (query) {
           path += '?' + query

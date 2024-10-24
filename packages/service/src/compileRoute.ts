@@ -5,7 +5,7 @@ import {
   TransformDecodeCheckError,
   ValueErrorType,
 } from '@sinclair/typebox/value'
-import jsonQS from 'json-qs/decode'
+import * as jsonQS from 'json-qs'
 import { match } from 'path-to-regexp'
 import { supportedResponders } from './responders/index.js'
 import { Route } from './types.js'
@@ -65,14 +65,9 @@ function compileRequestSchema(
       requestSchema.Decode(Object.fromEntries(url.searchParams))
   }
 
-  const stringParams = route.stringParams!
-  const options: jsonQS.DecodeOptions = {
-    shouldDecodeString: key => !stringParams.includes(key),
-  }
-
   return ({ url }) => {
     try {
-      var data = jsonQS.decode(url.searchParams, options)
+      var data = jsonQS.decode(url.searchParams)
     } catch (error: any) {
       const schema = Type.String()
       throw new TransformDecodeCheckError(schema, url.search, {

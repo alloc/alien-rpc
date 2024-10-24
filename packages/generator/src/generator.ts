@@ -1,10 +1,9 @@
-import type { TObject, TSchema } from '@sinclair/typebox'
 import { createProject, Project } from '@ts-morph/bootstrap'
 import { ts } from '@ts-morph/common'
 import { jumpgen, JumpgenFS } from 'jumpgen'
 import path from 'path'
 import * as RoutePath from 'path-to-regexp'
-import { camel, isString, sift } from 'radashi'
+import { camel, sift } from 'radashi'
 import { AnalyzedRoute, analyzeRoutes } from './analyze-routes.js'
 import { reportDiagnostics } from './diagnostics.js'
 import { TypeScriptToTypeBox } from './typebox-codegen/typescript/generator.js'
@@ -181,64 +180,6 @@ export default (options: Options) =>
           ? `Type.Any()`
           : generateRuntimeValidator(`type Response = ${route.resolvedResult}`)
 
-      let stringParams: string[] | undefined
-
-      if (route.resolvedMethod === 'get') {
-        const { Type, KindGuard } = await import('@sinclair/typebox')
-
-        /**
-         * Find a schema that matches the predicate. Recurse into any
-         * encountered union schemas.
-         */
-        const forEachTypeInUnion = (
-          schema: TSchema,
-          forEach: (schema: TSchema) => void
-        ): void =>
-          KindGuard.IsUnion(schema)
-            ? schema.anyOf.forEach(variant =>
-                forEachTypeInUnion(variant, forEach)
-              )
-            : forEach(schema)
-
-        const isStringType = (schema: TSchema): boolean =>
-          isString(schema.type) && schema.type === 'string'
-
-        // Instantiate the request schema so we can check if any properties
-        // need JSON encoding.
-        const requestSchema = new Function(
-          'Type',
-          'return ' + requestSchemaDecl
-        )(Type) as TObject
-
-        stringParams = []
-
-        for (const key in requestSchema.properties) {
-          const propertySchema = requestSchema.properties[key]
-
-          if (isStringType(propertySchema)) {
-            stringParams.push(key)
-            continue
-          }
-
-          // If a property can be either a string or a non-string, we need
-          // to encode string values as JSON.
-          let foundString = false
-          let foundNonString = false
-
-          forEachTypeInUnion(propertySchema, (schema: TSchema) => {
-            if (isStringType(schema)) {
-              foundString = true
-            } else {
-              foundNonString = true
-            }
-          })
-
-          if (foundString && !foundNonString) {
-            stringParams.push(key)
-          }
-        }
-      }
-
       const handlerPath = resolveImportPath(
         path.join(root, options.serverOutFile),
         route.fileName.replace(/\.ts$/, '.js')
@@ -248,7 +189,6 @@ export default (options: Options) =>
 
       const sharedProperties = sift([
         `method: "${route.resolvedMethod}"`,
-        stringParams && `stringParams: ${JSON.stringify(stringParams)}`,
         pathParams.length && `pathParams: ${JSON.stringify(pathParams)}`,
       ])
 

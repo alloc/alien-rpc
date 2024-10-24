@@ -1,24 +1,11 @@
-type CodableValue =
-  | string
-  | number
-  | boolean
-  | bigint
-  | null
-  | undefined
-  | CodableObject
-  | readonly CodableValue[]
+import { CodableObject } from '../src/types.js'
 
-type CodableObject = { [key: string]: CodableValue }
+type Case = { decoded: CodableObject; encoded: string }
 
-type Case = {
-  decoded: CodableObject
-  encoded: string
-}
-
-export const spec: Record<string, Case | Case[]> = {
+export const cases: Record<string, Case | Case[]> = {
   'nested objects': {
     decoded: { a: { b: 0 } },
-    encoded: 'a=(b=0)',
+    encoded: 'a=(b:0)',
   },
   'multiple properties at root level': {
     decoded: { a: 0, b: 1 },
@@ -26,7 +13,7 @@ export const spec: Record<string, Case | Case[]> = {
   },
   'multiple properties in nested object': {
     decoded: { a: { b: 1, c: 2 } },
-    encoded: 'a=(b=1,c=2)',
+    encoded: 'a=(b:1,c:2)',
   },
   'special property names at root level': [
     {
@@ -38,18 +25,28 @@ export const spec: Record<string, Case | Case[]> = {
       encoded: 'foo%25bar=1',
     },
     {
-      decoded: { 'foo=bar': 1 },
-      encoded: 'foo%3Dbar=1',
+      decoded: { "':(),~=": 1 },
+      encoded: "'%3A()%2C~%3D=1",
     },
   ],
-  'special property names in nested object': {
-    decoded: { a: { '@#$&': 1 } },
-    encoded: 'a=(%40%23%24%26=1)',
-  },
+  'special property names in nested object': [
+    {
+      decoded: { a: { '@#$&': 1 } },
+      encoded: 'a=(%40%23%24%26:1)',
+    },
+    {
+      decoded: { a: { "'~:(),=": 1 } },
+      encoded: "a=(''~0~1~2~3~4%3D:1)",
+    },
+    {
+      decoded: { a: { "'": 0, "''": 1 } },
+      encoded: "a=('':0,'''':1)",
+    },
+  ],
   'strings with special characters': [
     {
-      decoded: { a: '(b=0)' },
-      encoded: "a='(b=0)'",
+      decoded: { a: '(b:0)' },
+      encoded: "a='(b:0)'",
     },
     {
       decoded: { a: "foo'bar" },
@@ -99,17 +96,41 @@ export const spec: Record<string, Case | Case[]> = {
     },
     encoded: 'a=((0,1),(2,3))',
   },
-  'sparse arrays': {
-    decoded: { a: [0, , 2] },
-    encoded: 'a=(0,,2)',
-  },
+  'sparse arrays': [
+    {
+      decoded: { a: [0, , 2] },
+      encoded: 'a=(0,,2)',
+    },
+    {
+      decoded: { a: [0, ,] },
+      encoded: 'a=(0,,)',
+    },
+    {
+      decoded: { a: [, , ,] },
+      encoded: 'a=(,,,)',
+    },
+  ],
+  'weird arrays': [
+    {
+      decoded: { a: [''] },
+      encoded: "a=('')",
+    },
+    {
+      decoded: { a: ["'"] },
+      encoded: "a=('''')",
+    },
+    {
+      decoded: { a: ["''"] },
+      encoded: "a=('''''')",
+    },
+  ],
   'empty arrays': {
     decoded: { a: [] },
     encoded: 'a=()',
   },
   'empty objects': {
     decoded: { a: {} },
-    encoded: 'a=(=)',
+    encoded: 'a=(:)',
   },
   'undefined values': [
     {
@@ -122,7 +143,7 @@ export const spec: Record<string, Case | Case[]> = {
     },
     {
       decoded: { a: { b: undefined, c: 1 } },
-      encoded: 'a=(c=1)',
+      encoded: 'a=(c:1)',
     },
   ],
   booleans: [
@@ -186,6 +207,6 @@ export const spec: Record<string, Case | Case[]> = {
       metadata: null,
     },
     encoded:
-      "metadata=null&user=(name='John''s+%26+Jane''s',preferences=(notifications=true,theme='dark'),scores=(100,,95))",
+      "metadata=null&user=(name:'John''s+%26+Jane''s',preferences:(notifications:true,theme:'dark'),scores:(100,,95))",
   },
 }

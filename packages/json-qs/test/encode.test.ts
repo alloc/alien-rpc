@@ -1,12 +1,12 @@
 import { castArray } from 'radashi'
-import { encode } from '../../packages/client/src/query-string/encode'
-import { spec } from './spec'
+import { encode } from '../src/encode.js'
+import { cases } from './cases.js'
 
-describe('alien-query-string', () => {
+describe('json-qs', () => {
   describe('encode', () => {
-    for (const name in spec) {
+    for (const name in cases) {
       test(name, () => {
-        for (const { decoded, encoded } of castArray(spec[name])) {
+        for (const { decoded, encoded } of castArray(cases[name])) {
           expect(encode(decoded)).toBe(encoded)
         }
       })
@@ -18,7 +18,7 @@ describe('alien-query-string', () => {
 
     test('properties are sorted in ascending alphanumeric order', () => {
       expect(encode({ b: { d: 3, c: 2 }, a: 1, '0': 0 })).toBe(
-        '0=0&a=1&b=(c=2,d=3)'
+        '0=0&a=1&b=(c:2,d:3)'
       )
     })
   })

@@ -1,40 +1,38 @@
-type CodableObject = { [key: string]: CodableValue }
+import { isArray } from 'radashi'
+import { KEY_RESERVED_CHARS, keyReservedCharEncoder } from './reserved.js'
+import { CodableObject, CodableValue } from './types.js'
 
-type CodableValue =
-  | string
-  | number
-  | boolean
-  | bigint
-  | null
-  | undefined
-  | CodableObject
-  | readonly CodableValue[]
+const alwaysTrue = () => true
 
 export type EncodeOptions = {
   /**
-   * Called when a string is encountered for a direct property value.
-   * Return falsy to use `encodeURIComponent` instead of the default
-   * encoding.
+   * Called when a string is encountered for a parameter value. Return
+   * falsy to use `encodeURIComponent` instead of the default encoding.
    */
   shouldEncodeString?: (key: string) => boolean
 }
 
 export function encode(obj: CodableObject, options?: EncodeOptions): string {
-  return encodeProperties(obj, '&', options)
+  return encodeProperties(
+    obj,
+    '&',
+    '=',
+    encodeURIComponent,
+    options?.shouldEncodeString
+  )
 }
-
-const alwaysTrue = () => true
 
 function encodeProperties(
   obj: CodableObject,
   separator: string,
-  options?: EncodeOptions
+  delimiter: string,
+  encodeKey: (key: string) => string,
+  shouldEncodeString: (key: string) => boolean = alwaysTrue
 ): string {
-  const shouldEncodeString = options?.shouldEncodeString ?? alwaysTrue
   let result = ''
-  for (const key of Object.keys(obj).sort()) {
+  for (let key of Object.keys(obj).sort()) {
     if (obj[key] !== undefined) {
-      result += `${result ? separator : ''}${encodeURIComponent(key)}=${typeof obj[key] !== 'string' || shouldEncodeString(key) ? encodeValue(obj[key]) : encodeURIComponent(obj[key])}`
+      result += `${result ? separator : ''}${encodeKey(key)}${delimiter}${typeof obj[key] !== 'string' || shouldEncodeString(key) ? encodeValue(obj[key]) : encodeURIComponent(obj[key])}`
     }
   }
   return result
@@ -54,7 +52,7 @@ function encodeValue(value: CodableValue): string {
   if (typeof value === 'bigint') {
     return String(value) + 'n'
   }
-  if (Array.isArray(value)) {
+  if (isArray(value)) {
     return encodeArray(value)
   }
   if (typeof value === 'object') {
@@ -63,16 +61,23 @@ function encodeValue(value: CodableValue): string {
   throw new Error(`Unsupported value type: ${typeof value}`)
 }
 
-function encodeArray(value: CodableArray): string {
+function encodeArray(value: readonly CodableValue[]): string {
   let result = ''
   for (let i = 0; i < value.length; i++) {
-    result += `${i > 0 ? ',' : ''}${value[i] !== undefined ? encodeValue(value[i]) : ''}`
+    result += `${i !== 0 ? ',' : ''}${value[i] !== undefined ? encodeValue(value[i]) : i !== value.length - 1 ? '' : ','}`
   }
   return `(${result})`
 }
 
+function encodeObjectKey(key: string): string {
+  if (KEY_RESERVED_CHARS.test(key)) {
+    key = key.replace(KEY_RESERVED_CHARS, char => keyReservedCharEncoder[char])
+  }
+  return encodeURIComponent(key)
+}
+
 function encodeObject(obj: CodableObject): string {
-  return `(${encodeProperties(obj, ',') || '='})`
+  return `(${encodeProperties(obj, ',', ':', encodeObjectKey) || ':'})`
 }
 
 function encodeString(str: string): string {

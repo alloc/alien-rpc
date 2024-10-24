@@ -1,0 +1,18 @@
+{
+  "name": "json-qs",
+  "type": "module",
+  "version": "0.0.0",
+  "exports": {
+    "./encode": {
+      "types": "./dist/encode.d.ts",
+      "default": "./dist/encode.js"
+    },
+    "./decode": {
+      "types": "./dist/decode.d.ts",
+      "default": "./dist/decode.js"
+    }
+  },
+  "scripts": {
+    "lint": "tsc -p . --outDir node_modules/.tmp"
+  }
+}

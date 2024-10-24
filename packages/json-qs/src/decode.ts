@@ -11,7 +11,6 @@ export function decode(input: URLSearchParams): CodableObject {
     }
   } catch (error: any) {
     if (key !== undefined) {
-      cursor.pos = 0
       error.message = `Failed to decode value for '${key}' key: ${error.message}`
     }
     throw error
@@ -51,14 +50,7 @@ const constantsMap: Record<string, CodableValue> = {
   true: true,
 }
 
-/**
- * The `cursor` object is used by nested `parse` calls to pass the current
- * position in the input string back to the parent object. To avoid
- * unnecessary object allocations, it's a singleton.
- */
-const cursor = { pos: 0 }
-
-function parse(input: string): CodableValue {
+function parse(input: string, cursor = { pos: 0 }): CodableValue {
   const startPos = cursor.pos
   const nested = startPos > 0
 
@@ -89,7 +81,7 @@ function parse(input: string): CodableValue {
       if (result === undefined) {
         throw new SyntaxError(`Unknown constant at position ${pos}`)
       }
-      cursor.pos = nested ? endPos : 0
+      cursor.pos = endPos
       return result
     }
   }
@@ -198,7 +190,7 @@ function parse(input: string): CodableValue {
           }
         } else {
           cursor.pos = pos
-          array.push(parse(input))
+          array.push(parse(input, cursor))
           pos = cursor.pos
         }
 
@@ -220,7 +212,7 @@ function parse(input: string): CodableValue {
 
         if (charCode === COLON) {
           cursor.pos = pos + 1
-          object[key] = parse(input)
+          object[key] = parse(input, cursor)
           pos = cursor.pos
 
           if (input.charCodeAt(pos) === CLOSE_PAREN) {
@@ -266,7 +258,7 @@ function parse(input: string): CodableValue {
 
   // At this point, the `pos` variable is assumed to be one character past
   // the last character of the parsed value.
-  cursor.pos = nested ? pos : 0
+  cursor.pos = pos
 
   return result
 }

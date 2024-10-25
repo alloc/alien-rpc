@@ -1,11 +1,7 @@
 import { Static, Type } from '@sinclair/typebox'
 import * as jsonQS from 'json-qs'
 import { ParamData } from 'path-to-regexp'
-import {
-  getRouteData,
-  parseRoutePathParams,
-  renderRoutePath,
-} from './routeMetadata'
+import { parseRoutePathParams, renderRoutePath } from './routeMetadata'
 import { JsonValue } from './typebox/json'
 import type { InferRouteParams } from './types'
 
@@ -60,17 +56,8 @@ export function resolvePaginationLink(
   currentURL: URL,
   data: PaginationLinkData
 ) {
-  const route = getRouteData(data.route)
-  if (!route) {
-    throw new Error('Cannot resolve pagination link for uncompiled route.')
-  }
-  if (route.method !== 'get') {
-    throw new Error('Pagination links are only supported for GET routes.')
-  }
-
-  const pathParams = parseRoutePathParams(data.route)
   const query = jsonQS.encode(data.params, {
-    skippedKeys: pathParams,
+    skippedKeys: parseRoutePathParams(data.route),
   })
 
   let path = renderRoutePath(data.route, data.params as ParamData)
@@ -78,5 +65,6 @@ export function resolvePaginationLink(
     path += '?' + query
   }
 
-  return new URL(path, currentURL).pathname
+  const url = new URL(path, currentURL)
+  return url.pathname.slice(1) + url.search
 }

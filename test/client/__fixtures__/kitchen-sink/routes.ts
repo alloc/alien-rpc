@@ -58,3 +58,29 @@ export const streamPosts = route.get(
     })
   }
 )
+
+/**
+ * A route that takes a JSON request body
+ */
+export const createPost = route.post(
+  '/posts',
+  async ({}, input: { title: string; text: string }) => {
+    await sleep(5)
+
+    return input
+  }
+)
+
+/**
+ * A route that throws an error
+ */
+export const throwError = route.get('/error', () => {
+  throw new Error('oops')
+})
+
+/**
+ * A route that returns a raw Response object
+ */
+export const rawResponse = route.get('/raw/*wild', ({ wild }): Response => {
+  return new Response(wild)
+})

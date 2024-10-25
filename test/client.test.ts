@@ -79,6 +79,40 @@ describe.concurrent('client', async () => {
     expect(spy).toHaveBeenCalledWith(3)
     expect(spy).toHaveBeenCalledWith(4)
   })
+
+  test('route with a JSON request body', async () => {
+    const client = await getTestClient()
+
+    const result = await client.createPost({ title: 'hello', text: 'world' })
+    expect(result).toEqual({
+      title: 'hello',
+      text: 'world',
+    })
+  })
+
+  test('invalid JSON request body', async () => {
+    const client = await getTestClient()
+    await expect(client.createPost({} as any)).rejects
+      .toThrowErrorMatchingInlineSnapshot(`
+      [HTTPError: Expected required property
+           Path: /title
+          Value: undefined
+        Request: POST http://example.com/posts]
+    `)
+  })
+
+  test('route that throws an error', async () => {
+    const client = await getTestClient()
+    await expect(
+      client.throwError()
+    ).rejects.toThrowErrorMatchingInlineSnapshot(`[HTTPError: oops]`)
+  })
+
+  test('route that returns a raw response', async () => {
+    const client = await getTestClient()
+    const result = await client.rawResponse()
+    expect(await result.text()).toBe('hello')
+  })
 })
 
 async function getTestClient() {
@@ -89,9 +123,7 @@ async function getTestClient() {
     './client/__fixtures__/kitchen-sink/server/api.js'
   )
 
-  const handler = compileRoutes(serverRoutes, {
-    returnNotFound: true,
-  })
+  const handler = compileRoutes(serverRoutes)
 
   return defineClient(clientRoutes, {
     prefixUrl: 'http://example.com/',

@@ -71,5 +71,8 @@ async function* generateJsonTextSequence(
         return
       }
     }
-  } catch (error: any) {}
+  } catch (error: any) {
+    // console.error(error)
+    throw error
+  }
 }

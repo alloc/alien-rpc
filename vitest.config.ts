@@ -4,6 +4,9 @@ import { defineConfig } from 'vitest/config'
 const resolve = (path: string) => new URL(import.meta.resolve(path)).pathname
 
 const alias = {
+  '@alien-rpc/client/formats/json-seq': resolve(
+    './packages/client/src/formats/json-seq.ts'
+  ),
   '@alien-rpc/client': resolve('./packages/client/src/index.ts'),
   '@alien-rpc/service': resolve('./packages/service/src/index.ts'),
   '@alien-rpc/generator': resolve('./packages/generator/src/generator.ts'),

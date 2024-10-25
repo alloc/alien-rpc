@@ -7,7 +7,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./formats/*": "./dist/formats/*.js"
+    "./formats/*": {
+      "types": "./dist/formats/*.d.ts",
+      "import": "./dist/formats/*.js"
+    }
   },
   "dependencies": {
     "ky": "^1.2.2"

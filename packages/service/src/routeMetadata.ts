@@ -1,6 +1,5 @@
 import { compile, ParamData, parse, Token, TokenData } from 'path-to-regexp'
 import { weakMemo } from './internal/weakMemo'
-import { Route } from './types'
 
 type RouteLike = { method: string; path: string }
 
@@ -31,14 +30,4 @@ const compileRoutePath = weakMemo<RouteLike, (params?: ParamData) => string>(
 export function renderRoutePath(route: RouteLike, params?: ParamData) {
   const render = compileRoutePath(route)
   return render(params)
-}
-
-const cachedRouteData = new WeakMap<RouteLike, Route>()
-
-export function cacheRouteData(key: RouteLike, data: Route) {
-  cachedRouteData.set(key, data)
-}
-
-export function getRouteData(key: RouteLike) {
-  return cachedRouteData.get(key)
 }

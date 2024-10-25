@@ -7,10 +7,7 @@ import {
 import { compileRoute } from './compileRoute.js'
 import { Route } from './types'
 
-export function compileRoutes(
-  routes: readonly Route[],
-  options: { returnNotFound?: boolean } = {}
-) {
+export function compileRoutes(routes: readonly Route[]) {
   const compiledRoutes = routes.map(compileRoute)
 
   return async (ctx: RequestContext): Promise<Response | undefined> => {
@@ -76,12 +73,10 @@ export function compileRoutes(
           },
         })
       }
-
-      if (options.returnNotFound) {
-        return new Response(null, { status: 404 })
-      }
     } catch (error: any) {
-      console.error(error)
+      if (!process.env.TEST) {
+        console.error(error)
+      }
 
       if (step === 'respond') {
         if (process.env.NODE_ENV === 'production') {

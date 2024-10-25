@@ -64,28 +64,23 @@ An empty object is encoded as `{}`.
 
 ## Strings
 
+Strings are not wrapped in quotes. If a string would lead to ambiguity, its characters may be escaped with a backslash (`\`) as required.
+
 The following string…
 
-```js
+```ts
 {
-  a: '{b:0}'
+  theme: 'dark'
 }
 ```
 
 …is encoded into the following query string:
 
 ```
-a=\{b:0\}
+theme=dark
 ```
 
-Some characters have special meaning in query strings, so they must be percent-encoded:
-
-- ampersands `&`
-- percent signs `%`
-- plus signs `+`
-- hash signs `#`
-
-Note that while non-ASCII characters (e.g. accented letters, Chinese, Japanese, emojis, etc.) are not explicitly handled by this specification, they will be percent-encoded by the `fetch` API or similar.
+#### Escaping
 
 Since strings aren't wrapped in quotes, many characters require special handling.
 
@@ -101,6 +96,31 @@ And these characters are escaped if they're the first character, since they woul
 - digits (if not escaped, implies a number)
 - hyphens (if not escaped, implies a negative number)
 - backslashes (if not escaped, implies an escape sequence)
+
+The following object…
+
+```js
+{
+  a: '{b:0}',
+}
+```
+
+…is encoded into the following query string:
+
+```
+a=\{b:0\}
+```
+
+#### Percent-encoding
+
+Some characters have special meaning in query strings, so they must be percent-encoded:
+
+- ampersands `&`
+- percent signs `%`
+- plus signs `+`
+- hash signs `#`
+
+Note that while non-ASCII characters (e.g. accented letters, Chinese, Japanese, emojis, etc.) are not explicitly handled by this specification, they will be percent-encoded by the `fetch` API or similar.
 
 #### Empty strings
 

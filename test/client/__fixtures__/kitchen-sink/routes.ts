@@ -10,7 +10,8 @@
  *   - A route that streams continuously (via async generator)
  *   - A route that returns a paginated result
  */
-import { route } from '@alien-rpc/service'
+import { paginate, route } from '@alien-rpc/service'
+import { sleep } from 'radashi'
 
 /**
  * A route that takes no parameters
@@ -37,4 +38,23 @@ export const getAllPosts = route.get(
 export const getLength = route.get(
   '/length',
   ({}, { val }: { val: unknown[] | string | { length: number } }) => val.length
+)
+
+/**
+ * A route that returns a paginated result
+ */
+export const streamPosts = route.get(
+  '/posts/stream',
+  async function* ({}, { offset = 0 }: { offset?: number }) {
+    yield 1 + offset
+    await sleep(5)
+
+    yield 2 + offset
+    await sleep(5)
+
+    return paginate(this, {
+      next: { offset: offset + 2 },
+      prev: offset > 0 ? { offset: offset - 2 } : null,
+    })
+  }
 )

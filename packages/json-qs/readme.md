@@ -1,11 +1,6 @@
 # json-qs
 
-A query string encoder and decoder with added support for:
-
-- nested objects and arrays
-- `NaN` and `Infinity`
-- `bigint` values
-- sparse arrays
+A query string encoder and decoder with full JSON compatibility, no wasteful repetition of keys, and minimal percent-encoding bloat.
 
 #### Requirements
 
@@ -22,13 +17,17 @@ Okay, so why not avoid query strings for complex data, and just POST some JSON i
 
 The `json-qs` approach is to keep query strings human-readable (unlike many others, who compress JSON to make it URI-safe) while still being fully compatible with JSON. The only time that readability is sacrificed is when a few special characters need to be rewritten to avoid ambiguity.
 
+### Specification
+
+See the [specification](./spec.md) for more details.
+
 ### Encoding
 
 ```ts
 import { encode } from 'json-qs'
 
 const params = encode({ a: { b: 0 } })
-// => 'a=(b=0)'
+// => 'a={b:0}'
 ```
 
 ### Decoding

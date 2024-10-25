@@ -55,6 +55,30 @@ describe.concurrent('client', async () => {
     result = await client.getLength({ val: { length: 0 } })
     expect(result).toBe(0)
   })
+
+  test('route with a paginated result', async () => {
+    const client = await getTestClient()
+    const spy = vi.fn()
+
+    let response = client.streamPosts()
+    for await (const value of response) {
+      spy(value)
+    }
+
+    expect(spy).toHaveBeenCalledTimes(2)
+    expect(spy).toHaveBeenCalledWith(1)
+    expect(spy).toHaveBeenCalledWith(2)
+
+    if (response.nextPage) {
+      for await (const value of response.nextPage()) {
+        spy(value)
+      }
+    }
+
+    expect(spy).toHaveBeenCalledTimes(4)
+    expect(spy).toHaveBeenCalledWith(3)
+    expect(spy).toHaveBeenCalledWith(4)
+  })
 })
 
 async function getTestClient() {

@@ -52,6 +52,10 @@ export const cases: Record<string, Case | Case[]> = {
       decoded: { a: { '\\': 1 } },
       encoded: 'a={\\\\:1}',
     },
+    {
+      decoded: { a: { '-1': -1, '0': 0 } },
+      encoded: 'a={-1:-1,0:0}',
+    },
   ],
   'empty string': [
     {

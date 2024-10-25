@@ -63,7 +63,9 @@ function encodeValue(value: CodableValue): string {
     if (value === 'null' || value === 'true' || value === 'false') {
       return '\\' + value
     }
-    return encodeString(value)
+    // For string values, escape the first character if it's a digit or
+    // minus sign, since those are used to detect a number value.
+    return encodeString(value, isNumberLike(value.charCodeAt(0)))
   }
   if (typeof value === 'number') {
     if (Number.isNaN(value) || !Number.isFinite(value)) {
@@ -103,21 +105,14 @@ function encodeObject(obj: CodableObject): string {
   return `{${encodeProperties(obj, true)}}`
 }
 
-function isCharacterSniffable(charCode: number): boolean {
-  return (
-    // digit (implies a number)
-    (charCode >= 48 && charCode <= 57) ||
-    // hyphen (implies a negative number)
-    charCode === 45 ||
-    // backslash (implies an escape sequence)
-    charCode === 92
-  )
+function isNumberLike(charCode: number): boolean {
+  // digit or minus sign
+  return (charCode >= 48 && charCode <= 57) || charCode === 45
 }
 
-function encodeString(str: string): string {
-  // For the first character in a string, we need to escape characters that
-  // are used to sniff other data types.
-  let result = isCharacterSniffable(str.charCodeAt(0)) ? '\\' : ''
+function encodeString(str: string, escape?: boolean): string {
+  // Regardless of the escape flag, we always escape backslashes.
+  let result = escape || str.charCodeAt(0) === 92 ? '\\' : ''
   for (const char of str) {
     // By using `for..of`, we may receive a multi-code unit character.
     // These are never encoded, since the HTTP client handles it

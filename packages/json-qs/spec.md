@@ -6,34 +6,6 @@ For a kitchen sink example, see [Kitchen Sink](#kitchen-sink) at the bottom of t
 
 The root object is unbounded, its properties are separated by ampersands (`&`), and its property names end with an equals sign (`=`).
 
-Nested objects are bounded by curly braces (`{}`), their properties are separated by commas (`,`), and their property names end with a colon (`:`).
-
-The following object…
-
-```js
-{
-  a: {
-    b: 0
-  }
-}
-```
-
-…is encoded into the following query string:
-
-```
-a={b:0}
-```
-
-#### Property names
-
-At the root level, property names are percent-encoded.
-
-In nested objects, property names are encoded as strings if they contain any of the following characters: `:`, `(`, `)`, `,`, or `'`.
-
-Percent-encoding alone cannot be relied on, since the decoder is designed to work with strings already parsed by the `URLSearchParams` API.
-
-#### Multiple properties
-
 The following object…
 
 ```js
@@ -46,17 +18,45 @@ The following object…
 a=0&b=1
 ```
 
-But if an object is nested in another object…
+#### Nested objects
+
+Nested objects are bounded by curly braces (`{}`), their properties are separated by commas (`,`), and their property names end with a colon (`:`).
+
+The following object…
 
 ```js
-{ a: { b: 1, c: 2 } }
+{
+  a: { b: 0, c: 1 }
+}
 ```
 
-…then it would be encoded into the following query string:
+…is encoded into the following query string:
 
 ```
-a={b:1,c:2}
+a={b:0,c:1}
 ```
+
+#### Property names
+
+At the root level, property names are percent-encoded, like any other query string. This ensures the `new URLSearchParams` constructor can parse the root object for you.
+
+In nested objects, property names are encoded the same way strings are encoded. The only exception is related to numbers and the minus sign (`-`), which are never escaped in property names.
+
+The following object…
+
+```ts
+{
+  a: { 1: 2 }
+}
+```
+
+…is encoded into the following query string:
+
+```
+a={1:2}
+```
+
+We don't quote property names, because it takes more space. Also, neither apostrophes nor double quotes are URI-safe unless percent-encoded (which we try to avoid).
 
 #### Empty objects
 
@@ -89,18 +89,18 @@ Note that while non-ASCII characters (e.g. accented letters, Chinese, Japanese, 
 
 Since strings aren't wrapped in quotes, many characters require special handling.
 
-Other characters are _always_ escaped with a backslash (`\`):
+For example, these characters are _always_ escaped with a backslash (`\`):
 
 - curly braces
 - parentheses
 - commas
 - colons
 
-Finally, these characters are escaped if they are the first character in a string:
+And these characters are escaped if they're the first character, since they would otherwise imply another data type:
 
-- digits (implying a number)
-- hyphens (implying a negative number)
-- backslashes (implying an escape sequence)
+- digits (if not escaped, implies a number)
+- hyphens (if not escaped, implies a negative number)
+- backslashes (if not escaped, implies an escape sequence)
 
 #### Empty strings
 
@@ -193,10 +193,13 @@ The remaining JSON types are merely stringified:
 - number
 - null
 
-Some non-JSON values are also supported:
+## Unsupported Values
+
+These values are coerced to `null` just like in JSON:
 
 - NaN
 - ±Infinity
+- undefined (ignored by objects)
 
 ## Kitchen Sink
 

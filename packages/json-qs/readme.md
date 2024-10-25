@@ -15,11 +15,11 @@ The standard for query strings is unfriendly to JSON objects and arrays, or at b
 
 Okay, so why not avoid query strings for complex data, and just POST some JSON instead? Network-level caching of POST requests is not possible, so you'd need to implement your own application-level caching. By using GET with a query string, you can leverage the browser's built-in caching mechanism, as well as edge caching.
 
-The `json-qs` approach is to keep query strings human-readable (unlike many others, who compress JSON to make it URI-safe) while still being fully compatible with JSON. The only time that readability is sacrificed is when a few special characters need to be rewritten to avoid ambiguity.
+The `json-qs` approach is to keep query strings human-readable (unlike many others, who compress JSON to make it URI-safe) while still being fully compatible with JSON.
 
 ### Specification
 
-See the [specification](./spec.md) for more details.
+See the [specification](./spec.md) for more details or the [test cases](./test/cases.ts) for examples.
 
 ### Encoding
 

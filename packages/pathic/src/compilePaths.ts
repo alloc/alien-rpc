@@ -14,14 +14,14 @@ export function compilePaths<TResult>(
     params: Record<string, string>
   ) => TResult | undefined
 ): PathMatcher<TResult> {
-  type DynamicPath = readonly [parser: RegExp, index: number]
+  type DynamicPath = readonly [parser: RegExp, index: number, prefix?: string]
 
   const fixedPaths: Record<string, number[]> = Object.create(null)
   const dynamicPaths: Record<string, DynamicPath[]> = Object.create(null)
 
   const sortedPaths = paths
     .map((path, index) => ({ index, tokens: lex(path) }))
-    .sort(compareParsedPaths)
+    .sort(comparePathTokens)
 
   for (const { index, tokens } of sortedPaths) {
     if (tokens.length === 1) {
@@ -33,11 +33,17 @@ export function compilePaths<TResult>(
       }
     } else {
       const prefix = tokens[0]
-      const parser = tokensToRegex(tokens)
-      if (prefix in dynamicPaths) {
-        dynamicPaths[prefix].push([parser, index])
-      } else {
-        dynamicPaths[prefix] = [[parser, index]]
+      for (const otherPrefix in dynamicPaths) {
+        if (otherPrefix.startsWith(prefix)) {
+          dynamicPaths[otherPrefix].push([
+            tokensToRegex(tokens),
+            index,
+            otherPrefix.slice(prefix.length),
+          ])
+        }
+      }
+      if (!(prefix in dynamicPaths)) {
+        dynamicPaths[prefix] = [[tokensToRegex(tokens), index]]
       }
     }
   }
@@ -75,13 +81,12 @@ export function compilePaths<TResult>(
       }
     }
 
-    const prefixMatch = dynamicPrefixRE?.exec(path)
-    if (prefixMatch) {
-      const prefix = prefixMatch[0]
-
-      for (const [parser, index] of dynamicPaths[prefix]) {
-        parser.lastIndex = prefix.length
-        const pathMatch = parser.exec(path)
+    const dynamicPrefix = dynamicPrefixRE?.exec(path)
+    if (dynamicPrefix) {
+      const dynamicMatches = dynamicPaths[dynamicPrefix[0]]
+      for (const [parser, index, pathPrefix] of dynamicMatches) {
+        parser.lastIndex = dynamicPrefix[0].length
+        const pathMatch = parser.exec(pathPrefix ? pathPrefix + path : path)
 
         if (pathMatch) {
           const result = callback(index, pathMatch.groups ?? {})
@@ -95,42 +100,6 @@ export function compilePaths<TResult>(
   }
 }
 
-function* iteratePrefixes(path: string) {
-  for (let i = 0; i < path.length; i++) {
-    if (path.charCodeAt(i) === CharCode.Slash) {
-      yield path.slice(0, i + 1)
-    }
-  }
-}
-
-/**
- * Note: The first static part is not included in the regex.
- */
-function tokensToRegex(tokens: string[]) {
-  return new RegExp(
-    tokens
-      .slice(1)
-      .map((token, i) => {
-        if (i % 2 === 1) {
-          return escapeRegexChars(token)
-        }
-        if (token === '*') {
-          return '.*?'
-        }
-        let pattern: string
-        if (token[0] === ':') {
-          pattern = '[^/]+?'
-        } else {
-          pattern = '.*?'
-        }
-        const name = token.slice(1)
-        return `(?<${name}>${pattern})`
-      })
-      .join('') + '$',
-    'g'
-  )
-}
-
 const enum CharCode {
   Asterisk = 42,
   Slash = 47,
@@ -138,8 +107,10 @@ const enum CharCode {
 }
 
 /**
- * The returned array contains both static parts and parameters. Every even
- * index is a static part, while every odd index is a parameter.
+ * Split a path into tokens, where each token is either a static part or a
+ * parameter.
+ *
+ * Every even index is a static part, while every odd index is a parameter.
  */
 function lex(path: string) {
   const tokens: string[] = []
@@ -185,15 +156,45 @@ function getPrefix(path: string, fromOffset: number) {
   return path.slice(fromOffset)
 }
 
+/**
+ * Note: The first static part is not included in the regex.
+ */
+function tokensToRegex(tokens: string[]) {
+  return new RegExp(
+    tokens
+      .slice(1)
+      .map((token, i) => {
+        if (i % 2 === 1) {
+          return escapeRegexChars(token)
+        }
+        if (token === '*') {
+          return '.*?'
+        }
+        let pattern: string
+        if (token[0] === ':') {
+          pattern = '[^/]+?'
+        } else {
+          pattern = '.*?'
+        }
+        const name = token.slice(1)
+        return `(?<${name}>${pattern})`
+      })
+      .join('') + '$',
+    'g'
+  )
+}
+
+/**
+ * Escape characters with special meaning either inside or outside
+ * character sets. Use a simple backslash escape when it’s always valid,
+ * and a `\xnn` escape when the simpler form would be disallowed by Unicode
+ * patterns’ stricter grammar.
+ */
 function escapeRegexChars(string: string) {
-  // Escape characters with special meaning either inside or outside
-  // character sets. Use a simple backslash escape when it’s always valid,
-  // and a `\xnn` escape when the simpler form would be disallowed by
-  // Unicode patterns’ stricter grammar.
   return string.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&').replace(/-/g, '\\x2d')
 }
 
-function compareParsedPaths(a: { tokens: string[] }, b: { tokens: string[] }) {
+function comparePathTokens(a: { tokens: string[] }, b: { tokens: string[] }) {
   const minLength = Math.min(a.tokens.length, b.tokens.length)
   for (let i = 0; i < minLength; i++) {
     const isStaticPart = i % 2 === 0

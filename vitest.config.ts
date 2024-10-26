@@ -12,8 +12,6 @@ const alias = {
   '@alien-rpc/generator': resolve('./packages/generator/src/generator.ts'),
 }
 
-console.log(alias)
-
 export default defineConfig({
   test: {
     globals: true,

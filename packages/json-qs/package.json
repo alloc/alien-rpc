@@ -1,13 +1,14 @@
 {
-  "name": "json-qs",
+  "name": "@json-qs/json-qs",
   "type": "module",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
   },
+  "files": ["dist"],
   "scripts": {
     "dev": "watchlist src -- pnpm build:dev",
     "build": "pnpm clean && PROD=1 tsup --treeshake=smallest",

@@ -24,7 +24,7 @@ See the [specification](./spec.md) for more details or the [test cases](./test/c
 ### Encoding
 
 ```ts
-import { encode } from 'json-qs'
+import { encode } from '@json-qs/json-qs'
 
 const params = encode({ a: { b: 0 } })
 // => 'a={b:0}'
@@ -35,7 +35,7 @@ const params = encode({ a: { b: 0 } })
 Note that the `json-qs` decoder works _in tandem_ with `URLSearchParams`, which is the standard JavaScript API for working with query strings. Percent encoding is handled by `URLSearchParams`, and `json-qs` simply ensures that the query string is fully compatible with JSON in a human-readable way.
 
 ```ts
-import { decode } from 'json-qs'
+import { decode } from '@json-qs/json-qs'
 
 const url = new URL(request.url)
 const params = decode(url.searchParams)

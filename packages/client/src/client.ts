@@ -1,7 +1,7 @@
 /// <reference lib="dom.asynciterable" />
-import * as jsonQS from 'json-qs'
+import * as jsonQS from '@json-qs/json-qs'
 import ky, { HTTPError } from 'ky'
-import { compile, parse, Token } from 'path-to-regexp'
+import { buildPath } from 'pathic'
 import { isString } from 'radashi'
 import jsonFormat from './formats/json.js'
 import responseFormat from './formats/response.js'
@@ -110,9 +110,6 @@ function createRouteFunction(
   request: typeof ky,
   client: Client
 ) {
-  const parsedPath = parse(route.path)
-  const pathParams = parsedPath.tokens.flatMap(stringifyToken)
-  const buildPath = parsedPath.tokens.length > 1 && compile(parsedPath)
   const format = resolveResultFormat(route.format)
 
   return (
@@ -125,19 +122,19 @@ function createRouteFunction(
     if (route.arity === 2 && arg != null) {
       if (isObject(arg)) {
         params = arg
-      } else if (pathParams.length) {
-        params = { [pathParams[0]]: arg }
+      } else if (route.pathParams.length) {
+        params = { [route.pathParams[0]]: arg }
       } else {
         throw new Error('No path parameters found for route: ' + route.path)
       }
     }
 
-    let path = buildPath ? buildPath(params!) : route.path
+    let path = buildPath(route.path, route.pathParams)
 
     if (route.method === 'get') {
       if (params) {
         const query = jsonQS.encode(params, {
-          skippedKeys: pathParams,
+          skippedKeys: route.pathParams,
         })
         if (query) {
           path += '?' + query
@@ -187,16 +184,4 @@ function resolveResultFormat(format: RpcRoute['format']): RpcResultFormatter {
 
 function isObject(arg: unknown) {
   return Object.getPrototypeOf(arg) === Object.prototype
-}
-
-function stringifyToken(token: Token): string | string[] {
-  switch (token.type) {
-    case 'param':
-    case 'wildcard':
-      return token.name
-    case 'group':
-      return token.tokens.flatMap(stringifyToken)
-    case 'text':
-      return []
-  }
 }

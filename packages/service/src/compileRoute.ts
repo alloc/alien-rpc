@@ -1,25 +1,23 @@
 import { RequestContext } from '@hattip/compose'
+import * as jsonQS from '@json-qs/json-qs'
 import { KindGuard, Type } from '@sinclair/typebox'
 import { TypeCompiler } from '@sinclair/typebox/compiler'
 import {
   TransformDecodeCheckError,
   ValueErrorType,
 } from '@sinclair/typebox/value'
-import * as jsonQS from 'json-qs'
-import { match } from 'path-to-regexp'
 import { supportedResponders } from './responders/index.js'
-import { Route } from './types.js'
+import { Route, RouteMethod } from './types.js'
+
+export type CompiledRoute = ReturnType<typeof compileRoute>
 
 export function compileRoute(route: Route) {
   const decodeRequestData = compileRequestSchema(route)
   const responder = supportedResponders[route.format](route)
 
   return {
-    method: route.method.toUpperCase(),
-    /**
-     * Match the request path against the route's path pattern.
-     */
-    match: match(route.path),
+    method: route.method.toUpperCase() as Uppercase<RouteMethod>,
+    path: route.path,
     /**
      * Decode the request data using the route's request schema.
      */

@@ -13,12 +13,12 @@
     }
   },
   "dependencies": {
-    "ky": "^1.2.2"
+    "@json-qs/json-qs": "^1.0.0",
+    "ky": "^1.2.2",
+    "pathic": "workspace:^"
   },
   "devDependencies": {
-    "@alloc/path-types": "^0.1.2",
-    "json-qs": "workspace:^",
-    "path-to-regexp": "workspace:^"
+    "@alloc/path-types": "^0.1.2"
   },
   "scripts": {
     "dev": "watchlist src -- pnpm build:dev",

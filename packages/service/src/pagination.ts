@@ -1,9 +1,8 @@
+import * as jsonQS from '@json-qs/json-qs'
 import { Static, Type } from '@sinclair/typebox'
-import * as jsonQS from 'json-qs'
-import { ParamData } from 'path-to-regexp'
-import { parseRoutePathParams, renderRoutePath } from './routeMetadata'
 import { JsonValue } from './typebox/json'
 import type { InferRouteParams } from './types'
+import { buildPath, parsePathParams } from 'pathic'
 
 // The object created by the `get` and `post` functions.
 const RouteDefinition = Type.Object(
@@ -57,10 +56,10 @@ export function resolvePaginationLink(
   data: PaginationLinkData
 ) {
   const query = jsonQS.encode(data.params, {
-    skippedKeys: parseRoutePathParams(data.route),
+    skippedKeys: parsePathParams(data.route.path),
   })
 
-  let path = renderRoutePath(data.route, data.params as ParamData)
+  let path = buildPath(data.route.path, data.params)
   if (query) {
     path += '?' + query
   }

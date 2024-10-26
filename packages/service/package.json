@@ -12,16 +12,16 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@hattip/compose": "^0.0.48"
+    "@hattip/compose": "^0.0.48",
+    "@json-qs/json-qs": "^1.0.0",
+    "pathic": "workspace:^"
   },
   "peerDependencies": {
     "@sinclair/typebox": "*"
   },
   "devDependencies": {
     "@alien-rpc/typebox": "workspace:^",
-    "@alloc/path-types": "^0.1.2",
-    "json-qs": "workspace:^",
-    "path-to-regexp": "workspace:^"
+    "@alloc/path-types": "^0.1.2"
   },
   "scripts": {
     "dev": "watchlist src -- pnpm build:dev",

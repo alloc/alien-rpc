@@ -26,6 +26,7 @@ export type RpcRoute<
 > = {
   method: RpcMethod
   path: TPath
+  pathParams: string[]
   /**
    * The result format determines how the response must be handled for the
    * caller to receive the expected type.

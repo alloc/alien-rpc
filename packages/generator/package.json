@@ -12,7 +12,8 @@
     "@ts-morph/bootstrap": "^0.25.0",
     "@ts-morph/common": "^0.25.0",
     "debug": "^4.3.7",
-    "jumpgen": "0.1.0-beta.13"
+    "jumpgen": "0.1.0-beta.13",
+    "pathic": "workspace:^"
   },
   "peerDependencies": {
     "@sinclair/typebox": "*",
@@ -21,8 +22,7 @@
   "devDependencies": {
     "@alien-rpc/client": "workspace:^",
     "@alloc/path-types": "^0.1.2",
-    "@types/debug": "^4.1.12",
-    "path-to-regexp": "workspace:^"
+    "@types/debug": "^4.1.12"
   },
   "scripts": {
     "dev": "watchlist src -- pnpm build:dev",

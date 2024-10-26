@@ -4,89 +4,91 @@ import {
   TransformDecodeCheckError,
   TransformDecodeError,
 } from '@sinclair/typebox/value'
-import { compileRoute } from './compileRoute.js'
-import { Route } from './types'
+import { compilePaths } from 'pathic'
+import { mapValues } from 'radashi'
+import { CompiledRoute, compileRoute } from './compileRoute.js'
+import { compilePreflightHandler, CorsConfig } from './cors.js'
+import { Route, RouteMethod } from './types'
 
-export function compileRoutes(routes: readonly Route[]) {
-  const compiledRoutes = routes.map(compileRoute)
+const enum RequestStep {
+  Match,
+  Decode,
+  Respond,
+}
+
+export interface RoutesConfig {
+  cors?: CorsConfig
+}
+
+export function compileRoutes(
+  rawRoutes: readonly Route[],
+  config: RoutesConfig = {}
+) {
+  const routesByMethod = prepareRoutes(rawRoutes)
+
+  // Browsers send an OPTIONS request as a preflight request for a CORS
+  // request. This handler will respond with Access-Control-Allow headers
+  // if matching routes are found.
+  const handlePreflightRequest = compilePreflightHandler(
+    config.cors || {},
+    ({ url }) => {
+      const allowedMethods = new Set<string>()
+      for (const matchRoute of Object.values(routesByMethod)) {
+        matchRoute(url.pathname, route => {
+          allowedMethods.add(route.method)
+          return true
+        })
+      }
+      return allowedMethods
+    }
+  )
 
   return async (ctx: RequestContext): Promise<Response | undefined> => {
     const { url, request } = ctx
-    const isOptionsRequest = request.method === 'OPTIONS'
 
-    type RequestStep = 'match' | 'decode' | 'respond'
+    if (request.method === 'OPTIONS') {
+      return handlePreflightRequest(ctx)
+    }
 
-    let step: RequestStep = 'match'
+    const matchRoute = routesByMethod[request.method as Uppercase<RouteMethod>]
+    if (!matchRoute) {
+      return
+    }
+
+    // By mutating these properties, routes can alter the response status
+    // and headers. Note that each “responder format” is responsible for
+    // using these properties when creating its Response object.
+    ctx.response = {
+      status: 200,
+      headers: new Headers({
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Origin': request.headers.get('Origin') ?? '*',
+      }),
+    }
+
+    let step = RequestStep.Match as RequestStep
 
     try {
-      let corsMethods: string[] | undefined
-
-      for (const route of compiledRoutes) {
-        if (!isOptionsRequest && request.method !== route.method) {
-          continue
-        }
-
-        const match = route.match(url.pathname)
-        if (!match) {
-          continue
-        }
-
-        if (isOptionsRequest) {
-          corsMethods ??= []
-          corsMethods.push(route.method)
-          continue
-        }
-
-        ctx.response = {
-          status: 200,
-          headers: new Headers({
-            'Access-Control-Allow-Credentials': 'true',
-            'Access-Control-Allow-Origin': request.headers.get('Origin') ?? '*',
-          }),
-        }
-
-        step = 'decode'
-
+      return await matchRoute(url.pathname, async (route, params) => {
+        step = RequestStep.Decode
         const data = await route.decodeRequestData(ctx)
 
-        step = 'respond'
-
-        return await route.responder(match.params, data, ctx)
-      }
-
-      if (isOptionsRequest && corsMethods) {
-        const allowOrigin = request.headers.get('Origin')
-        const allowMethod = request.headers.get('Access-Control-Request-Method')
-        const allowHeaders = request.headers.get(
-          'Access-Control-Request-Headers'
-        )
-
-        return new Response(null, {
-          headers: {
-            'Access-Control-Allow-Credentials': 'true',
-            'Access-Control-Allow-Headers': allowHeaders || '',
-            'Access-Control-Allow-Methods':
-              allowMethod && corsMethods.includes(allowMethod)
-                ? allowMethod
-                : corsMethods.join(', '),
-            'Access-Control-Allow-Origin': allowOrigin || '',
-          },
-        })
-      }
+        step = RequestStep.Respond
+        return await route.responder(params, data, ctx)
+      })
     } catch (error: any) {
       if (!process.env.TEST) {
         console.error(error)
       }
 
-      if (step === 'respond') {
+      if (step === RequestStep.Respond) {
         if (process.env.NODE_ENV === 'production') {
           return new Response(null, { status: 500 })
         }
         return new ErrorResponse(500, { message: error.message })
       }
 
-      // Check for a ValueError from TypeBox.
-      if (step === 'decode') {
+      if (step === RequestStep.Decode) {
         if (isDecodeError(error)) {
           error = error.error
         }
@@ -100,6 +102,31 @@ export function compileRoutes(routes: readonly Route[]) {
       return new ErrorResponse(400, { message: error.message })
     }
   }
+}
+
+function prepareRoutes(rawRoutes: readonly Route[]) {
+  const groupedRoutes: Record<
+    Uppercase<RouteMethod>,
+    CompiledRoute[]
+  > = Object.create(null)
+
+  for (const rawRoute of rawRoutes) {
+    const route = compileRoute(rawRoute)
+    groupedRoutes[route.method] ??= []
+    groupedRoutes[route.method].push(route)
+  }
+
+  return mapValues(groupedRoutes, routes => {
+    const match = compilePaths(routes.map(route => route.path))
+
+    return <TResult>(
+      path: string,
+      handler: (route: CompiledRoute, params: Record<string, string>) => TResult
+    ) =>
+      match(path, (index, params) => {
+        return handler(routes[index], params)
+      })
+  })
 }
 
 class ErrorResponse extends Response {

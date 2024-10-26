@@ -2,7 +2,7 @@ import { createProject, Project } from '@ts-morph/bootstrap'
 import { ts } from '@ts-morph/common'
 import { jumpgen, JumpgenFS } from 'jumpgen'
 import path from 'path'
-import * as RoutePath from 'path-to-regexp'
+import { parsePathParams } from 'pathic'
 import { camel, sift } from 'radashi'
 import { AnalyzedRoute, analyzeRoutes } from './analyze-routes.js'
 import { reportDiagnostics } from './diagnostics.js'
@@ -185,7 +185,7 @@ export default (options: Options) =>
         route.fileName.replace(/\.ts$/, '.js')
       )
 
-      const pathParams = parseRoutePathParams(route.resolvedPathname)
+      const pathParams = parsePathParams(route.resolvedPathname)
 
       const sharedProperties = sift([
         `method: "${route.resolvedMethod}"`,
@@ -372,22 +372,6 @@ function parseTypeLiteral(type: string) {
     ts.ScriptTarget.Latest
   )
   return (sourceFile.statements[0] as ts.TypeAliasDeclaration).type
-}
-
-function parseRoutePathParams(pathname: string) {
-  return RoutePath.parse(pathname).tokens.flatMap(function stringifyToken(
-    token: RoutePath.Token
-  ): string | string[] {
-    switch (token.type) {
-      case 'param':
-      case 'wildcard':
-        return token.name
-      case 'group':
-        return token.tokens.flatMap(stringifyToken)
-      case 'text':
-        return []
-    }
-  })
 }
 
 function watchMissingImport(

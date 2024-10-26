@@ -96,19 +96,19 @@ importers:
 
   packages/client:
     dependencies:
+      '@json-qs/json-qs':
+        specifier: ^1.0.0
+        version: 1.0.0
       ky:
         specifier: ^1.2.2
         version: 1.2.2
+      pathic:
+        specifier: workspace:^
+        version: link:../pathic
     devDependencies:
       '@alloc/path-types':
         specifier: ^0.1.2
         version: 0.1.2
-      json-qs:
-        specifier: workspace:^
-        version: link:../json-qs
-      path-to-regexp:
-        specifier: workspace:^
-        version: link:../path-to-regexp
 
   packages/generator:
     dependencies:
@@ -127,6 +127,9 @@ importers:
       jumpgen:
         specifier: 0.1.0-beta.13
         version: 0.1.0-beta.13
+      pathic:
+        specifier: workspace:^
+        version: link:../pathic
       typescript:
         specifier: '*'
         version: 5.6.3
@@ -140,22 +143,23 @@ importers:
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.12
-      path-to-regexp:
-        specifier: workspace:^
-        version: link:../path-to-regexp
 
-  packages/json-qs: {}
-
-  packages/path-to-regexp: {}
+  packages/pathic: {}
 
   packages/service:
     dependencies:
       '@hattip/compose':
         specifier: ^0.0.48
         version: 0.0.48
+      '@json-qs/json-qs':
+        specifier: ^1.0.0
+        version: 1.0.0
       '@sinclair/typebox':
         specifier: ^0.33.17
         version: 0.33.17
+      pathic:
+        specifier: workspace:^
+        version: link:../pathic
     devDependencies:
       '@alien-rpc/typebox':
         specifier: workspace:^
@@ -163,12 +167,6 @@ importers:
       '@alloc/path-types':
         specifier: ^0.1.2
         version: 0.1.2
-      json-qs:
-        specifier: workspace:^
-        version: link:../json-qs
-      path-to-regexp:
-        specifier: workspace:^
-        version: link:../path-to-regexp
 
   packages/typebox:
     dependencies:
@@ -502,6 +500,9 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
+
+  '@json-qs/json-qs@1.0.0':
+    resolution: {integrity: sha512-27Y9u9xLyaZ71E+3DwB251Chk91LtKZrr1dyHgIopI8FBDUt6GAZKy6zL1oenWTtyBomNTSz5ac5QNEDlgPjzQ==}
 
   '@kamilkisiela/fast-url-parser@1.1.4':
     resolution: {integrity: sha512-gbkePEBupNydxCelHCESvFSFM8XPh1Zs/OAVRW/rKpEqPAl5PbOM90Si8mv9bvnR53uPD2s/FiRxdvSejpRJew==}
@@ -1515,6 +1516,8 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
+
+  '@json-qs/json-qs@1.0.0': {}
 
   '@kamilkisiela/fast-url-parser@1.1.4': {}
 

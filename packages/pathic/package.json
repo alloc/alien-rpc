@@ -1,0 +1,29 @@
+{
+  "name": "pathic",
+  "version": "0.0.0",
+  "description": "TypeScript library for URI path matching",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "author": "Alec Larson",
+  "license": "MIT",
+  "scripts": {
+    "dev": "watchlist src -- pnpm build:dev",
+    "build": "pnpm clean && PROD=1 tsup --treeshake=smallest",
+    "build:dev": "tsup --sourcemap --no-treeshake",
+    "clean": "rimraf dist",
+    "lint": "tsc -p . --outDir node_modules/.tmp"
+  },
+  "keywords": [
+    "path",
+    "pattern",
+    "uri",
+    "route",
+    "router",
+    "typescript"
+  ]
+}

@@ -10,13 +10,18 @@ export function buildPath(pattern: string, params: {}) {
   let lastIndex = 0
 
   for (
-    let lexer = /([:*])(\w+)/g, match = lexer.exec(pattern);
+    let lexer = /(?<=\/)([:*])(\w+)?/g, match = lexer.exec(pattern);
     match !== null;
     match = lexer.exec(pattern)
   ) {
-    path +=
-      pattern.slice(lastIndex, match.index) + stringifyParam(params[match[2]])
+    const name = match[2] ?? '*'
+    const value = name in params ? (params as any)[name] : undefined
 
+    if (value === undefined) {
+      throw new Error(`Missing parameter "${name}" in path "${pattern}"`)
+    }
+
+    path += pattern.slice(lastIndex, match.index) + stringifyParam(value)
     lastIndex = match.index + match[0].length
   }
 

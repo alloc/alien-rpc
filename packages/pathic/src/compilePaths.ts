@@ -1,4 +1,22 @@
-export type PathMatcher<TResult> = (path: string) => TResult | undefined
+type DynamicPath = {
+  parser: RegExp
+  index: number
+  /**
+   * The offset to use when matching the path. This is only needed when the
+   * matched prefix is longer than the prefix of this path.
+   */
+  offset?: number
+}
+
+export type PathMatcher = <TArgs extends any[] = any[], TResult = any>(
+  path: string,
+  callback: (
+    index: number,
+    params: Record<string, string>,
+    ...args: TArgs
+  ) => TResult | undefined,
+  ...args: TArgs
+) => TResult | undefined
 
 /**
  * Given a list of unsorted path patterns, returns a function that can be
@@ -7,15 +25,7 @@ export type PathMatcher<TResult> = (path: string) => TResult | undefined
  * The given callback receives the index of the path pattern and the parsed
  * parameters.
  */
-export function compilePaths<TResult>(
-  paths: string[],
-  callback: (
-    index: number,
-    params: Record<string, string>
-  ) => TResult | undefined
-): PathMatcher<TResult> {
-  type DynamicPath = readonly [parser: RegExp, index: number, prefix?: string]
-
+export function compilePaths(paths: string[]): PathMatcher {
   const fixedPaths: Record<string, number[]> = Object.create(null)
   const dynamicPaths: Record<string, DynamicPath[]> = Object.create(null)
 
@@ -33,21 +43,37 @@ export function compilePaths<TResult>(
       }
     } else {
       const prefix = tokens[0]
+      const parser = tokensToRegex(tokens)
+      const maxSlashes = detectMaximumSlashes(tokens)
+
+      // Ensure the exact prefix has an array to push to.
+      dynamicPaths[prefix] ??= []
+
+      // Iterate the existing prefixes to find any that are compatible. Since
+      // longer prefixes are processed first, this loop will add the current
+      // path to all compatible prefixes.
       for (const otherPrefix in dynamicPaths) {
-        if (otherPrefix.startsWith(prefix)) {
-          dynamicPaths[otherPrefix].push([
-            tokensToRegex(tokens),
-            index,
-            otherPrefix.slice(prefix.length),
-          ])
+        if (!otherPrefix.startsWith(prefix)) {
+          continue
         }
-      }
-      if (!(prefix in dynamicPaths)) {
-        dynamicPaths[prefix] = [[tokensToRegex(tokens), index]]
+        // Check for an exact match.
+        if (prefix.length === otherPrefix.length) {
+          dynamicPaths[prefix].push({ parser, index })
+        }
+        // If there aren't too many slashes, use this prefix.
+        else if (countSlashes(otherPrefix) <= maxSlashes) {
+          dynamicPaths[otherPrefix].push({
+            parser,
+            index,
+            offset: prefix.length,
+          })
+        }
       }
     }
   }
 
+  // The keys of the dynamicPaths object are sorted longest to shortest, so this
+  // regex will match the longest prefix.
   const dynamicPrefixRE =
     Object.keys(dynamicPaths).length > 0
       ? new RegExp(
@@ -57,46 +83,55 @@ export function compilePaths<TResult>(
         )
       : null
 
-  console.dir(
-    {
-      sortedPaths,
-      fixedPaths,
-      dynamicPaths,
-      dynamicPrefixRE,
-    },
-    { depth: null }
-  )
-
-  return path => {
+  function matchFixedPath(
+    path: string,
+    callback: (
+      index: number,
+      params: Record<string, string>,
+      ...args: any[]
+    ) => any,
+    ...args: any[]
+  ) {
     const fixedMatches = fixedPaths[path]
     if (fixedMatches) {
-      const emptyParams = Object.freeze({})
-
-      for (const index of fixedMatches) {
-        const result = callback(index, emptyParams)
-
-        if (result !== undefined) {
-          return result
-        }
-      }
+      return iterateUntilResult(fixedMatches, index =>
+        callback(index, {}, ...args)
+      )
     }
+  }
 
-    const dynamicPrefix = dynamicPrefixRE?.exec(path)
-    if (dynamicPrefix) {
-      const dynamicMatches = dynamicPaths[dynamicPrefix[0]]
-      for (const [parser, index, pathPrefix] of dynamicMatches) {
-        parser.lastIndex = dynamicPrefix[0].length
-        const pathMatch = parser.exec(pathPrefix ? pathPrefix + path : path)
+  function matchDynamicPath(
+    path: string,
+    callback: (
+      index: number,
+      params: Record<string, string>,
+      ...args: any[]
+    ) => any,
+    ...args: any[]
+  ) {
+    const prefixMatch = dynamicPrefixRE?.exec(path)
+    if (prefixMatch) {
+      const prefix = prefixMatch[0]
+      return iterateUntilResult(
+        dynamicPaths[prefix],
+        ({ parser, index, offset }) => {
+          parser.lastIndex = offset ?? prefix.length
 
-        if (pathMatch) {
-          const result = callback(index, pathMatch.groups ?? {})
-
-          if (result !== undefined) {
-            return result
+          const pathMatch = parser.exec(path)
+          if (pathMatch) {
+            return callback(index, pathMatch.groups ?? {}, ...args)
           }
         }
-      }
+      )
     }
+  }
+
+  const matchers = [matchFixedPath, matchDynamicPath]
+
+  return (path, callback, ...args) => {
+    return iterateUntilResult(matchers, matcher =>
+      matcher(path, callback, ...args)
+    )
   }
 }
 
@@ -240,4 +275,43 @@ function countSlashes(path: string) {
     }
   }
   return n
+}
+
+function detectMaximumSlashes(tokens: string[]) {
+  let maxSlashes = 0
+  for (let i = 0; i < tokens.length; i++) {
+    if (i % 2 === 0) {
+      maxSlashes += countSlashes(tokens[i])
+    } else if (tokens[i].charCodeAt(0) === CharCode.Asterisk) {
+      return Infinity
+    }
+  }
+  return maxSlashes
+}
+
+function iterateUntilResult<TItem, TResult>(
+  array: TItem[],
+  callback: (item: TItem) => TResult | undefined,
+  index = 0
+): TResult | undefined {
+  if (index >= array.length) {
+    return undefined
+  }
+
+  const result = callback(array[index])
+
+  if (result === undefined) {
+    return iterateUntilResult(array, callback, index + 1)
+  }
+
+  if (result instanceof Promise) {
+    return result.then(value => {
+      if (value === undefined) {
+        return iterateUntilResult(array, callback, index + 1)
+      }
+      return value
+    }) as any
+  }
+
+  return result
 }

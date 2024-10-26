@@ -3,9 +3,9 @@ import { compilePaths } from '../src/compilePaths'
 describe('compilePaths', () => {
   test('basic cases', () => {
     const spy = vi.fn()
-    const match = compilePaths(['/', '/*', '/foo'], spy)
+    const match = compilePaths(['/', '/*', '/foo'])
 
-    match('/')
+    match('/', spy)
     expect(spy.mock.calls).toEqual([
       [0, {}],
       [1, {}],
@@ -13,7 +13,7 @@ describe('compilePaths', () => {
 
     spy.mockClear()
 
-    match('/foo')
+    match('/foo', spy)
     expect(spy.mock.calls).toEqual([
       [2, {}],
       [1, {}],
@@ -21,18 +21,21 @@ describe('compilePaths', () => {
 
     spy.mockClear()
 
-    match('/foo/bar')
+    match('/foo/bar', spy)
     expect(spy.mock.calls).toEqual([[1, {}]])
   })
 
   test('advanced cases', () => {
     const spy = vi.fn()
-    const match = compilePaths(
-      ['/a/:b', '/a/:b/c', '/a/b/:c', '/a/*b', '/a/b/*c'],
-      spy
-    )
+    const match = compilePaths([
+      '/a/:b',
+      '/a/:b/c',
+      '/a/b/:c',
+      '/a/*b',
+      '/a/b/*c',
+    ])
 
-    match('/a/b')
+    match('/a/b', spy)
     expect(spy.mock.calls).toEqual([
       [0, { b: 'b' }],
       [3, { b: 'b' }],
@@ -40,11 +43,12 @@ describe('compilePaths', () => {
 
     spy.mockClear()
 
-    match('/a/b/c')
-    expect(spy.mock.calls).toMatchInlineSnapshot([
+    match('/a/b/c', spy)
+    expect(spy.mock.calls).toEqual([
       [2, { c: 'c' }],
       [4, { c: 'c' }],
-      [3, { b: 'c' }],
+      [1, { b: 'b' }],
+      [3, { b: 'b/c' }],
     ])
   })
 })

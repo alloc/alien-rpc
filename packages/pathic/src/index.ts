@@ -1,5 +1,4 @@
 export * from './buildPath'
 export * from './compilePaths'
 export * from './parsePathParams'
-export * from './sortPaths'
 export * from './types'

@@ -27,19 +27,13 @@ import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
 export const complexSearch: RpcRoute<
   "complex",
   (
-    params: RequestParams<
+    params?: RequestParams<
       Record<string, never>,
       { foo?: string | { bar?: string } | string[] }
-    >,
+    > | null,
     requestOptions?: RequestOptions,
   ) => Promise<undefined | string | { bar?: undefined | string } | string[]>
-> = {
-  path: "complex",
-  method: "get",
-  jsonParams: ["foo"],
-  arity: 2,
-  format: "json",
-} as any;
+> = { path: "complex", method: "get", arity: 2, format: "json" } as any;
 
 /**
  * server/api.ts
@@ -50,7 +44,6 @@ export default [
   {
     path: "/complex",
     method: "get",
-    jsonParams: ["foo"],
     import: async () => (await import("../routes.js")).complexSearch,
     format: "json",
     requestSchema: Type.Object({

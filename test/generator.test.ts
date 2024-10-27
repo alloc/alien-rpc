@@ -29,21 +29,9 @@ describe.concurrent('generator', () => {
       name: testName,
       run: async () => {
         generator.resetFiles(testDir)
-        generator.instance ??= (() => {
-          const instance = generator.start({
-            watch: true,
-          })
-
-          instance.events
-            .on('start', () => {
-              console.log('start')
-            })
-            .on('write', file => {
-              console.log('write:', file)
-            })
-
-          return instance
-        })()
+        generator.instance ??= generator.start({
+          watch: true,
+        })
 
         await generator.instance.waitForStart(5000)
         await generator.instance

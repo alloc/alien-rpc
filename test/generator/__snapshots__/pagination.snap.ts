@@ -50,19 +50,13 @@ import jsonSeq from "@alien-rpc/client/formats/json-seq";
 export const listPosts: RpcRoute<
   "posts",
   (
-    params: RequestParams<
+    params?: RequestParams<
       Record<string, never>,
       { page?: number; limit?: number | undefined }
-    >,
+    > | null,
     requestOptions?: RequestOptions,
   ) => ResponseStream<{ id: number; title: string; content: string }>
-> = {
-  path: "posts",
-  method: "get",
-  jsonParams: [],
-  arity: 2,
-  format: jsonSeq,
-} as any;
+> = { path: "posts", method: "get", arity: 2, format: jsonSeq } as any;
 
 /**
  * server/api.ts
@@ -73,7 +67,6 @@ export default [
   {
     path: "/posts",
     method: "get",
-    jsonParams: [],
     import: async () => (await import("../routes.js")).listPosts,
     format: "json-seq",
     requestSchema: Type.Object({

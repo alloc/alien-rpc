@@ -17,13 +17,7 @@ import { RequestOptions, ResponsePromise, RpcRoute } from "@alien-rpc/client";
 export const test: RpcRoute<
   "test",
   (requestOptions?: RequestOptions) => ResponsePromise
-> = {
-  path: "test",
-  method: "get",
-  jsonParams: [],
-  arity: 1,
-  format: "response",
-} as any;
+> = { path: "test", method: "get", arity: 1, format: "response" } as any;
 
 /**
  * server/api.ts
@@ -34,7 +28,6 @@ export default [
   {
     path: "/test",
     method: "get",
-    jsonParams: [],
     import: async () => (await import("../routes.js")).test,
     format: "response",
     requestSchema: Type.Record(Type.String(), Type.Never()),

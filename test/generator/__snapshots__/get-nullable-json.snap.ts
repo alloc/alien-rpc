@@ -26,7 +26,6 @@ export const getUserById: RpcRoute<
 > = {
   path: "users/:id",
   method: "get",
-  jsonParams: [],
   pathParams: ["id"],
   arity: 2,
   format: "json",
@@ -41,7 +40,6 @@ export default [
   {
     path: "/users/:id",
     method: "get",
-    jsonParams: [],
     pathParams: ["id"],
     import: async () => (await import("../routes.js")).getUserById,
     format: "json",

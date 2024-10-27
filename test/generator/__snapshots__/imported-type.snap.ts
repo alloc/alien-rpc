@@ -58,7 +58,6 @@ export const getPost: RpcRoute<
 > = {
   path: "posts/:id",
   method: "get",
-  jsonParams: [],
   pathParams: ["id"],
   arity: 2,
   format: "json",
@@ -73,7 +72,6 @@ export default [
   {
     path: "/posts/:id",
     method: "get",
-    jsonParams: [],
     pathParams: ["id"],
     import: async () => (await import("../routes.js")).getPost,
     format: "json",

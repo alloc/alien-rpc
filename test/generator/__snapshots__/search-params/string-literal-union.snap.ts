@@ -40,13 +40,7 @@ export const getSortedPosts: RpcRoute<
     >,
     requestOptions?: RequestOptions,
   ) => Promise<Post[]>
-> = {
-  path: "posts",
-  method: "get",
-  jsonParams: [],
-  arity: 2,
-  format: "json",
-} as any;
+> = { path: "posts", method: "get", arity: 2, format: "json" } as any;
 
 /**
  * server/api.ts
@@ -57,7 +51,6 @@ export default [
   {
     path: "/posts",
     method: "get",
-    jsonParams: [],
     import: async () => (await import("../routes.js")).getSortedPosts,
     format: "json",
     requestSchema: Type.Object({

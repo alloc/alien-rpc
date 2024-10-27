@@ -110,8 +110,8 @@ describe.concurrent('client', async () => {
 
   test('route that returns a raw response', async () => {
     const client = await getTestClient()
-    const result = await client.rawResponse()
-    expect(await result.text()).toBe('hello')
+    const result = await client.rawResponse({ wild: 'sup' })
+    expect(await result.text()).toBe('sup')
   })
 })
 

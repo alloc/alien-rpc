@@ -1,5 +1,5 @@
-import { InferParams } from '@alloc/path-types'
 import { RequestContext } from '@hattip/compose'
+import { InferParams } from 'pathic'
 import { BuildRouteParams, RouteDefinition, RouteResult } from './types'
 
 type ValidResult<TPath extends string, TData extends object> = RouteResult<

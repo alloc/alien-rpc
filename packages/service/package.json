@@ -13,15 +13,14 @@
   },
   "dependencies": {
     "@hattip/compose": "^0.0.48",
-    "@json-qs/json-qs": "^1.0.0",
-    "pathic": "workspace:^"
+    "@json-qs/json-qs": "^1.0.0"
   },
   "peerDependencies": {
     "@sinclair/typebox": "*"
   },
   "devDependencies": {
     "@alien-rpc/typebox": "workspace:^",
-    "@alloc/path-types": "^0.1.2"
+    "pathic": "workspace:^"
   },
   "scripts": {
     "dev": "watchlist src -- pnpm build:dev",

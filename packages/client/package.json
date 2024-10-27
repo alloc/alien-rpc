@@ -14,11 +14,10 @@
   },
   "dependencies": {
     "@json-qs/json-qs": "^1.0.0",
-    "ky": "^1.2.2",
-    "pathic": "workspace:^"
+    "ky": "^1.2.2"
   },
   "devDependencies": {
-    "@alloc/path-types": "^0.1.2"
+    "pathic": "workspace:^"
   },
   "scripts": {
     "dev": "watchlist src -- pnpm build:dev",

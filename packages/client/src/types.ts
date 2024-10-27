@@ -1,4 +1,4 @@
-import type { PathTemplate } from '@alloc/path-types'
+import type { PathTemplate } from 'pathic'
 import type { Client } from './client.js'
 
 type AnyFn = (...args: any) => any
@@ -78,7 +78,7 @@ export type RpcPagination = {
   $next: string | null
 }
 
-export type { InferParams, PathTemplate } from '@alloc/path-types'
+export type { InferParams, PathTemplate } from 'pathic'
 
 export type ClientOptions = Omit<
   import('ky').Options,

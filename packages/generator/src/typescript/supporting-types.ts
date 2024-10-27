@@ -50,13 +50,18 @@ export function createSupportingTypes(project: Project, rootDir: string) {
 
   type TypeGetter = (typeChecker: ts.TypeChecker) => ts.Type
 
-  const typeCache: Record<string, ts.Type> = {}
+  const typeCache = new Map<string, ts.Type>()
 
   const syntaxList = sourceFile.getChildAt(0)
-  const types = Object.fromEntries(
+  const types: {
+    [TypeName in keyof typeof typeDeclarations]: TypeGetter
+  } & {
+    /** Reset the type cache. */
+    clear(): void
+  } = Object.fromEntries(
     Object.keys(typeDeclarations).map((typeName, i) => {
       const getType: TypeGetter = typeChecker => {
-        let type = typeCache[typeName]
+        let type = typeCache.get(typeName)
         if (type) {
           return type
         }
@@ -73,14 +78,16 @@ export function createSupportingTypes(project: Project, rootDir: string) {
           typeValidation[typeName](typeChecker, type)
         }
 
-        typeCache[typeName] = type
+        typeCache.set(typeName, type)
         return type
       }
 
       return [typeName, getType] as const
     })
-  ) as {
-    [TypeName in keyof typeof typeDeclarations]: TypeGetter
+  ) as any
+
+  types.clear = () => {
+    typeCache.clear()
   }
 
   return types

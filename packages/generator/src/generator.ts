@@ -105,6 +105,7 @@ export default (options: Options) =>
           }
         }
       }
+      store.types.clear()
     }
 
     const { project, types, routesByFile } = store

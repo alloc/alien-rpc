@@ -102,13 +102,10 @@ importers:
       ky:
         specifier: ^1.2.2
         version: 1.2.2
+    devDependencies:
       pathic:
         specifier: workspace:^
         version: link:../pathic
-    devDependencies:
-      '@alloc/path-types':
-        specifier: ^0.1.2
-        version: 0.1.2
 
   packages/generator:
     dependencies:
@@ -127,9 +124,6 @@ importers:
       jumpgen:
         specifier: 0.1.0-beta.13
         version: 0.1.0-beta.13
-      pathic:
-        specifier: workspace:^
-        version: link:../pathic
       typescript:
         specifier: '*'
         version: 5.6.3
@@ -137,12 +131,12 @@ importers:
       '@alien-rpc/client':
         specifier: workspace:^
         version: link:../client
-      '@alloc/path-types':
-        specifier: ^0.1.2
-        version: 0.1.2
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.12
+      pathic:
+        specifier: workspace:^
+        version: link:../pathic
 
   packages/pathic: {}
 
@@ -157,16 +151,13 @@ importers:
       '@sinclair/typebox':
         specifier: ^0.33.17
         version: 0.33.17
-      pathic:
-        specifier: workspace:^
-        version: link:../pathic
     devDependencies:
       '@alien-rpc/typebox':
         specifier: workspace:^
         version: link:../typebox
-      '@alloc/path-types':
-        specifier: ^0.1.2
-        version: 0.1.2
+      pathic:
+        specifier: workspace:^
+        version: link:../pathic
 
   packages/typebox:
     dependencies:
@@ -184,9 +175,6 @@ packages:
   '@alloc/fast-rimraf@1.0.8':
     resolution: {integrity: sha512-TsRTRLLDW6Q4fWBAYlbkcaHQDAANKsI0smrhS/1x7/GHcjVxo+r+2VRbqrWaYpmjdhvCp5v7n2wtwkMYp+Kivw==}
     hasBin: true
-
-  '@alloc/path-types@0.1.2':
-    resolution: {integrity: sha512-p+eZytuRXAcd4jI+fsJjtED/vadSLRfbx5bejIOifCboUgvXR26dIy9WMhw6WQEqH8FO1hXG2q995cfWWuf++w==}
 
   '@alloc/prettier-config@1.0.0':
     resolution: {integrity: sha512-xm50V1qxSdTh1O1fKA+gqcU605YSnxfq6HwtYSFU3fRsKMFnUSuSOxqSAPI7y2sRxqPed2EIuGmNn107LVQM6g==}
@@ -1331,8 +1319,6 @@ snapshots:
       mri: 1.2.0
 
   '@alloc/fast-rimraf@1.0.8': {}
-
-  '@alloc/path-types@0.1.2': {}
 
   '@alloc/prettier-config@1.0.0': {}
 

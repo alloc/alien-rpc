@@ -129,7 +129,7 @@ function createRouteFunction(
       }
     }
 
-    let path = buildPath(route.path, route.pathParams)
+    let path = buildPath(route.path, params ?? {})
 
     if (route.method === 'get') {
       if (params) {

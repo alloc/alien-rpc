@@ -1,7 +1,9 @@
 {
   "name": "@alien-rpc/client",
-  "type": "module",
   "version": "0.1.0",
+  "description": "Client library for alien-rpc",
+  "type": "module",
+  "files": ["dist"],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -11,6 +13,13 @@
       "types": "./dist/formats/*.d.ts",
       "import": "./dist/formats/*.js"
     }
+  },
+  "author": "Alec Larson",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alloc/alien-rpc.git",
+    "directory": "packages/client"
   },
   "dependencies": {
     "@json-qs/json-qs": "^1.2.0",

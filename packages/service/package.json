@@ -1,12 +1,21 @@
 {
   "name": "@alien-rpc/service",
-  "type": "module",
   "version": "0.1.0",
+  "description": "Service library for alien-rpc",
+  "type": "module",
+  "files": ["dist"],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
+  },
+  "author": "Alec Larson",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alloc/alien-rpc.git",
+    "directory": "packages/service"
   },
   "engines": {
     "node": ">=18"

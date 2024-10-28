@@ -1,9 +1,11 @@
 {
   "name": "pathic",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript library for URI path matching",
   "type": "module",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

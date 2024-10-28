@@ -1,41 +1,19 @@
 import * as jsonQS from '@json-qs/json-qs'
-import { Static, Type } from '@sinclair/typebox'
-import { JsonValue } from './typebox/json'
-import type { InferRouteParams } from './types'
 import { buildPath, parsePathParams } from 'pathic'
+import type { InferRouteParams, RouteDefinition } from './types'
 
-// The object created by the `get` and `post` functions.
-const RouteDefinition = Type.Object(
-  {
-    method: Type.String(),
-    path: Type.String(),
-    handler: Type.Unknown(),
-  },
-  { additionalProperties: false }
-)
+export type PaginationLinkData<
+  TParams extends jsonQS.CodableRecord = jsonQS.CodableRecord,
+> = {
+  route: RouteDefinition
+  params: TParams
+}
 
-const PaginationLinkParams = Type.Record(Type.String(), JsonValue())
-
-/**
- * If a pagination link is defined without a route, the current route is
- * used. Either way, the pagination link is formed with a URL and a set of
- * search parameters. Only GET routes are supported.
- */
-const PaginationLinkData = Type.Object(
-  {
-    route: RouteDefinition,
-    params: PaginationLinkParams,
-  },
-  { additionalProperties: false }
-)
-
-type RouteDefinition = Static<typeof RouteDefinition>
-type PaginationLinkParams = Static<typeof PaginationLinkParams>
-type PaginationLinkData = Static<typeof PaginationLinkData>
-
-export type PaginationLinks<TParams extends object = object> = {
-  prev: { route: RouteDefinition; params: TParams } | null
-  next: { route: RouteDefinition; params: TParams } | null
+export type PaginationLinks<
+  TParams extends jsonQS.CodableRecord = jsonQS.CodableRecord,
+> = {
+  prev: PaginationLinkData<TParams> | null
+  next: PaginationLinkData<TParams> | null
 }
 
 export function paginate<T extends RouteDefinition>(
@@ -48,7 +26,7 @@ export function paginate<T extends RouteDefinition>(
   return {
     prev: links.prev && { route, params: links.prev },
     next: links.next && { route, params: links.next },
-  } satisfies PaginationLinks
+  } satisfies PaginationLinks<any>
 }
 
 export function resolvePaginationLink(

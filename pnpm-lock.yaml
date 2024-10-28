@@ -97,8 +97,8 @@ importers:
   packages/client:
     dependencies:
       '@json-qs/json-qs':
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: ^1.2.0
+        version: 1.2.0
       ky:
         specifier: ^1.2.2
         version: 1.2.2
@@ -146,8 +146,8 @@ importers:
         specifier: ^0.0.48
         version: 0.0.48
       '@json-qs/json-qs':
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: ^1.2.0
+        version: 1.2.0
       '@sinclair/typebox':
         specifier: ^0.33.17
         version: 0.33.17
@@ -489,8 +489,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
 
-  '@json-qs/json-qs@1.0.0':
-    resolution: {integrity: sha512-27Y9u9xLyaZ71E+3DwB251Chk91LtKZrr1dyHgIopI8FBDUt6GAZKy6zL1oenWTtyBomNTSz5ac5QNEDlgPjzQ==}
+  '@json-qs/json-qs@1.2.0':
+    resolution: {integrity: sha512-TTK1XsdGwY7ATLDg7ohN5+PbNwfPPDpJGm1AVstSLX7FvtuCwHQk6nxTo7f6f+Sx+OwagYv+bnZkU133hHEShg==}
 
   '@kamilkisiela/fast-url-parser@1.1.4':
     resolution: {integrity: sha512-gbkePEBupNydxCelHCESvFSFM8XPh1Zs/OAVRW/rKpEqPAl5PbOM90Si8mv9bvnR53uPD2s/FiRxdvSejpRJew==}
@@ -1503,7 +1503,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
 
-  '@json-qs/json-qs@1.0.0': {}
+  '@json-qs/json-qs@1.2.0': {}
 
   '@kamilkisiela/fast-url-parser@1.1.4': {}
 

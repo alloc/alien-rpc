@@ -13,7 +13,7 @@
     }
   },
   "dependencies": {
-    "@json-qs/json-qs": "^1.0.0",
+    "@json-qs/json-qs": "^1.2.0",
     "ky": "^1.2.2"
   },
   "devDependencies": {

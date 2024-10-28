@@ -1,6 +1,6 @@
 {
   "name": "pathic",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "TypeScript library for URI path matching",
   "type": "module",
   "files": [

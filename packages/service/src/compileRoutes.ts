@@ -73,6 +73,7 @@ export function compileRoutes(
       return await matchRoute(url.pathname, async (route, params) => {
         step = RequestStep.Decode
         const data = await route.decodeRequestData(ctx)
+        params = route.decodePathData(params)
 
         step = RequestStep.Respond
         const result = await route.responder(params, data, ctx)

@@ -69,6 +69,7 @@ export interface Route<TDefinition extends RouteDefinition = RouteDefinition> {
   import: () => Promise<TDefinition>
   pathParams?: readonly string[]
   format: RouteResultFormat
+  pathSchema?: TObject
   requestSchema: TObject | TRecord
   responseSchema: TSchema
 }

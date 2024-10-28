@@ -12,12 +12,17 @@ import { Route, RouteMethod } from './types.js'
 export type CompiledRoute = ReturnType<typeof compileRoute>
 
 export function compileRoute(route: Route) {
+  const decodePathData = compilePathSchema(route)
   const decodeRequestData = compileRequestSchema(route)
   const responder = supportedResponders[route.format](route)
 
   return {
     method: route.method.toUpperCase() as Uppercase<RouteMethod>,
     path: route.path,
+    /**
+     * Decode the path parameters using the route's path schema.
+     */
+    decodePathData,
     /**
      * Decode the request data using the route's request schema.
      */
@@ -40,9 +45,19 @@ export function compileRoute(route: Route) {
      */
     async handle(params: {}, ctx: RequestContext) {
       const data = await decodeRequestData(ctx)
-      return responder(params, data, ctx)
+      return responder(decodePathData(params), data, ctx)
     },
   }
+}
+
+function compilePathSchema(
+  route: Route
+): <TParams extends {}>(params: TParams) => TParams {
+  if (route.pathSchema) {
+    const pathSchema = TypeCompiler.Compile(route.pathSchema)
+    return params => pathSchema.Decode(params)
+  }
+  return params => params
 }
 
 function compileRequestSchema(

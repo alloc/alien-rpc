@@ -3,6 +3,7 @@
 TypeScript library for URI path matching. Focused on a blend of efficiency and simplicity.
 
 **Features:**
+
 - `InferParams` type for deriving an object type from a path pattern.
 - `PathTemplate` type for creating a template literal type from a path pattern.
 - `compilePaths` for compiling an array of paths into a function that efficiently matches a path to an index in the array. Paths are sorted by specificity and parameters are parsed.
@@ -11,16 +12,16 @@ TypeScript library for URI path matching. Focused on a blend of efficiency and s
 
 #### Path patterns
 
-- **Fixed routes** `/foo`
+- **Fixed routes** `/foo`  
   Only matches `/foo` and takes precedence over all other patterns.
 
-- **Named parameters** `/foo/:bar`
+- **Named parameters** `/foo/:bar`  
   Matches `/foo/123` but not `/foo/123/456`.
 
-- **Catch-all parameters** `/foo/*bar`
+- **Catch-all parameters** `/foo/*bar`  
   Matches any path starting with `/foo/` but not `/foo`.
 
-- **Unnamed catch-all parameters** `/foo/*`
+- **Unnamed catch-all parameters** `/foo/*`  
   Matches any path starting with `/foo/` but the tail isn't included in the
   parsed parameter values. Only one unnamed catch-all parameter is allowed.
 

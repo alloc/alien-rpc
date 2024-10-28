@@ -14,6 +14,7 @@
   },
   "author": "Alec Larson",
   "license": "MIT",
+  "homepage": "https://github.com/alloc/alien-rpc/tree/master/packages/pathic#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/alloc/alien-rpc.git",

@@ -12,6 +12,7 @@
   },
   "author": "Alec Larson",
   "license": "MIT",
+  "homepage": "https://github.com/alloc/alien-rpc/tree/master/packages/generator#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/alloc/alien-rpc.git",

@@ -25,6 +25,7 @@ THE SOFTWARE.
 ---------------------------------------------------------------------------*/
 
 import { ts as Ts } from '@ts-morph/bootstrap'
+import { camel } from 'radashi'
 import { JsDoc } from '../common/jsdoc'
 
 export class TypeScriptToTypeBoxError extends Error {
@@ -60,6 +61,10 @@ export interface TypeScriptToTypeBoxOptions {
    * the `type` declarations aren't emitted. The default is false.
    */
   useEmitConstOnly?: boolean
+  /**
+   * If any intersected type has a name that matches one of these strings, it will be treated as a type option.
+   */
+  typeTags?: string[]
 }
 /** Generates TypeBox types from TypeScript code */
 export namespace TypeScriptToTypeBox {
@@ -100,6 +105,8 @@ export namespace TypeScriptToTypeBox {
   let useTypeBoxImport = true
   // (option) generate const statements only
   let useEmitConstOnly = false
+  // (option) type tags
+  let typeTags: string[] = []
   // ------------------------------------------------------------------------------------------------------------
   // AST Query
   // ------------------------------------------------------------------------------------------------------------
@@ -279,9 +286,12 @@ export namespace TypeScriptToTypeBox {
       return yield `${node.name.getText()}: ${type_1}`
     }
   }
-  function* ArrayTypeNode(node: Ts.ArrayTypeNode): IterableIterator<string> {
+  function* ArrayTypeNode(
+    node: Ts.ArrayTypeNode,
+    tagNodes: Ts.TypeReferenceNode[] | undefined
+  ): IterableIterator<string> {
     const type = Collect(node.elementType)
-    yield `Type.Array(${type})`
+    yield `Type.Array(${type}${TypeTags(tagNodes, ', ')})`
   }
   function* Block(node: Ts.Block): IterableIterator<string> {
     blockLevel += 1
@@ -364,8 +374,44 @@ export namespace TypeScriptToTypeBox {
   function* IntersectionTypeNode(
     node: Ts.IntersectionTypeNode
   ): IterableIterator<string> {
-    const types = node.types.map(type => Collect(type)).join(',\n')
-    yield `Type.Intersect([\n${types}\n])`
+    const typeNodes: Ts.TypeNode[] = []
+    let tagNodes: Ts.TypeReferenceNode[] | undefined
+    for (const type of node.types) {
+      if (
+        Ts.isTypeReferenceNode(type) &&
+        typeTags.includes(type.getChildAt(0).getText())
+      ) {
+        tagNodes ??= []
+        tagNodes.push(type)
+      } else {
+        typeNodes.push(type)
+      }
+    }
+    if (typeNodes.length === 0) {
+      throw new Error('Type cannot only contain type tags')
+    }
+    if (typeNodes.length > 1) {
+      const types = typeNodes.map(type => Collect(type)).join(',\n')
+      yield `Type.Intersect([\n${types}\n]${TypeTags(tagNodes, ', ')})`
+    } else {
+      yield* Visit(typeNodes[0], tagNodes)
+    }
+  }
+  function TypeTags(
+    tagNodes: Ts.TypeReferenceNode[] | undefined,
+    prefix: string = ''
+  ): string {
+    if (!tagNodes || tagNodes.length === 0) {
+      return ''
+    }
+    let properties = ''
+    for (const tagNode of tagNodes) {
+      const name = camel(tagNode.getChildAt(0).getText())
+      const value = tagNode.typeArguments?.[0].getText() ?? 'true'
+      if (properties) properties += ', '
+      properties += `${name}: ${value}`
+    }
+    return prefix + '{ ' + properties + ' }'
   }
   function* TypeOperatorNode(
     node: Ts.TypeOperatorNode
@@ -614,16 +660,17 @@ export namespace TypeScriptToTypeBox {
     yield Collect(node.type)
   }
   function* TypeReferenceNode(
-    node: Ts.TypeReferenceNode
+    node: Ts.TypeReferenceNode,
+    tagNodes?: Ts.TypeReferenceNode[] | undefined
   ): IterableIterator<string> {
     const name = node.typeName.getText()
     const args = node.typeArguments
-      ? `(${node.typeArguments.map(type => Collect(type)).join(', ')})`
+      ? `(${node.typeArguments.map(type => Collect(type)).join(', ')}${TypeTags(tagNodes, ', ')})`
       : ''
     // --------------------------------------------------------------
     // Instance Types
     // --------------------------------------------------------------
-    if (name === 'Date') return yield `Type.Date()`
+    if (name === 'Date') return yield `Type.Date(${TypeTags(tagNodes)})`
     if (name === 'Uint8Array') return yield `Type.Uint8Array()`
     if (name === 'String') return yield `Type.String()`
     if (name === 'Number') return yield `Type.Number()`
@@ -707,9 +754,12 @@ export namespace TypeScriptToTypeBox {
   function Collect(node: Ts.Node | undefined): string {
     return `${[...Visit(node)].join('')}`
   }
-  function* Visit(node: Ts.Node | undefined): IterableIterator<string> {
+  function* Visit(
+    node: Ts.Node | undefined,
+    tagNodes?: Ts.TypeReferenceNode[] | undefined
+  ): IterableIterator<string> {
     if (node === undefined) return
-    if (Ts.isArrayTypeNode(node)) return yield* ArrayTypeNode(node)
+    if (Ts.isArrayTypeNode(node)) return yield* ArrayTypeNode(node, tagNodes)
     if (Ts.isBlock(node)) return yield* Block(node)
     if (Ts.isClassDeclaration(node)) return yield* ClassDeclaration(node)
     if (Ts.isConditionalTypeNode(node)) return yield* ConditionalTypeNode(node)
@@ -757,13 +807,17 @@ export namespace TypeScriptToTypeBox {
     if (Ts.isTypeOperatorNode(node)) return yield* TypeOperatorNode(node)
     if (Ts.isTypeParameterDeclaration(node))
       return yield* TypeParameterDeclaration(node)
-    if (Ts.isTypeReferenceNode(node)) return yield* TypeReferenceNode(node)
+    if (Ts.isTypeReferenceNode(node))
+      return yield* TypeReferenceNode(node, tagNodes)
     if (Ts.isSourceFile(node)) return yield* SourceFile(node)
     if (node.kind === Ts.SyntaxKind.ExportKeyword) return yield `export`
     if (node.kind === Ts.SyntaxKind.KeyOfKeyword) return yield `Type.KeyOf()`
-    if (node.kind === Ts.SyntaxKind.NumberKeyword) return yield `Type.Number()`
-    if (node.kind === Ts.SyntaxKind.BigIntKeyword) return yield `Type.BigInt()`
-    if (node.kind === Ts.SyntaxKind.StringKeyword) return yield `Type.String()`
+    if (node.kind === Ts.SyntaxKind.NumberKeyword)
+      return yield `Type.Number(${TypeTags(tagNodes)})`
+    if (node.kind === Ts.SyntaxKind.BigIntKeyword)
+      return yield `Type.BigInt(${TypeTags(tagNodes)})`
+    if (node.kind === Ts.SyntaxKind.StringKeyword)
+      return yield `Type.String(${TypeTags(tagNodes)})`
     if (node.kind === Ts.SyntaxKind.SymbolKeyword) return yield `Type.Symbol()`
     if (node.kind === Ts.SyntaxKind.BooleanKeyword)
       return yield `Type.Boolean()`
@@ -813,6 +867,7 @@ export namespace TypeScriptToTypeBox {
     useOptions = false
     useGenerics = false
     useCloneType = false
+    typeTags = options?.typeTags ?? []
     blockLevel = 0
     const source = Ts.createSourceFile(
       'types.ts',

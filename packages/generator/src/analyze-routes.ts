@@ -1,4 +1,4 @@
-import type { RpcResultFormat } from '@alien-rpc/client'
+import type { RouteResultFormat } from '@alien-rpc/service'
 import { ts } from '@ts-morph/common'
 import { debug } from './debug.js'
 import { printTypeLiteral } from './typescript/print-type-literal.js'
@@ -60,7 +60,7 @@ export type AnalyzedRoute = {
   fileName: string
   exportedName: string
   description: string | undefined
-  resolvedFormat: RpcResultFormat
+  resolvedFormat: RouteResultFormat
   resolvedMethod: string
   resolvedPathname: string
   resolvedArguments: string[]

@@ -6,6 +6,7 @@ import { parsePathParams } from 'pathic'
 import { camel, sift } from 'radashi'
 import { AnalyzedRoute, analyzeRoutes } from './analyze-routes.js'
 import { reportDiagnostics } from './diagnostics.js'
+import { typeConstraints } from './type-constraints.js'
 import { TypeScriptToTypeBox } from './typebox-codegen/typescript/generator.js'
 import {
   createSupportingTypes,
@@ -173,6 +174,7 @@ export default (options: Options) =>
     const clientFormats = new Set<string>()
 
     for (const route of routes) {
+      console.log(route)
       const requestSchemaDecl = generateRuntimeValidator(
         `type Request = ${route.resolvedArguments[1]}`
       )
@@ -209,8 +211,12 @@ export default (options: Options) =>
 
       serverDefinitions.push(`{${serverProperties.join(', ')}}`)
 
-      const resolvedPathParams = route.resolvedArguments[0]
-      const resolvedExtraParams = route.resolvedArguments[1]
+      const resolvedPathParams = stripTypeConstraints(
+        route.resolvedArguments[0]
+      )
+      const resolvedExtraParams = stripTypeConstraints(
+        route.resolvedArguments[1]
+      )
 
       const expectsParams =
         resolvedPathParams !== 'Record<string, never>' ||
@@ -312,6 +318,7 @@ function generateRuntimeValidator(code: string) {
   const generatedCode = TypeScriptToTypeBox.Generate(code, {
     useTypeBoxImport: false,
     useEmitConstOnly: true,
+    typeTags: typeConstraints,
   })
 
   const sourceFile = ts.createSourceFile(
@@ -472,4 +479,11 @@ function watchDependencies(
   }
 
   return seen
+}
+
+function stripTypeConstraints(type: string) {
+  return type.replace(
+    new RegExp(` & (${typeConstraints.join('|')})(?:\<.+?\>)?`, 'g'),
+    ''
+  )
 }

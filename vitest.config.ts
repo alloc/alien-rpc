@@ -24,12 +24,12 @@ export default defineConfig({
     isolate: false,
     testTimeout: 0,
     maxConcurrency: os.cpus().length - 1,
-    forceRerunTriggers: ['**/__fixtures__/**/routes.ts', '!**/tmp-*/routes.ts'],
+    forceRerunTriggers: ['**/__fixtures__/**/routes.ts'],
     alias,
   },
   server: {
     watch: {
-      ignored: ['**/__fixtures__/**/tsconfig.json'],
+      ignored: ['**/__fixtures__/**/tsconfig.json', '**/__fixtures__/tmp-*/**'],
     },
   },
 })

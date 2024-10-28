@@ -8,6 +8,7 @@ import { compilePaths } from 'pathic'
 import { mapValues } from 'radashi'
 import { CompiledRoute, compileRoute } from './compileRoute.js'
 import { compilePreflightHandler, CorsConfig } from './cors.js'
+import { HttpError } from './error.js'
 import { Route, RouteMethod } from './types'
 
 const enum RequestStep {
@@ -74,18 +75,29 @@ export function compileRoutes(
         const data = await route.decodeRequestData(ctx)
 
         step = RequestStep.Respond
-        return await route.responder(params, data, ctx)
+        const result = await route.responder(params, data, ctx)
+
+        step = RequestStep.Match
+        return result
       })
     } catch (error: any) {
-      if (!process.env.TEST) {
-        console.error(error)
-      }
-
       if (step === RequestStep.Respond) {
+        // An HttpError is thrown by the application code to indicate a
+        // failed request, as opposed to an unexpected error.
+        if (HttpError.isHttpError(error)) {
+          return new Response(null, error)
+        }
+        if (!process.env.TEST) {
+          console.error(error)
+        }
         if (process.env.NODE_ENV === 'production') {
           return new Response(null, { status: 500 })
         }
         return new ErrorResponse(500, { message: error.message })
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.error(error)
       }
 
       if (step === RequestStep.Decode) {

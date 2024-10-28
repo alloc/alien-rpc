@@ -209,7 +209,7 @@ function tokensToRegex(tokens: string[]) {
         if (token[0] === ':') {
           pattern = '[^/]+?'
         } else {
-          pattern = '.*?'
+          pattern = '[\\S\\s]*?'
         }
         const name = token.slice(1)
         return `(?<${name}>${pattern})`

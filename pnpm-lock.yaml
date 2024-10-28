@@ -128,9 +128,9 @@ importers:
         specifier: '*'
         version: 5.6.3
     devDependencies:
-      '@alien-rpc/client':
+      '@alien-rpc/service':
         specifier: workspace:^
-        version: link:../client
+        version: link:../service
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.12

@@ -1,5 +1,6 @@
 import { RequestContext } from '@hattip/compose'
 import { TObject, TRecord, TSchema } from '@sinclair/typebox'
+import * as t from './constraint'
 import { JSON, Promisable } from './internal/types'
 import { PaginationLinks } from './pagination'
 
@@ -96,3 +97,32 @@ export type RouteResponder<
   data: TDefinition extends RouteDefinition<any, infer TData> ? TData : never,
   ctx: RequestContext
 ) => Promise<Response>
+
+export type TypeConstraint = typeof t extends infer T
+  ? InstanceType<
+      Extract<T[keyof T], new (...args: any) => any>
+    > extends infer TypeConstraint
+    ? TypeConstraint
+    : never
+  : never
+
+// type TypeConstraintKey = TypeConstraint extends infer TConstraint
+//   ? TConstraint extends any
+//     ? keyof TypeConstraint
+//     : never
+//   : never
+
+// export type RemoveTypeConstraints<T> = T extends (infer TItem)[]
+//   ? RemoveTypeConstraints<TItem>[]
+//   : T extends readonly (infer TItem)[]
+//     ? readonly RemoveTypeConstraints<TItem>[]
+//     : T extends Primitive
+//       ? Extract<Primitive, T>
+//       : T extends Record<infer TKey, infer TValue> & TypeConstraint
+//         ? Record<TKey, TValue>
+//         : Extract<keyof T, TypeConstraintKey> extends never
+//           ? T
+//           : Omit<T, TypeConstraintKey>
+
+// type T1 = RemoveTypeConstraints<Record<string, string> & t.MinProperties<1>>
+// type T2 = RemoveTypeConstraints<(string & t.MinLength<1>)[] & t.MinItems<1>>

@@ -16,7 +16,8 @@
     "build": "pnpm clean && PROD=1 tsup --treeshake=smallest",
     "build:dev": "tsup --sourcemap --no-treeshake",
     "clean": "rimraf dist",
-    "lint": "tsc -p . --outDir node_modules/.tmp"
+    "lint": "tsc -p . --outDir node_modules/.tmp",
+    "prepublishOnly": "pnpm lint && pnpm build"
   },
   "keywords": [
     "path",

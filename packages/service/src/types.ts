@@ -1,4 +1,5 @@
 import { RequestContext } from '@hattip/compose'
+import * as jsonQS from '@json-qs/json-qs'
 import { TObject, TRecord, TSchema } from '@sinclair/typebox'
 import * as t from './constraint'
 import { JSON, Promisable } from './internal/types'
@@ -30,11 +31,13 @@ export type RouteMethod = 'get' | 'post'
 
 export type RouteResultFormat = 'json' | 'json-seq' | 'response'
 
-export type RouteIterator<TParams extends object = Record<string, JSON>> =
-  AsyncIterator<JSON, PaginationLinks<TParams> | null | void>
+export type RouteIterator<
+  TParams extends jsonQS.CodableRecord = jsonQS.CodableRecord,
+> = AsyncIterator<JSON, PaginationLinks<TParams> | null | void>
 
-export type RouteResult<TParams extends object = Record<string, JSON>> =
-  Promisable<JSON | Response | RouteIterator<TParams> | void>
+export type RouteResult<
+  TParams extends jsonQS.CodableRecord = jsonQS.CodableRecord,
+> = Promisable<JSON | Response | RouteIterator<TParams> | void>
 
 export type RouteHandler<
   TParams extends object = object,

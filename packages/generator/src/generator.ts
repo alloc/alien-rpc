@@ -170,14 +170,28 @@ export default (options: Options) =>
 
     const serverDefinitions: string[] = []
     const clientDefinitions: string[] = []
+    const serverImports = new Set<string>()
     const clientImports = new Set<string>(['RequestOptions', 'RpcRoute'])
     const clientFormats = new Set<string>()
 
     for (const route of routes) {
-      console.log(route)
+      const pathSchemaDecl =
+        route.resolvedArguments[0] !== 'Record<string, never>' &&
+        generateRuntimeValidator(
+          `type Path = ${route.resolvedArguments[0]}`
+        ).replace(/\bType\.(Number)\(/g, (match, type) => {
+          switch (type) {
+            case 'Number':
+              serverImports.add('NumberString')
+              return 'NumberString('
+          }
+          return match
+        })
+
       const requestSchemaDecl = generateRuntimeValidator(
         `type Request = ${route.resolvedArguments[1]}`
       )
+
       const responseSchemaDecl =
         route.resolvedFormat === 'response'
           ? `Type.Any()`
@@ -190,24 +204,25 @@ export default (options: Options) =>
 
       const pathParams = parsePathParams(route.resolvedPathname)
 
-      const sharedProperties = sift([
+      const sharedProperties = [
         `method: "${route.resolvedMethod}"`,
         pathParams.length && `pathParams: ${JSON.stringify(pathParams)}`,
-      ])
+      ]
 
       const serverPathname =
         route.resolvedPathname[0] === '/'
           ? route.resolvedPathname
           : `/${route.resolvedPathname}`
 
-      const serverProperties = [
+      const serverProperties = sift([
         `path: "${serverPathname}"`,
         ...sharedProperties,
         `import: async () => (await import(${JSON.stringify(handlerPath)})).${route.exportedName}`,
         `format: "${route.resolvedFormat}"`,
+        pathSchemaDecl && `pathSchema: ${pathSchemaDecl}`,
         `requestSchema: ${requestSchemaDecl}`,
         `responseSchema: ${responseSchemaDecl}`,
-      ]
+      ])
 
       serverDefinitions.push(`{${serverProperties.join(', ')}}`)
 
@@ -258,7 +273,7 @@ export default (options: Options) =>
           ? route.resolvedPathname.slice(1)
           : route.resolvedPathname
 
-      const clientProperties = [
+      const clientProperties = sift([
         `path: "${clientPathname}"`,
         ...sharedProperties,
         `arity: ${expectsParams ? 2 : 1}`,
@@ -267,7 +282,7 @@ export default (options: Options) =>
             ? camel(route.resolvedFormat)
             : `"${route.resolvedFormat}"`
         }`,
-      ]
+      ])
 
       clientFormats.add(route.resolvedFormat)
       clientDefinitions.push(
@@ -277,8 +292,13 @@ export default (options: Options) =>
     }
 
     const writeServerDefinitions = (outFile: string) => {
+      let imports = ''
+      if (serverImports.size > 0) {
+        imports += `\nimport { ${[...serverImports].sort().join(', ')} } from "@alien-rpc/service/typebox"`
+      }
+
       const content = dedent/* ts */ `
-        import { Type } from "@sinclair/typebox"
+        import { Type } from "@sinclair/typebox"${imports}
 
         export default [${serverDefinitions.join(', ')}] as const
       `

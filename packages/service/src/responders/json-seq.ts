@@ -10,24 +10,23 @@ import type {
   RouteResponder,
 } from '../types'
 
-type TDefinition = RouteDefinition<any, any, Promisable<RouteIterator>>
+const responder: RouteResponder<
+  RouteDefinition<any, any, Promisable<RouteIterator>>
+> = route => async (params, data, ctx) => {
+  const routeDef = await route.import()
 
-const responder: RouteResponder<TDefinition> =
-  route => async (params, data, ctx) => {
-    const routeDef = await route.import()
+  let result = await routeDef.handler(params, data, ctx)
+  result = Value.Encode(route.responseSchema, result)
 
-    let result = await routeDef.handler(params, data, ctx)
-    result = Value.Encode(route.responseSchema, result)
+  const stream = ReadableStream.from(
+    generateJsonTextSequence(result, route, ctx)
+  )
 
-    const stream = ReadableStream.from(
-      generateJsonTextSequence(result, route, ctx)
-    )
+  // Don't use "application/json-seq" until it's been standardized.
+  ctx.response.headers.set('Content-Type', 'text/plain; charset=utf-8')
 
-    // Don't use "application/json-seq" until it's been standardized.
-    ctx.response.headers.set('Content-Type', 'text/plain; charset=utf-8')
-
-    return new Response(stream, ctx.response)
-  }
+  return new Response(stream, ctx.response)
+}
 
 export default responder
 

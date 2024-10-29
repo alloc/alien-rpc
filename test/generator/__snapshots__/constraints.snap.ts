@@ -28,7 +28,7 @@ export const testConstraints: RpcRoute<
   "constraints",
   (
     params?: RequestParams<
-      {},
+      Record<string, never>,
       {
         tuple?: string[];
         object?: Record<string, string>;

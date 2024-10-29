@@ -6,7 +6,13 @@ type Simplify<T> = {} & { [K in keyof T]: T[K] }
 /** Extract param types from a route path literal. */
 export type InferParams<P extends string, Value = string> =
   InferParamFromPath<P> extends InferredParams<infer TRequiredParam>
-    ? Simplify<{ [K in TRequiredParam]: Value }>
+    ? Simplify<{ [K in TRequiredParam]: Value }> extends infer TParams
+      ? {} extends TParams
+        ? TParams extends Required<TParams>
+          ? Record<string, never>
+          : TParams
+        : TParams
+      : never
     : never
 
 type InferParamFromPath<TPath extends string> =

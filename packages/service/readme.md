@@ -4,6 +4,8 @@ This package is used by your backend code to define your API routes. It's a simp
 
 The rest of this document will teach you how to define routes, document them, validate their input/output data, and expose them over HTTP.
 
+&nbsp;
+
 ## Defining routes
 
 First, let's define a GET route. We'll need a _path pattern_ (a string literal) and a _route handler_ (a plain old JavaScript function).
@@ -42,6 +44,8 @@ The following HTTP methods are supported:
 - `HEAD`  
   While you can define a HEAD route, your GET routes will also match HEAD requests. You can check for this in your route handler via `ctx.request.method === "HEAD"`. Even if your route handler returns a response body, it will be ignored for HEAD requests.
 
+&nbsp;
+
 ## Documenting routes
 
 Routes can be documented like any TypeScript function.
@@ -60,6 +64,8 @@ const getUser = route.get('/users/:id', async ({ id }) => {
 This documentation is extracted by [@alien-rpc/generator](https://github.com/alloc/alien-rpc/tree/master/packages/generator) and included with the client's type definitions.
 
 Currently, this works for routes, but not their path parameters or request data. This feature is being tracked in [#3](https://github.com/alloc/alien-rpc/issues/3) (contributions welcome).
+
+&nbsp;
 
 ## Runtime validation
 
@@ -108,6 +114,8 @@ Type constraints are supported everywhere TypeScript types are supported, includ
 
 The [Type Constraints](./docs/type-constraints.md) page has more information on the available constraints.
 
+&nbsp;
+
 ## Customizing the HTTP response
 
 The request context contains a `response` object property with a `status` number and a `headers` object. You can modify these properties to customize the HTTP response.
@@ -125,6 +133,8 @@ export const getFile = route.get('/files/:id', async ({ id }, {}, ctx) => {
   return await getFileContents(id)
 })
 ```
+
+&nbsp;
 
 ## Exposing routes over HTTP
 
@@ -153,6 +163,8 @@ createServer(handler).listen(3000, 'localhost', () => {
 })
 ```
 
+&nbsp;
+
 ## Error handling
 
 Currently, error handling is performed by the `compileRoutes` function.
@@ -171,6 +183,8 @@ export const getPrivateProfile = route.get(
 ```
 
 For more details, see the [HTTP errors](./docs/http-errors.md) page.
+
+&nbsp;
 
 ## Streaming responses
 
@@ -243,3 +257,15 @@ export const downloadFile = route.get(
   }
 )
 ```
+
+&nbsp;
+
+## Conclusion
+
+This concludes the documentation for `@alien-rpc/service`. Be sure to check out the documentation for the other packages in this library:
+
+- [alien-rpc](https://github.com/alloc/alien-rpc/tree/master/packages/alien-rpc#readme) _An umbrella package containing the CLI, generator, client, and service packages_
+- [@alien-rpc/generator](https://github.com/alloc/alien-rpc/tree/master/packages/generator#readme) _The code generator for your API routes_
+- [@alien-rpc/client](https://github.com/alloc/alien-rpc/tree/master/packages/client#readme) _The HTTP client for your API_
+
+If you still have questions, please [open an issue](https://github.com/alloc/alien-rpc/issues/new) and I'll do my best to help you out.

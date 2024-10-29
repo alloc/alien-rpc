@@ -132,6 +132,10 @@ function prepareRoutes(rawRoutes: readonly Route[]) {
     const route = compileRoute(rawRoute)
     groupedRoutes[route.method] ??= []
     groupedRoutes[route.method].push(route)
+    if (route.method === 'GET') {
+      groupedRoutes.HEAD ??= []
+      groupedRoutes.HEAD.push(route)
+    }
   }
 
   return mapValues(groupedRoutes, routes => {

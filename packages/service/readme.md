@@ -24,6 +24,20 @@ Every route handler has 3 arguments:
 - `data`: the route's request data (either search parameters or JSON body)
 - `ctx`: the request context (as defined by [hattip](https://github.com/hattipjs/hattip/tree/main/packages/base/compose#requestcontext))
 
+#### Supported HTTP methods
+
+The following HTTP methods are supported:
+
+- `GET`
+- `POST`
+- `PUT`
+- `PATCH`
+- `DELETE`
+- `OPTIONS`  
+  No need to manually define this route, as it's handled internally.
+- `HEAD`  
+  While you can define a HEAD route, your GET routes will also match HEAD requests. You can check for this in your route handler via `ctx.request.method === "HEAD"`. Even if your route handler returns a response body, it will be ignored for HEAD requests.
+
 ## Documenting routes
 
 Routes can be documented like any TypeScript function.

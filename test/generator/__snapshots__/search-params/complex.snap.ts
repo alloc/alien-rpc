@@ -33,7 +33,7 @@ export const complexSearch: RpcRoute<
     > | null,
     requestOptions?: RequestOptions,
   ) => Promise<undefined | string | { bar?: undefined | string } | string[]>
-> = { path: "complex", method: "get", arity: 2, format: "json" } as any;
+> = { path: "complex", method: "GET", arity: 2, format: "json" } as any;
 
 /**
  * server/api.ts
@@ -43,7 +43,7 @@ import { Type } from "@sinclair/typebox";
 export default [
   {
     path: "/complex",
-    method: "get",
+    method: "GET",
     import: async () => (await import("../routes.js")).complexSearch,
     format: "json",
     requestSchema: Type.Object({

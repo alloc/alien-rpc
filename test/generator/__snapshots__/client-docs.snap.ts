@@ -29,7 +29,7 @@ import { RequestOptions, RpcRoute } from "@alien-rpc/client";
 export const foo: RpcRoute<
   "foo",
   (requestOptions?: RequestOptions) => Promise<"foo">
-> = { path: "foo", method: "get", arity: 1, format: "json" } as any;
+> = { path: "foo", method: "GET", arity: 1, format: "json" } as any;
 
 /**
  * server/api.ts
@@ -39,7 +39,7 @@ import { Type } from "@sinclair/typebox";
 export default [
   {
     path: "/foo",
-    method: "get",
+    method: "GET",
     import: async () => (await import("../routes.js")).foo,
     format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),

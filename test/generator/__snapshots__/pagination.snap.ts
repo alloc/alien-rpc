@@ -56,7 +56,7 @@ export const listPosts: RpcRoute<
     > | null,
     requestOptions?: RequestOptions,
   ) => ResponseStream<{ id: number; title: string; content: string }>
-> = { path: "posts", method: "get", arity: 2, format: jsonSeq } as any;
+> = { path: "posts", method: "GET", arity: 2, format: jsonSeq } as any;
 
 /**
  * server/api.ts
@@ -66,7 +66,7 @@ import { Type } from "@sinclair/typebox";
 export default [
   {
     path: "/posts",
-    method: "get",
+    method: "GET",
     import: async () => (await import("../routes.js")).listPosts,
     format: "json-seq",
     requestSchema: Type.Object({

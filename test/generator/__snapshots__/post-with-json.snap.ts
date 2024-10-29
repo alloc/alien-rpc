@@ -26,7 +26,7 @@ export const createUser: RpcRoute<
     params: RequestParams<Record<string, never>, { name: string }>,
     requestOptions?: RequestOptions,
   ) => Promise<number>
-> = { path: "users", method: "post", arity: 2, format: "json" } as any;
+> = { path: "users", method: "POST", arity: 2, format: "json" } as any;
 
 /**
  * server/api.ts
@@ -36,7 +36,7 @@ import { Type } from "@sinclair/typebox";
 export default [
   {
     path: "/users",
-    method: "post",
+    method: "POST",
     import: async () => (await import("../routes.js")).createUser,
     format: "json",
     requestSchema: Type.Object({

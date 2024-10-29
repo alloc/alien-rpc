@@ -25,7 +25,7 @@ export const getUserById: RpcRoute<
   ) => Promise<null | { id: number; name: string }>
 > = {
   path: "users/:id",
-  method: "get",
+  method: "GET",
   pathParams: ["id"],
   arity: 2,
   format: "json",
@@ -39,7 +39,7 @@ import { Type } from "@sinclair/typebox";
 export default [
   {
     path: "/users/:id",
-    method: "get",
+    method: "GET",
     pathParams: ["id"],
     import: async () => (await import("../routes.js")).getUserById,
     format: "json",

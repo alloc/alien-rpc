@@ -15,7 +15,7 @@ import { RequestOptions, RpcRoute } from "@alien-rpc/client";
 export const voidTest: RpcRoute<
   "void",
   (requestOptions?: RequestOptions) => Promise<undefined>
-> = { path: "void", method: "post", arity: 1, format: "json" } as any;
+> = { path: "void", method: "POST", arity: 1, format: "json" } as any;
 
 /**
  * server/api.ts
@@ -25,7 +25,7 @@ import { Type } from "@sinclair/typebox";
 export default [
   {
     path: "/void",
-    method: "post",
+    method: "POST",
     import: async () => (await import("../routes.js")).voidTest,
     format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),

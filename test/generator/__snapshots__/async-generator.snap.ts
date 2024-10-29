@@ -20,7 +20,7 @@ import jsonSeq from "@alien-rpc/client/formats/json-seq";
 export const streamNumbers: RpcRoute<
   "numbers",
   (requestOptions?: RequestOptions) => ResponseStream<1 | 2 | 3>
-> = { path: "numbers", method: "get", arity: 1, format: jsonSeq } as any;
+> = { path: "numbers", method: "GET", arity: 1, format: jsonSeq } as any;
 
 /**
  * server/api.ts
@@ -30,7 +30,7 @@ import { Type } from "@sinclair/typebox";
 export default [
   {
     path: "/numbers",
-    method: "get",
+    method: "GET",
     import: async () => (await import("../routes.js")).streamNumbers,
     format: "json-seq",
     requestSchema: Type.Record(Type.String(), Type.Never()),

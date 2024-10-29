@@ -57,7 +57,7 @@ export const getPost: RpcRoute<
   }>
 > = {
   path: "posts/:id",
-  method: "get",
+  method: "GET",
   pathParams: ["id"],
   arity: 2,
   format: "json",
@@ -71,7 +71,7 @@ import { Type } from "@sinclair/typebox";
 export default [
   {
     path: "/posts/:id",
-    method: "get",
+    method: "GET",
     pathParams: ["id"],
     import: async () => (await import("../routes.js")).getPost,
     format: "json",

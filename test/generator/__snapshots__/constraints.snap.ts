@@ -39,7 +39,7 @@ export const testConstraints: RpcRoute<
     > | null,
     requestOptions?: RequestOptions,
   ) => Promise<undefined>
-> = { path: "constraints", method: "get", arity: 2, format: "json" } as any;
+> = { path: "constraints", method: "GET", arity: 2, format: "json" } as any;
 
 /**
  * server/api.ts
@@ -49,7 +49,7 @@ import { Type } from "@sinclair/typebox";
 export default [
   {
     path: "/constraints",
-    method: "get",
+    method: "GET",
     import: async () => (await import("../routes.js")).testConstraints,
     format: "json",
     requestSchema: Type.Object({

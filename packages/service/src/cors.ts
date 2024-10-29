@@ -31,25 +31,9 @@ export function compilePreflightHandler(
   return async (ctx: RequestContext): Promise<Response | undefined> => {
     const { request } = ctx
 
-    const proposedOrigin = request.headers.get('Origin')
+    const headers = await allowOriginAndCredentials(ctx, config)
 
-    let allowCredentials = false
-    let allowedOrigin: string | null | false
-
-    if (config.trustedOrigin !== undefined) {
-      allowCredentials = true
-      allowedOrigin = isString(config.trustedOrigin)
-        ? config.trustedOrigin
-        : await config.trustedOrigin(ctx)
-    } else if (config.allowedOrigin !== undefined) {
-      allowedOrigin = isString(config.allowedOrigin)
-        ? config.allowedOrigin
-        : await config.allowedOrigin(ctx)
-    } else {
-      allowedOrigin = proposedOrigin
-    }
-
-    if (!allowedOrigin) {
+    if (!headers['Access-Control-Allow-Origin']) {
       return new Response(null, { status: 403 })
     }
 
@@ -65,15 +49,47 @@ export function compilePreflightHandler(
 
       return new Response(null, {
         headers: {
-          'Access-Control-Allow-Credentials': String(allowCredentials),
+          ...headers,
           'Access-Control-Allow-Headers': proposedHeaders || '',
           'Access-Control-Allow-Methods':
             proposedMethod && allowedMethods.has(proposedMethod)
               ? proposedMethod
               : [...allowedMethods].join(', '),
-          'Access-Control-Allow-Origin': allowedOrigin,
         },
       })
     }
+  }
+}
+
+/**
+ * Generate the `Access-Control-Allow-Origin` and
+ * `Access-Control-Allow-Credentials` headers based on the provided
+ * configuration.
+ */
+export async function allowOriginAndCredentials(
+  ctx: RequestContext,
+  config: CorsConfig
+) {
+  const proposedOrigin = ctx.request.headers.get('Origin')
+
+  let allowCredentials = false
+  let allowedOrigin: string | null | false
+
+  if (config.trustedOrigin !== undefined) {
+    allowCredentials = true
+    allowedOrigin = isString(config.trustedOrigin)
+      ? config.trustedOrigin
+      : await config.trustedOrigin(ctx)
+  } else if (config.allowedOrigin !== undefined) {
+    allowedOrigin = isString(config.allowedOrigin)
+      ? config.allowedOrigin
+      : await config.allowedOrigin(ctx)
+  } else {
+    allowedOrigin = proposedOrigin
+  }
+
+  return {
+    'Access-Control-Allow-Credentials': String(allowCredentials),
+    'Access-Control-Allow-Origin': allowedOrigin || '',
   }
 }

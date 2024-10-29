@@ -8,7 +8,11 @@ import {
 import { compilePaths } from 'pathic'
 import { mapValues } from 'radashi'
 import { CompiledRoute, compileRoute } from './compileRoute.js'
-import { compilePreflightHandler, CorsConfig } from './cors.js'
+import {
+  allowOriginAndCredentials,
+  compilePreflightHandler,
+  CorsConfig,
+} from './cors.js'
 import { HttpError } from './error.js'
 import { Route } from './types'
 
@@ -57,15 +61,17 @@ export function compileRoutes(
       return
     }
 
+    const corsHeaders = await allowOriginAndCredentials(ctx, config.cors ?? {})
+    if (!corsHeaders['Access-Control-Allow-Origin']) {
+      return new Response(null, { status: 403 })
+    }
+
     // By mutating these properties, routes can alter the response status
     // and headers. Note that each “responder format” is responsible for
     // using these properties when creating its Response object.
     ctx.response = {
       status: 200,
-      headers: new Headers({
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Origin': request.headers.get('Origin') ?? '*',
-      }),
+      headers: new Headers(corsHeaders),
     }
 
     let step = RequestStep.Match as RequestStep

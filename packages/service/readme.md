@@ -2,11 +2,11 @@
 
 This package is used by your backend code to define your API routes. It's a simplistic library without many features, as it relies on other libraries (e.g. [hattip](https://github.com/hattipjs/hattip), [typebox](https://github.com/sinclairzx81/typebox), and [pathic](https://github.com/alloc/alien-rpc/tree/master/packages/pathic)) to handle the heavy lifting.
 
-#### Introduction
+The rest of this document will teach you how to define routes, document them, validate their input/output data, and expose them over HTTP.
 
 ## Defining routes
 
-First, let's define a GET route.
+First, let's define a GET route. We'll need a _path pattern_ (a string literal) and a _route handler_ (a plain old JavaScript function).
 
 ```ts
 import { route } from '@alien-rpc/service'
@@ -15,6 +15,10 @@ export const getUser = route.get('/users/:id', async ({ id }) => {
   // TODO: return some JSON-compatible data
 })
 ```
+
+For more on the path pattern syntax, see the “Path patterns” section of the [Pathic readme](https://github.com/alloc/alien-rpc/tree/master/packages/pathic#readme).
+
+Your routes can be declared anywhere in your codebase, as long as they are _exported_ and the `alien-rpc` generator is told where to find them. It's best practice to have dedicated modules for your routes (i.e. avoid declaring them alongside other exports that aren't routes).
 
 If you prefer all-caps HTTP methods, you can use the exported `route.GET` function instead. There is no functional difference, but it's a matter of personal preference.
 

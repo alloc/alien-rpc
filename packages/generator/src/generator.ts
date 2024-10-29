@@ -178,7 +178,7 @@ export default (options: Options) =>
 
     for (const route of routes) {
       const pathSchemaDecl =
-        route.resolvedArguments[0] !== 'Record<string, never>' &&
+        needsPathSchema(route.resolvedArguments[0]) &&
         generateRuntimeValidator(
           `type Path = ${route.resolvedArguments[0]}`
         ).replace(/\bType\.(Number|Array)\(/g, (match, type) => {
@@ -546,4 +546,24 @@ function stripTypeConstraints(type: string) {
     new RegExp(` & (${typeConstraints.join('|')})(?:\<.+?\>)?`, 'g'),
     ''
   )
+}
+
+function needsPathSchema(type: string) {
+  if (type === 'Record<string, never>') {
+    return false
+  }
+  const typeNode = parseTypeLiteral(type)
+  if (!ts.isTypeLiteralNode(typeNode)) {
+    throw new Error('Expected a type literal')
+  }
+  for (const member of typeNode.members) {
+    if (!ts.isPropertySignature(member)) {
+      throw new Error('Expected a property signature')
+    }
+    const memberType = member.type
+    if (!memberType || memberType.kind !== ts.SyntaxKind.StringKeyword) {
+      return true
+    }
+  }
+  return false
 }

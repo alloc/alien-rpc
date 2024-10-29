@@ -6,9 +6,9 @@
 import { route, t } from "@alien-rpc/service";
 
 export const testConstraints = route.get(
-  "/constraints",
+  "/constraints/:id",
   async (
-    {},
+    { id }: { id: string & t.Format<"uuid"> },
     {}: {
       tuple?: string[] & t.MinItems<1> & t.MaxItems<2>;
       object?: Record<string, string> & t.MinProperties<1> & t.MaxProperties<2>;
@@ -25,10 +25,10 @@ export const testConstraints = route.get(
 import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
 
 export const testConstraints: RpcRoute<
-  "constraints",
+  "constraints/:id",
   (
-    params?: RequestParams<
-      Record<string, never>,
+    params: RequestParams<
+      { id: string },
       {
         tuple?: string[];
         object?: Record<string, string>;
@@ -36,22 +36,40 @@ export const testConstraints: RpcRoute<
         month?: string;
         date?: Date;
       }
-    > | null,
+    >,
     requestOptions?: RequestOptions,
   ) => Promise<undefined>
-> = { path: "constraints", method: "GET", arity: 2, format: "json" } as any;
+> = {
+  path: "constraints/:id",
+  method: "GET",
+  pathParams: ["id"],
+  arity: 2,
+  format: "json",
+} as any;
 
 /**
  * server/api.ts
  */
 import { Type } from "@sinclair/typebox";
+import {
+  addStringFormat,
+  EmailFormat,
+  UuidFormat,
+} from "@alien-rpc/service/format";
+
+addStringFormat("email", EmailFormat);
+addStringFormat("uuid", UuidFormat);
 
 export default [
   {
-    path: "/constraints",
+    path: "/constraints/:id",
     method: "GET",
+    pathParams: ["id"],
     import: async () => (await import("../routes.js")).testConstraints,
     format: "json",
+    pathSchema: Type.Object({
+      id: Type.String({ format: "uuid" }),
+    }),
     requestSchema: Type.Object({
       tuple: Type.Optional(
         Type.Array(Type.String(), { minItems: 1, maxItems: 2 }),

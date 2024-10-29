@@ -1,9 +1,9 @@
 import { route, t } from '@alien-rpc/service'
 
 export const testConstraints = route.get(
-  '/constraints',
+  '/constraints/:id',
   async (
-    {},
+    { id }: { id: string & t.Format<'uuid'> },
     {}: {
       tuple?: string[] & t.MinItems<1> & t.MaxItems<2>
       object?: Record<string, string> & t.MinProperties<1> & t.MaxProperties<2>

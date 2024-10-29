@@ -65,7 +65,7 @@ export default [
     path: "/constraints/:id",
     method: "GET",
     pathParams: ["id"],
-    import: async () => (await import("../routes.js")).testConstraints,
+    import: async () => (await import("../routes.js")).testConstraints as any,
     format: "json",
     pathSchema: Type.Object({
       id: Type.String({ format: "uuid" }),

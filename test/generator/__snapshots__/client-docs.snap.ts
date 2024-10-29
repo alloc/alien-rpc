@@ -40,7 +40,7 @@ export default [
   {
     path: "/foo",
     method: "GET",
-    import: async () => (await import("../routes.js")).foo,
+    import: async () => (await import("../routes.js")).foo as any,
     format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Literal("foo"),

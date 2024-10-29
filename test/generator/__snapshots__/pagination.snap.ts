@@ -67,7 +67,7 @@ export default [
   {
     path: "/posts",
     method: "GET",
-    import: async () => (await import("../routes.js")).listPosts,
+    import: async () => (await import("../routes.js")).listPosts as any,
     format: "json-seq",
     requestSchema: Type.Object({
       page: Type.Optional(Type.Number()),

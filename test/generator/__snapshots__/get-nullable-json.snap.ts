@@ -41,7 +41,7 @@ export default [
     path: "/users/:id",
     method: "GET",
     pathParams: ["id"],
-    import: async () => (await import("../routes.js")).getUserById,
+    import: async () => (await import("../routes.js")).getUserById as any,
     format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Union([

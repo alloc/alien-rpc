@@ -35,7 +35,7 @@ export default [
   {
     path: "/v1/fun-fact",
     method: "GET",
-    import: async () => (await import("../routes.js")).funFact,
+    import: async () => (await import("../routes.js")).funFact as any,
     format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.String(),

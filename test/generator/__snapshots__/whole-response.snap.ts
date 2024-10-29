@@ -28,7 +28,7 @@ export default [
   {
     path: "/test",
     method: "GET",
-    import: async () => (await import("../routes.js")).test,
+    import: async () => (await import("../routes.js")).test as any,
     format: "response",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Any(),

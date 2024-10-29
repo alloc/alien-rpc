@@ -31,7 +31,7 @@ export default [
   {
     path: "/numbers",
     method: "GET",
-    import: async () => (await import("../routes.js")).streamNumbers,
+    import: async () => (await import("../routes.js")).streamNumbers as any,
     format: "json-seq",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.AsyncIterator(

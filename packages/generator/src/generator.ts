@@ -243,7 +243,7 @@ export default (options: Options) =>
       const serverProperties = sift([
         `path: "${serverPathname}"`,
         ...sharedProperties,
-        `import: async () => (await import(${JSON.stringify(handlerPath)})).${route.exportedName}`,
+        `import: async () => (await import(${JSON.stringify(handlerPath)})).${route.exportedName} as any`,
         `format: "${route.resolvedFormat}"`,
         pathSchemaDecl && `pathSchema: ${pathSchemaDecl}`,
         `requestSchema: ${requestSchemaDecl}`,

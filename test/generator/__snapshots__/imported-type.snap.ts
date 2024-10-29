@@ -73,7 +73,7 @@ export default [
     path: "/posts/:id",
     method: "GET",
     pathParams: ["id"],
-    import: async () => (await import("../routes.js")).getPost,
+    import: async () => (await import("../routes.js")).getPost as any,
     format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Object({

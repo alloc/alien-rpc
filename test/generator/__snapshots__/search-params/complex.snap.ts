@@ -44,7 +44,7 @@ export default [
   {
     path: "/complex",
     method: "GET",
-    import: async () => (await import("../routes.js")).complexSearch,
+    import: async () => (await import("../routes.js")).complexSearch as any,
     format: "json",
     requestSchema: Type.Object({
       foo: Type.Optional(

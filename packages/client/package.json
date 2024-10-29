@@ -27,6 +27,7 @@
     "ky": "^1.2.2"
   },
   "devDependencies": {
+    "@alien-rpc/route": "workspace:^",
     "pathic": "workspace:^"
   },
   "scripts": {

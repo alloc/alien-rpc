@@ -1,9 +1,9 @@
-import { RequestContext } from '@hattip/compose'
-import * as jsonQS from '@json-qs/json-qs'
-import { TObject, TRecord, TSchema } from '@sinclair/typebox'
-import * as t from './constraint'
-import { JSON, Promisable } from './internal/types'
-import { PaginationLinks } from './pagination'
+import type { RouteMethod, RouteResultFormat } from '@alien-rpc/route'
+import type { RequestContext } from '@hattip/compose'
+import type * as jsonQS from '@json-qs/json-qs'
+import type { TObject, TRecord, TSchema } from '@sinclair/typebox'
+import type { JSON, Promisable } from './internal/types'
+import type { PaginationLinks } from './pagination'
 
 declare module '@hattip/compose' {
   interface RequestContextExtensions {
@@ -27,37 +27,35 @@ declare module '@hattip/compose' {
   }
 }
 
-export type RouteMethod = 'get' | 'post'
-
-export type RouteResultFormat = 'json' | 'json-seq' | 'response'
-
 export type RouteIterator<
-  TParams extends jsonQS.CodableRecord = jsonQS.CodableRecord,
-> = AsyncIterator<JSON, PaginationLinks<TParams> | null | void>
+  TPathParams extends PathParams = any,
+  TData extends object = any,
+> = AsyncIterator<JSON, PaginationLinks<TPathParams, TData> | null | void>
 
 export type RouteResult<
-  TParams extends jsonQS.CodableRecord = jsonQS.CodableRecord,
-> = Promisable<JSON | Response | RouteIterator<TParams> | void>
+  TPathParams extends PathParams = any,
+  TData extends object = any,
+> = Promisable<JSON | Response | RouteIterator<TPathParams, TData> | void>
 
 export type RouteHandler<
-  TParams extends object = object,
-  TData extends object = object,
-  TResult extends RouteResult<any> = RouteResult,
+  TPathParams extends PathParams = any,
+  TData extends object = any,
+  TResult extends RouteResult<TPathParams, TData> = any,
 > = (
-  this: NoInfer<RouteDefinition<TParams, TData>>,
-  params: TParams,
+  this: NoInfer<RouteDefinition<TPathParams, TData>>,
+  params: TPathParams,
   data: TData,
   ctx: RequestContext
 ) => TResult
 
 export interface RouteDefinition<
-  TParams extends object = any,
+  TPathParams extends PathParams = any,
   TData extends object = any,
-  TResult extends RouteResult<any> = any,
+  TResult extends RouteResult<TPathParams, TData> = any,
 > {
   method: RouteMethod
   path: string
-  handler: RouteHandler<TParams, TData, TResult>
+  handler: RouteHandler<TPathParams, TData, TResult>
 }
 
 /**
@@ -74,22 +72,29 @@ export interface Route<TDefinition extends RouteDefinition = RouteDefinition> {
   responseSchema: TSchema
 }
 
-export type BuildRouteParams<PathParams extends object, Data extends object> =
-  PathParams extends Record<string, never>
-    ? Data extends Record<string, never>
+export type PathParams = {
+  [key: string]: string | number | (string | number)[]
+}
+
+export type BuildRouteParams<
+  TPathParams extends PathParams,
+  TData extends object,
+> =
+  TPathParams extends Record<string, never>
+    ? TData extends Record<string, never>
       ? Record<string, never>
-      : Data
-    : Data extends Record<string, never>
-      ? PathParams
-      : PathParams & Data
+      : TData
+    : TData extends Record<string, never>
+      ? TPathParams
+      : TPathParams & TData
 
 export type InferRouteParams<T extends { handler: any }> =
   T['handler'] extends (
-    pathParams: infer PathParams extends object,
-    data: infer Data extends object,
+    pathParams: infer TPathParams extends PathParams,
+    data: infer TData extends jsonQS.DecodedObject,
     ...rest: any[]
   ) => any
-    ? BuildRouteParams<PathParams, Data>
+    ? BuildRouteParams<TPathParams, TData>
     : never
 
 export type RouteResponder<
@@ -101,32 +106,3 @@ export type RouteResponder<
   data: TDefinition extends RouteDefinition<any, infer TData> ? TData : never,
   ctx: RequestContext
 ) => Promise<Response>
-
-export type TypeConstraint = typeof t extends infer T
-  ? InstanceType<
-      Extract<T[keyof T], new (...args: any) => any>
-    > extends infer TypeConstraint
-    ? TypeConstraint
-    : never
-  : never
-
-// type TypeConstraintKey = TypeConstraint extends infer TConstraint
-//   ? TConstraint extends any
-//     ? keyof TypeConstraint
-//     : never
-//   : never
-
-// export type RemoveTypeConstraints<T> = T extends (infer TItem)[]
-//   ? RemoveTypeConstraints<TItem>[]
-//   : T extends readonly (infer TItem)[]
-//     ? readonly RemoveTypeConstraints<TItem>[]
-//     : T extends Primitive
-//       ? Extract<Primitive, T>
-//       : T extends Record<infer TKey, infer TValue> & TypeConstraint
-//         ? Record<TKey, TValue>
-//         : Extract<keyof T, TypeConstraintKey> extends never
-//           ? T
-//           : Omit<T, TypeConstraintKey>
-
-// type T1 = RemoveTypeConstraints<Record<string, string> & t.MinProperties<1>>
-// type T2 = RemoveTypeConstraints<(string & t.MinLength<1>)[] & t.MinItems<1>>

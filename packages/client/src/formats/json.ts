@@ -1,4 +1,4 @@
-import { RpcResultFormatter } from '../types.js'
+import { ResultFormatter } from '../types.js'
 
 type JSON = { [key: string]: JSON | undefined } | readonly JSON[] | JSONValue
 type JSONValue = string | number | boolean | null
@@ -13,4 +13,4 @@ export default {
       return response.json() as Promise<JSON>
     }
   },
-} satisfies RpcResultFormatter<Promise<JSON | undefined>>
+} satisfies ResultFormatter<Promise<JSON | undefined>>

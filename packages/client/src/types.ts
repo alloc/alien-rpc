@@ -1,18 +1,15 @@
+import type { RouteMethod } from '@alien-rpc/route'
 import type { PathTemplate } from 'pathic'
 import type { Client } from './client.js'
 
 type AnyFn = (...args: any) => any
 
-export type RpcMethod = 'get' | 'post'
-
-export type RpcResultFormat = 'json' | 'json-seq' | 'response'
-
-export type RpcCachedResult<TResult> =
+export type CachedRouteResult<TResult> =
   TResult extends ResponseStream<infer TStreamResult>
-    ? readonly TStreamResult[] | readonly [...TStreamResult[], RpcPagination]
+    ? readonly TStreamResult[] | readonly [...TStreamResult[], RoutePagination]
     : TResult
 
-export type RpcResultFormatter<
+export type ResultFormatter<
   TResult = unknown,
   TCachedResult = Awaited<TResult>,
 > = {
@@ -20,18 +17,18 @@ export type RpcResultFormatter<
   parseResponse(promisedResponse: Promise<Response>, client: Client): TResult
 }
 
-export type RpcRoute<
+export type Route<
   TPath extends string = string,
   TCallee extends AnyFn = AnyFn,
 > = {
-  method: RpcMethod
+  method: RouteMethod
   path: TPath
   pathParams: string[]
   /**
    * The result format determines how the response must be handled for the
    * caller to receive the expected type.
    */
-  format: string | RpcResultFormatter<Awaited<ReturnType<TCallee>>, any>
+  format: string | ResultFormatter<Awaited<ReturnType<TCallee>>, any>
   /**
    * Equals 1 if the route has no search parameters or request body.
    */
@@ -46,19 +43,19 @@ export type RpcRoute<
 /**
  * Any valid URI pathname for the given route interface.
  */
-export type RpcPathname<TRoutes extends Record<string, RpcRoute>> =
-  TRoutes[keyof TRoutes] extends RpcRoute<infer TEndpointPath>
+export type RoutePathname<TRoutes extends Record<string, Route>> =
+  TRoutes[keyof TRoutes] extends Route<infer TEndpointPath>
     ? PathTemplate<TEndpointPath>
     : never
 
 /**
  * The response type for the given URI pathname and route interface.
  */
-export type RpcResponseByPath<
-  TRoutes extends Record<string, RpcRoute>,
+export type RouteResponseByPath<
+  TRoutes extends Record<string, Route>,
   TPath extends string,
 > = {
-  [K in keyof TRoutes]: TRoutes[K] extends RpcRoute<infer P>
+  [K in keyof TRoutes]: TRoutes[K] extends Route<infer P>
     ? TPath extends PathTemplate<P>
       ? TRoutes[K]
       : never
@@ -73,7 +70,7 @@ export type RpcResponseByPath<
  *
  * Note that page requests are sent to `GET` routes.
  */
-export type RpcPagination = {
+export type RoutePagination = {
   $prev: string | null
   $next: string | null
 }
@@ -94,7 +91,7 @@ export type ClientOptions = Omit<
    *
    * @default new Map()
    */
-  resultCache?: RpcResultCache
+  resultCache?: RouteResultCache
 }
 
 export type RequestOptions = Omit<ClientOptions, 'prefixUrl'>
@@ -165,7 +162,7 @@ export interface ResponseStream<T> extends AsyncIterableIterator<T> {
   previousPage?: (options?: RequestOptions) => ResponseStream<T>
 }
 
-export interface RpcResultCache {
+export interface RouteResultCache {
   has: (path: string) => boolean
   get: (path: string) => unknown | undefined
   set: (path: string, response: unknown) => void

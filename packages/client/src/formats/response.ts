@@ -1,6 +1,6 @@
-import { RpcResultFormatter } from '../types.js'
+import { ResultFormatter } from '../types.js'
 
 export default {
   mapCachedResult: Promise.resolve,
   parseResponse: r => r,
-} satisfies RpcResultFormatter<Promise<Response>>
+} satisfies ResultFormatter<Promise<Response>>

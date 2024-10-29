@@ -9,6 +9,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./format": {
+      "types": "./dist/format.d.ts",
+      "import": "./dist/format.js"
+    },
     "./typebox": {
       "types": "./dist/typebox.d.ts",
       "import": "./dist/typebox.js"
@@ -33,6 +37,7 @@
     "@sinclair/typebox": "*"
   },
   "devDependencies": {
+    "@alien-rpc/route": "workspace:^",
     "pathic": "workspace:^"
   },
   "scripts": {

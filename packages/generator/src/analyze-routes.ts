@@ -1,4 +1,4 @@
-import type { RouteResultFormat } from '@alien-rpc/service'
+import type { RouteMethod, RouteResultFormat } from '@alien-rpc/route'
 import { ts } from '@ts-morph/common'
 import { debug } from './debug.js'
 import { printTypeLiteral } from './typescript/print-type-literal.js'
@@ -61,7 +61,7 @@ export type AnalyzedRoute = {
   exportedName: string
   description: string | undefined
   resolvedFormat: RouteResultFormat
-  resolvedMethod: string
+  resolvedMethod: RouteMethod
   resolvedPathname: string
   resolvedArguments: string[]
   resolvedResult: string
@@ -134,13 +134,14 @@ function analyzeRoute(
     throw new Error('Route handler has an unknown return type')
   }
 
-  let resolvedMethod = printTypeLiteral(
+  const resolvedMethod = printTypeLiteral(
     typeChecker.getTypeOfSymbol(method),
     typeChecker
   )
 
+  let parsedMethod: RouteMethod
   try {
-    resolvedMethod = JSON.parse(resolvedMethod) as string
+    parsedMethod = JSON.parse(resolvedMethod) as RouteMethod
   } catch {
     throw new Error(
       `Route must have a string literal for its "method" property.`
@@ -184,7 +185,7 @@ function analyzeRoute(
     exportedName: routeName,
     description: extractDescription(declaration),
     resolvedFormat,
-    resolvedMethod,
+    resolvedMethod: parsedMethod,
     resolvedPathname,
     resolvedArguments,
     resolvedResult,

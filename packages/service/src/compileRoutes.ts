@@ -1,3 +1,4 @@
+import { RouteMethod } from '@alien-rpc/route'
 import { RequestContext } from '@hattip/compose'
 import { ValueError } from '@sinclair/typebox/errors'
 import {
@@ -9,7 +10,7 @@ import { mapValues } from 'radashi'
 import { CompiledRoute, compileRoute } from './compileRoute.js'
 import { compilePreflightHandler, CorsConfig } from './cors.js'
 import { HttpError } from './error.js'
-import { Route, RouteMethod } from './types'
+import { Route } from './types'
 
 const enum RequestStep {
   Match,
@@ -51,7 +52,7 @@ export function compileRoutes(
       return handlePreflightRequest(ctx)
     }
 
-    const matchRoute = routesByMethod[request.method as Uppercase<RouteMethod>]
+    const matchRoute = routesByMethod[request.method as RouteMethod]
     if (!matchRoute) {
       return
     }
@@ -118,10 +119,8 @@ export function compileRoutes(
 }
 
 function prepareRoutes(rawRoutes: readonly Route[]) {
-  const groupedRoutes: Record<
-    Uppercase<RouteMethod>,
-    CompiledRoute[]
-  > = Object.create(null)
+  const groupedRoutes: Record<RouteMethod, CompiledRoute[]> =
+    Object.create(null)
 
   for (const rawRoute of rawRoutes) {
     const route = compileRoute(rawRoute)

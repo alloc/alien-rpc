@@ -1,4 +1,5 @@
 /// <reference lib="dom.asynciterable" />
+import { bodylessMethods, cacheableMethods } from '@alien-rpc/route'
 import * as jsonQS from '@json-qs/json-qs'
 import ky, { HTTPError } from 'ky'
 import { buildPath } from 'pathic'
@@ -6,34 +7,33 @@ import { isString } from 'radashi'
 import jsonFormat from './formats/json.js'
 import responseFormat from './formats/response.js'
 import {
+  CachedRouteResult,
   ClientOptions,
-  RpcCachedResult,
-  RpcPathname,
-  RpcResponseByPath,
-  RpcResultCache,
-  RpcResultFormatter,
-  RpcRoute,
+  ResultFormatter,
+  Route,
+  RoutePathname,
+  RouteResponseByPath,
+  RouteResultCache,
 } from './types.js'
 
-interface ClientPrototype<API extends Record<string, RpcRoute>> {
+interface ClientPrototype<API extends Record<string, Route>> {
   extend: (defaults: ClientOptions) => Client<API>
   request: typeof ky
-  getCachedResponse: <P extends RpcPathname<API>>(
+  getCachedResponse: <P extends RoutePathname<API>>(
     path: P
-  ) => RpcCachedResult<Awaited<RpcResponseByPath<API, P>>> | undefined
-  setCachedResponse: <P extends RpcPathname<API>>(
+  ) => CachedRouteResult<Awaited<RouteResponseByPath<API, P>>> | undefined
+  setCachedResponse: <P extends RoutePathname<API>>(
     path: P,
-    response: RpcCachedResult<Awaited<RpcResponseByPath<API, P>>>
+    response: CachedRouteResult<Awaited<RouteResponseByPath<API, P>>>
   ) => void
 }
 
-export type Client<
-  API extends Record<string, RpcRoute> = Record<string, RpcRoute>,
-> = ClientPrototype<API> & {
-  [TKey in keyof API]: Extract<API[TKey], RpcRoute>['callee']
-}
+export type Client<API extends Record<string, Route> = Record<string, Route>> =
+  ClientPrototype<API> & {
+    [TKey in keyof API]: Extract<API[TKey], Route>['callee']
+  }
 
-export function defineClient<API extends Record<string, RpcRoute>>(
+export function defineClient<API extends Record<string, Route>>(
   routes: API,
   options: ClientOptions = {}
 ): Client<API> {
@@ -66,9 +66,9 @@ async function extendHTTPError(error: HTTPError) {
   return error
 }
 
-function createClientProxy<API extends Record<string, RpcRoute>>(
+function createClientProxy<API extends Record<string, Route>>(
   routes: API,
-  resultCache: RpcResultCache,
+  resultCache: RouteResultCache,
   request: typeof ky
 ): Client<API> {
   const client: ClientPrototype<API> = {
@@ -105,8 +105,8 @@ function createClientProxy<API extends Record<string, RpcRoute>>(
 }
 
 function createRouteFunction(
-  route: RpcRoute,
-  responseCache: RpcResultCache,
+  route: Route,
+  resultCache: RouteResultCache,
   request: typeof ky,
   client: Client
 ) {
@@ -130,8 +130,9 @@ function createRouteFunction(
     }
 
     let path = buildPath(route.path, params ?? {})
+    let body: unknown
 
-    if (route.method === 'get') {
+    if (bodylessMethods.has(route.method)) {
       if (params) {
         const query = jsonQS.encode(params, {
           skippedKeys: route.pathParams,
@@ -140,14 +141,16 @@ function createRouteFunction(
           path += '?' + query
         }
       }
-      if (responseCache.has(path)) {
-        return format.mapCachedResult(responseCache.get(path), client)
+      if (cacheableMethods.has(route.method) && resultCache.has(path)) {
+        return format.mapCachedResult(resultCache.get(path), client)
       }
+    } else {
+      body = params
     }
 
     const promisedResponse = request(path, {
       ...options,
-      json: route.method !== 'get' ? params : undefined,
+      json: body,
       method: route.method,
     })
 
@@ -169,7 +172,7 @@ function mergeHooks<T>(
     : hooks
 }
 
-function resolveResultFormat(format: RpcRoute['format']): RpcResultFormatter {
+function resolveResultFormat(format: Route['format']): ResultFormatter {
   if (format === 'response') {
     return responseFormat
   }

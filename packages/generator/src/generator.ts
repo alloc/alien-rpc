@@ -1,3 +1,4 @@
+import { bodylessMethods } from '@alien-rpc/route'
 import { createProject, Project } from '@ts-morph/bootstrap'
 import { ts } from '@ts-morph/common'
 import { jumpgen, JumpgenFS } from 'jumpgen'
@@ -180,18 +181,34 @@ export default (options: Options) =>
         route.resolvedArguments[0] !== 'Record<string, never>' &&
         generateRuntimeValidator(
           `type Path = ${route.resolvedArguments[0]}`
-        ).replace(/\bType\.(Number)\(/g, (match, type) => {
+        ).replace(/\bType\.(Number|Array)\(/g, (match, type) => {
           switch (type) {
             case 'Number':
-              serverImports.add('NumberString')
-              return 'NumberString('
+              serverImports.add('NumberParam')
+              return 'NumberParam('
+            case 'Array':
+              serverImports.add('ArrayParam')
+              return 'ArrayParam('
           }
           return match
         })
 
-      const requestSchemaDecl = generateRuntimeValidator(
+      let requestSchemaDecl = generateRuntimeValidator(
         `type Request = ${route.resolvedArguments[1]}`
       )
+      if (!bodylessMethods.has(route.resolvedMethod)) {
+        requestSchemaDecl = requestSchemaDecl.replace(
+          /\bType\.(Date)\(/g,
+          (match, type) => {
+            switch (type) {
+              case 'Date':
+                serverImports.add('DateString')
+                return 'DateString('
+            }
+            return match
+          }
+        )
+      }
 
       const responseSchemaDecl =
         route.resolvedFormat === 'response'

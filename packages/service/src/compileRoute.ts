@@ -1,3 +1,4 @@
+import { bodylessMethods } from '@alien-rpc/route'
 import { RequestContext } from '@hattip/compose'
 import * as jsonQS from '@json-qs/json-qs'
 import { KindGuard, Type } from '@sinclair/typebox'
@@ -7,7 +8,7 @@ import {
   ValueErrorType,
 } from '@sinclair/typebox/value'
 import { supportedResponders } from './responders/index.js'
-import { Route, RouteMethod } from './types.js'
+import { Route } from './types.js'
 
 export type CompiledRoute = ReturnType<typeof compileRoute>
 
@@ -17,7 +18,7 @@ export function compileRoute(route: Route) {
   const responder = supportedResponders[route.format](route)
 
   return {
-    method: route.method.toUpperCase() as Uppercase<RouteMethod>,
+    method: route.method,
     path: route.path,
     /**
      * Decode the path parameters using the route's path schema.
@@ -65,9 +66,7 @@ function compileRequestSchema(
 ): (ctx: RequestContext) => Promise<object> {
   const requestSchema = TypeCompiler.Compile(route.requestSchema)
 
-  // Since non-GET requests receive a JSON request body, we can simply
-  // decode it using only the request schema.
-  if (route.method !== 'get') {
+  if (!bodylessMethods.has(route.method)) {
     return async ({ request }) => requestSchema.Decode(await request.json())
   }
 

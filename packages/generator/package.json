@@ -29,7 +29,7 @@
     "typescript": "*"
   },
   "devDependencies": {
-    "@alien-rpc/service": "workspace:^",
+    "@alien-rpc/route": "workspace:^",
     "@types/debug": "^4.1.12",
     "pathic": "workspace:^"
   },

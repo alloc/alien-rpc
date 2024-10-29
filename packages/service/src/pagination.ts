@@ -1,37 +1,51 @@
 import * as jsonQS from '@json-qs/json-qs'
 import { buildPath, parsePathParams } from 'pathic'
-import type { InferRouteParams, RouteDefinition } from './types'
+import type {
+  BuildRouteParams,
+  InferRouteParams,
+  PathParams,
+  RouteDefinition,
+} from './types'
 
-export type PaginationLinkData<
-  TParams extends jsonQS.CodableRecord = jsonQS.CodableRecord,
+type PaginationLinkData<
+  TPathParams extends PathParams,
+  TData extends object,
 > = {
-  route: RouteDefinition
-  params: TParams
+  route: RouteDefinition<TPathParams, TData>
+  params: BuildRouteParams<TPathParams, TData>
 }
 
 export type PaginationLinks<
-  TParams extends jsonQS.CodableRecord = jsonQS.CodableRecord,
+  TPathParams extends PathParams,
+  TData extends object,
 > = {
-  prev: PaginationLinkData<TParams> | null
-  next: PaginationLinkData<TParams> | null
+  prev: PaginationLinkData<TPathParams, TData> | null
+  next: PaginationLinkData<TPathParams, TData> | null
 }
 
-export function paginate<T extends RouteDefinition>(
-  route: T,
+/**
+ * Create a set of pagination links for a given route.
+ *
+ * The result should be returned from a route handler that's declared as an
+ * async generator using the `async function*` syntax.
+ *
+ * For a route to paginate itself, it can call `paginate()` with `this` as
+ * the first argument.
+ */
+export const paginate = <TDefinition extends RouteDefinition>(
+  route: TDefinition,
   links: {
-    prev: InferRouteParams<T> | null
-    next: InferRouteParams<T> | null
+    prev: InferRouteParams<TDefinition> | null
+    next: InferRouteParams<TDefinition> | null
   }
-) {
-  return {
-    prev: links.prev && { route, params: links.prev },
-    next: links.next && { route, params: links.next },
-  } satisfies PaginationLinks<any>
-}
+) => ({
+  prev: links.prev && { route, params: links.prev },
+  next: links.next && { route, params: links.next },
+})
 
 export function resolvePaginationLink(
   currentURL: URL,
-  data: PaginationLinkData
+  data: PaginationLinkData<any, any>
 ) {
   const query = jsonQS.encode(data.params, {
     skippedKeys: parsePathParams(data.route.path),

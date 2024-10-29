@@ -13,21 +13,9 @@ export declare class MinItems<T extends number> {
 export declare class MaxItems<T extends number> {
   _$maxItems?: T
 }
-/** Should this schema contain unique items */
-export declare class UniqueItems {
-  _$uniqueItems?: true
-}
-/** A schema for which some elements should match */
-export declare class Contains<T> {
-  _$contains?: T
-}
-/** A minimum number of contains schema matches */
-export declare class MinContains<T extends number> {
-  _$minContains?: T
-}
-/** A maximum number of contains schema matches */
-export declare class MaxContains<T extends number> {
-  _$maxContains?: T
+/** Should this schema contain unique items? The default behavior is false. */
+export declare class UniqueItems<T extends boolean> {
+  _$uniqueItems?: T
 }
 
 /// Date Constraints
@@ -86,6 +74,10 @@ export declare class MinProperties<T extends number> {
 export declare class MaxProperties<T extends number> {
   _$maxProperties?: T
 }
+/** Should additional properties be allowed? The default behavior is true. */
+export declare class AdditionalProperties<T extends boolean> {
+  _$additionalProperties?: T
+}
 
 /// String Constraints
 
@@ -102,7 +94,7 @@ export declare class Pattern<T extends string> {
   _$pattern?: T
 }
 /** A format this string should match */
-export declare class Format<T extends StringFormatOption> {
+export declare class Format<T extends StringFormatOption | 'url' | 'duration'> {
   _$format?: T
 }
 /** The content encoding for this string */

@@ -1,4 +1,5 @@
-import { RouteResponder, RouteResultFormat } from '../types'
+import type { RouteResultFormat } from '@alien-rpc/route'
+import type { RouteResponder } from '../types'
 
 import jsonResponder from './json'
 import jsonSeqResponder from './json-seq'

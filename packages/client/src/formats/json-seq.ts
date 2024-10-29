@@ -2,14 +2,14 @@ import { Client } from '../client.js'
 import {
   RequestOptions,
   ResponseStream,
-  RpcPagination,
-  RpcResultFormatter,
+  ResultFormatter,
+  RoutePagination,
 } from '../types.js'
 
 export default {
   mapCachedResult,
   parseResponse,
-} satisfies RpcResultFormatter<ResponseStream<any>, unknown[]>
+} satisfies ResultFormatter<ResponseStream<any>, unknown[]>
 
 function parseResponse(promisedResponse: Promise<Response>, client: Client) {
   // Keep a reference to the iterator, so we can attach previousPage
@@ -55,7 +55,7 @@ function requestPage(client: Client, path: string, options?: RequestOptions) {
 
 function attachPageMethods(
   responseStream: ResponseStream<any>,
-  object: RpcPagination,
+  object: RoutePagination,
   client: Client
 ) {
   if (object.$prev) {
@@ -68,7 +68,7 @@ function attachPageMethods(
   }
 }
 
-function isPagination(arg: {}): arg is RpcPagination {
+function isPagination(arg: {}): arg is RoutePagination {
   // The server ensures both `prev` and `next` are defined, even though the
   // RpcPagination type says otherwise.
   return (

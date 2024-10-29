@@ -1,35 +1,35 @@
-import type { Format, FormatDefinition } from "ajv"
-import type { FormatCompare, FormatValidator } from "ajv/dist/types"
+import type { Format, FormatDefinition } from 'ajv'
+import type { FormatCompare, FormatValidator } from 'ajv/dist/types'
 
-export type FormatMode = "fast" | "full"
+export type FormatMode = 'fast' | 'full'
 
 export type FormatName =
-  | "date"
-  | "time"
-  | "date-time"
-  | "iso-time"
-  | "iso-date-time"
-  | "duration"
-  | "uri"
-  | "uri-reference"
-  | "uri-template"
-  | "url"
-  | "email"
-  | "hostname"
-  | "ipv4"
-  | "ipv6"
-  | "regex"
-  | "uuid"
-  | "json-pointer"
-  | "json-pointer-uri-fragment"
-  | "relative-json-pointer"
-  | "byte"
-  | "int32"
-  | "int64"
-  | "float"
-  | "double"
-  | "password"
-  | "binary"
+  | 'date'
+  | 'time'
+  | 'date-time'
+  | 'iso-time'
+  | 'iso-date-time'
+  | 'duration'
+  | 'uri'
+  | 'uri-reference'
+  | 'uri-template'
+  | 'url'
+  | 'email'
+  | 'hostname'
+  | 'ipv4'
+  | 'ipv6'
+  | 'regex'
+  | 'uuid'
+  | 'json-pointer'
+  | 'json-pointer-uri-fragment'
+  | 'relative-json-pointer'
+  | 'byte'
+  | 'int32'
+  | 'int64'
+  | 'float'
+  | 'double'
+  | 'password'
+  | 'binary'
 
 export type DefinedFormats = {
   [key in FormatName]: Format
@@ -39,7 +39,7 @@ function fmtDef(
   validate: RegExp | FormatValidator<string>,
   compare: FormatCompare<string>
 ): FormatDefinition<string> {
-  return {validate, compare}
+  return { validate, compare }
 }
 
 export const fullFormats: DefinedFormats = {
@@ -47,16 +47,17 @@ export const fullFormats: DefinedFormats = {
   date: fmtDef(date, compareDate),
   // date-time: http://tools.ietf.org/html/rfc3339#section-5.6
   time: fmtDef(getTime(true), compareTime),
-  "date-time": fmtDef(getDateTime(true), compareDateTime),
-  "iso-time": fmtDef(getTime(), compareIsoTime),
-  "iso-date-time": fmtDef(getDateTime(), compareIsoDateTime),
+  'date-time': fmtDef(getDateTime(true), compareDateTime),
+  'iso-time': fmtDef(getTime(), compareIsoTime),
+  'iso-date-time': fmtDef(getDateTime(), compareIsoDateTime),
   // duration: https://tools.ietf.org/html/rfc3339#appendix-A
-  duration: /^P(?!$)((\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?|(\d+W)?)$/,
+  duration:
+    /^P(?!$)((\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?|(\d+W)?)$/,
   uri,
-  "uri-reference":
+  'uri-reference':
     /^(?:[a-z][a-z0-9+\-.]*:)?(?:\/?\/(?:(?:[a-z0-9\-._~!$&'()*+,;=:]|%[0-9a-f]{2})*@)?(?:\[(?:(?:(?:(?:[0-9a-f]{1,4}:){6}|::(?:[0-9a-f]{1,4}:){5}|(?:[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){4}|(?:(?:[0-9a-f]{1,4}:){0,1}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){3}|(?:(?:[0-9a-f]{1,4}:){0,2}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){2}|(?:(?:[0-9a-f]{1,4}:){0,3}[0-9a-f]{1,4})?::[0-9a-f]{1,4}:|(?:(?:[0-9a-f]{1,4}:){0,4}[0-9a-f]{1,4})?::)(?:[0-9a-f]{1,4}:[0-9a-f]{1,4}|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?))|(?:(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4})?::[0-9a-f]{1,4}|(?:(?:[0-9a-f]{1,4}:){0,6}[0-9a-f]{1,4})?::)|[Vv][0-9a-f]+\.[a-z0-9\-._~!$&'()*+,;=:]+)\]|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)|(?:[a-z0-9\-._~!$&'"()*+,;=]|%[0-9a-f]{2})*)(?::\d*)?(?:\/(?:[a-z0-9\-._~!$&'"()*+,;=:@]|%[0-9a-f]{2})*)*|\/(?:(?:[a-z0-9\-._~!$&'"()*+,;=:@]|%[0-9a-f]{2})+(?:\/(?:[a-z0-9\-._~!$&'"()*+,;=:@]|%[0-9a-f]{2})*)*)?|(?:[a-z0-9\-._~!$&'"()*+,;=:@]|%[0-9a-f]{2})+(?:\/(?:[a-z0-9\-._~!$&'"()*+,;=:@]|%[0-9a-f]{2})*)*)?(?:\?(?:[a-z0-9\-._~!$&'"()*+,;=:@/?]|%[0-9a-f]{2})*)?(?:#(?:[a-z0-9\-._~!$&'"()*+,;=:@/?]|%[0-9a-f]{2})*)?$/i,
   // uri-template: https://tools.ietf.org/html/rfc6570
-  "uri-template":
+  'uri-template':
     /^(?:(?:[^\x00-\x20"'<>%\\^`{|}]|%[0-9a-f]{2})|\{[+#./;?&=,!@|]?(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?(?:,(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?)*\})*$/i,
   // For the source: https://gist.github.com/dperini/729294
   // For test cases: https://mathiasbynens.be/demo/url-regex
@@ -73,21 +74,22 @@ export const fullFormats: DefinedFormats = {
   uuid: /^(?:urn:uuid:)?[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i,
   // JSON-pointer: https://tools.ietf.org/html/rfc6901
   // uri fragment: https://tools.ietf.org/html/rfc3986#appendix-A
-  "json-pointer": /^(?:\/(?:[^~/]|~0|~1)*)*$/,
-  "json-pointer-uri-fragment": /^#(?:\/(?:[a-z0-9_\-.!$&'()*+,;:=@]|%[0-9a-f]{2}|~0|~1)*)*$/i,
+  'json-pointer': /^(?:\/(?:[^~/]|~0|~1)*)*$/,
+  'json-pointer-uri-fragment':
+    /^#(?:\/(?:[a-z0-9_\-.!$&'()*+,;:=@]|%[0-9a-f]{2}|~0|~1)*)*$/i,
   // relative JSON-pointer: http://tools.ietf.org/html/draft-luff-relative-json-pointer-00
-  "relative-json-pointer": /^(?:0|[1-9][0-9]*)(?:#|(?:\/(?:[^~/]|~0|~1)*)*)$/,
+  'relative-json-pointer': /^(?:0|[1-9][0-9]*)(?:#|(?:\/(?:[^~/]|~0|~1)*)*)$/,
   // the following formats are used by the openapi specification: https://spec.openapis.org/oas/v3.0.0#data-types
   // byte: https://github.com/miguelmota/is-base64
   byte,
   // signed 32 bit integer
-  int32: {type: "number", validate: validateInt32},
+  int32: { type: 'number', validate: validateInt32 },
   // signed 64 bit integer
-  int64: {type: "number", validate: validateInt64},
+  int64: { type: 'number', validate: validateInt64 },
   // C-type float
-  float: {type: "number", validate: validateNumber},
+  float: { type: 'number', validate: validateNumber },
   // C-type double
-  double: {type: "number", validate: validateNumber},
+  double: { type: 'number', validate: validateNumber },
   // hint to the UI to hide input strings
   password: true,
   // unchecked string payload
@@ -101,21 +103,22 @@ export const fastFormats: DefinedFormats = {
     /^(?:[0-2]\d:[0-5]\d:[0-5]\d|23:59:60)(?:\.\d+)?(?:z|[+-]\d\d(?::?\d\d)?)$/i,
     compareTime
   ),
-  "date-time": fmtDef(
+  'date-time': fmtDef(
     /^\d\d\d\d-[0-1]\d-[0-3]\dt(?:[0-2]\d:[0-5]\d:[0-5]\d|23:59:60)(?:\.\d+)?(?:z|[+-]\d\d(?::?\d\d)?)$/i,
     compareDateTime
   ),
-  "iso-time": fmtDef(
+  'iso-time': fmtDef(
     /^(?:[0-2]\d:[0-5]\d:[0-5]\d|23:59:60)(?:\.\d+)?(?:z|[+-]\d\d(?::?\d\d)?)?$/i,
     compareIsoTime
   ),
-  "iso-date-time": fmtDef(
+  'iso-date-time': fmtDef(
     /^\d\d\d\d-[0-1]\d-[0-3]\d[t\s](?:[0-2]\d:[0-5]\d:[0-5]\d|23:59:60)(?:\.\d+)?(?:z|[+-]\d\d(?::?\d\d)?)?$/i,
     compareIsoDateTime
   ),
   // uri: https://github.com/mafintosh/is-my-json-valid/blob/master/formats.js
   uri: /^(?:[a-z][a-z0-9+\-.]*:)(?:\/?\/)?[^\s]*$/i,
-  "uri-reference": /^(?:(?:[a-z][a-z0-9+\-.]*:)?\/?\/)?(?:[^\\\s#][^\s#]*)?(?:#[^\\\s]*)?$/i,
+  'uri-reference':
+    /^(?:(?:[a-z][a-z0-9+\-.]*:)?\/?\/)?(?:[^\\\s#][^\s#]*)?(?:#[^\\\s]*)?$/i,
   // email (sources from jsen validator):
   // http://stackoverflow.com/questions/201323/using-a-regular-expression-to-validate-an-email-address#answer-8829363
   // http://www.w3.org/TR/html5/forms.html#valid-e-mail-address (search for 'wilful violation')
@@ -165,7 +168,7 @@ function getTime(strictTimeZone?: boolean): (str: string) => boolean {
     const min: number = +matches[2]
     const sec: number = +matches[3]
     const tz: string | undefined = matches[4]
-    const tzSign: number = matches[5] === "-" ? -1 : 1
+    const tzSign: number = matches[5] === '-' ? -1 : 1
     const tzH: number = +(matches[6] || 0)
     const tzM: number = +(matches[7] || 0)
     if (tzH > 23 || tzM > 59 || (strictTimeZone && !tz)) return false
@@ -173,14 +176,18 @@ function getTime(strictTimeZone?: boolean): (str: string) => boolean {
     // leap second
     const utcMin = min - tzM * tzSign
     const utcHr = hr - tzH * tzSign - (utcMin < 0 ? 1 : 0)
-    return (utcHr === 23 || utcHr === -1) && (utcMin === 59 || utcMin === -1) && sec < 61
+    return (
+      (utcHr === 23 || utcHr === -1) &&
+      (utcMin === 59 || utcMin === -1) &&
+      sec < 61
+    )
   }
 }
 
 function compareTime(s1: string, s2: string): number | undefined {
   if (!(s1 && s2)) return undefined
-  const t1 = new Date("2020-01-01T" + s1).valueOf()
-  const t2 = new Date("2020-01-01T" + s2).valueOf()
+  const t1 = new Date('2020-01-01T' + s1).valueOf()
+  const t2 = new Date('2020-01-01T' + s2).valueOf()
   if (!(t1 && t2)) return undefined
   return t1 - t2
 }
@@ -234,7 +241,8 @@ function uri(str: string): boolean {
   return NOT_URI_FRAGMENT.test(str) && URI.test(str)
 }
 
-const BYTE = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/gm
+const BYTE =
+  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/gm
 
 function byte(str: string): boolean {
   BYTE.lastIndex = 0

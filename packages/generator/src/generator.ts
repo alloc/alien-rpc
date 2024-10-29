@@ -3,7 +3,7 @@ import { ts } from '@ts-morph/common'
 import { jumpgen, JumpgenFS } from 'jumpgen'
 import path from 'path'
 import { parsePathParams } from 'pathic'
-import { camel, sift } from 'radashi'
+import { camel, pascal, sift } from 'radashi'
 import { AnalyzedRoute, analyzeRoutes } from './analyze-routes.js'
 import { reportDiagnostics } from './diagnostics.js'
 import { typeConstraints } from './type-constraints.js'
@@ -171,6 +171,7 @@ export default (options: Options) =>
     const serverDefinitions: string[] = []
     const clientDefinitions: string[] = []
     const serverImports = new Set<string>()
+    const stringFormats = new Set<string>()
     const clientImports = new Set<string>(['RequestOptions', 'RpcRoute'])
     const clientFormats = new Set<string>()
 
@@ -196,6 +197,14 @@ export default (options: Options) =>
         route.resolvedFormat === 'response'
           ? `Type.Any()`
           : generateRuntimeValidator(`type Response = ${route.resolvedResult}`)
+
+      for (const match of (
+        pathSchemaDecl +
+        requestSchemaDecl +
+        responseSchemaDecl
+      ).matchAll(/Type\.String\(.*?format:\s*['"](\w+)['"].*?\)/g)) {
+        stringFormats.add(match[1])
+      }
 
       const handlerPath = resolveImportPath(
         path.join(root, options.serverOutFile),
@@ -293,15 +302,29 @@ export default (options: Options) =>
 
     const writeServerDefinitions = (outFile: string) => {
       let imports = ''
+      let sideEffects = ''
+
       if (serverImports.size > 0) {
         imports += `\nimport { ${[...serverImports].sort().join(', ')} } from "@alien-rpc/service/typebox"`
       }
+      if (stringFormats.size > 0) {
+        const sortedFormats = [...stringFormats].sort()
+        const exportedFormats = sortedFormats.map(
+          name => pascal(name) + 'Format'
+        )
 
-      const content = dedent/* ts */ `
-        import { Type } from "@sinclair/typebox"${imports}
+        imports += `\nimport { addStringFormat, ${exportedFormats.join(', ')} } from "@alien-rpc/service/format"`
 
-        export default [${serverDefinitions.join(', ')}] as const
-      `
+        sortedFormats.forEach((format, index) => {
+          sideEffects += `\naddStringFormat(${JSON.stringify(format)}, ${exportedFormats[index]})`
+        })
+      }
+
+      const content = sift([
+        `import { Type } from "@sinclair/typebox"${imports}`,
+        sideEffects.trimStart(),
+        `export default [${serverDefinitions.join(', ')}] as const`,
+      ]).join('\n\n')
 
       fs.write(outFile, content)
     }

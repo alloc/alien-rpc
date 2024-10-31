@@ -75,6 +75,10 @@ export default (options: Options) =>
       absolute: true,
     })
 
+    if (!sourceFilePaths.length) {
+      throw new Error(`No source files found for ${options.include}`)
+    }
+
     if (store.project == null) {
       const tsConfigFilePath = path.resolve(
         root,

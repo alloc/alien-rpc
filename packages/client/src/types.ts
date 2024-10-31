@@ -166,4 +166,5 @@ export interface RouteResultCache {
   has: (path: string) => boolean
   get: (path: string) => unknown | undefined
   set: (path: string, response: unknown) => void
+  delete: (path: string) => void
 }

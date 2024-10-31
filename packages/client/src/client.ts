@@ -26,6 +26,7 @@ interface ClientPrototype<API extends Record<string, Route>> {
     path: P,
     response: CachedRouteResult<Awaited<RouteResponseByPath<API, P>>>
   ) => void
+  unsetCachedResponse: <P extends RoutePathname<API>>(path: P) => void
 }
 
 export type Client<API extends Record<string, Route> = Record<string, Route>> =
@@ -84,6 +85,9 @@ function createClientProxy<API extends Record<string, Route>>(
     },
     setCachedResponse(path, response) {
       resultCache.set(path, response)
+    },
+    unsetCachedResponse(path) {
+      resultCache.delete(path)
     },
   }
 

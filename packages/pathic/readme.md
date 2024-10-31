@@ -85,7 +85,11 @@ Derive an object type from a path pattern.
 
 ### InferParamsArray
 
-Derive an array from a path pattern that represents parameter values.
+Derive a tuple type, containing parameter values from a path pattern.
+
+### InferParamNames
+
+Derive a tuple type, containing parameter names from a path pattern.
 
 ### PathTemplate
 

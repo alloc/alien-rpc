@@ -68,6 +68,26 @@ type InferParamElement<
     : TParams
 
 //
+// InferParamNames
+//
+
+export type InferParamNames<TPath extends string> =
+  TPath extends `${infer TPrefix}/${infer TRest}`
+    ? InferParamName<TPrefix, InferParamNames<TRest>>
+    : InferParamName<TPath, []>
+
+type InferParamName<
+  TPath extends string,
+  TParams extends string[],
+> = TPath extends '*'
+  ? [...TParams, '*']
+  : TPath extends `${'*' | ':'}${infer TParam}`
+    ? TParam extends ''
+      ? TParams
+      : [TParam, ...TParams]
+    : TParams
+
+//
 // PathTemplate
 //
 

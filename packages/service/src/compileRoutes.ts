@@ -23,6 +23,11 @@ const enum RequestStep {
 }
 
 export interface RoutesConfig {
+  /**
+   * Requests must begin with this prefix to be matched. The prefix should
+   * start and end with a slash.
+   */
+  prefix?: string
   cors?: CorsConfig
 }
 
@@ -51,6 +56,13 @@ export function compileRoutes(
 
   return async (ctx: RequestContext): Promise<Response | undefined> => {
     const { url, request } = ctx
+
+    if (config.prefix) {
+      if (!url.pathname.startsWith(config.prefix)) {
+        return
+      }
+      url.pathname = url.pathname.slice(config.prefix.length - 1)
+    }
 
     if (request.method === 'OPTIONS') {
       return handlePreflightRequest(ctx)

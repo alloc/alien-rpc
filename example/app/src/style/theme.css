@@ -1,0 +1,40 @@
+@import '@picocss/pico/css/pico.classless.blue.css';
+
+header {
+  border-bottom: 1px solid var(--pico-range-border-color);
+
+  h4 {
+    margin: 0;
+  }
+}
+
+#publish-btn, #sign-up-btn {
+  margin-left: var(--pico-spacing);
+}
+
+.post {
+  border: 1px solid var(--pico-range-border-color);
+  border-radius: 0.6em;
+  padding: var(--pico-spacing);
+  margin-bottom: var(--pico-spacing);
+  width: 60ch;
+
+  img.avatar {
+    margin-right: 0.6em;
+    border-radius: 50%;
+    flex: unset;
+    width: 1.6em;
+  }
+
+  .author-name {
+    margin-top: 0.25em;
+    font-size: 0.8em;
+  }
+
+  .time {
+    font-size: 0.5em;
+    font-weight: 400;
+    color: var(--pico-muted-color);
+    margin-top: 0.4em;
+  }
+}

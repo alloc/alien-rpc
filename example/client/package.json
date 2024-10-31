@@ -1,0 +1,8 @@
+{
+  "name": "@my-app/client",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

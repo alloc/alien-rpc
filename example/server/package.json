@@ -1,0 +1,22 @@
+{
+  "name": "@my-app/server",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@hattip/adapter-node": "^0.0.48",
+    "@hattip/compose": "^0.0.48",
+    "@lukeed/uuid": "^2.0.1",
+    "@types/node": "^22.8.4",
+    "mini-svg-data-uri": "^1.4.4",
+    "tinyrun": "^1.0.2",
+    "tsup": "^8.3.5",
+    "unique-username-generator": "^1.3.0"
+  },
+  "scripts": {
+    "dev": "tinyrun --names node,alien-rpc 'pnpm node:dev' 'pnpm rpc:build --watch'",
+    "build": "rimraf dist && pnpm rpc:build && pnpm tsup:build",
+    "node:dev": "node --watch --experimental-sqlite --experimental-strip-types src/main.ts",
+    "tsup:build": "tsup src/main.ts --format esm --treeshake smallest --minify-syntax --sourcemap",
+    "rpc:build": "alien-rpc src/api/**/*.ts --clientOutFile ../client/src/generated/api.ts --serverOutFile src/generated/api.ts --versionPrefix v1"
+  }
+}

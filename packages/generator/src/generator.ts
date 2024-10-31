@@ -229,7 +229,8 @@ export default (options: Options) =>
 
       const handlerPath = resolveImportPath(
         path.join(root, options.serverOutFile),
-        route.fileName.replace(/\.ts$/, '.js')
+        route.fileName,
+        compilerOptions.allowImportingTsExtensions
       )
 
       const pathParams = parsePathParams(route.resolvedPathname)
@@ -410,10 +411,16 @@ function generateRuntimeValidator(code: string) {
   throw new Error('Failed to parse TypeBox validator')
 }
 
-function resolveImportPath(fromPath: string, toPath: string) {
-  let result = path
-    .relative(path.dirname(fromPath), toPath)
-    .replace(/\.ts$/, '.js')
+function resolveImportPath(
+  fromPath: string,
+  toPath: string,
+  allowImportingTsExtensions?: boolean
+) {
+  let result = path.relative(path.dirname(fromPath), toPath)
+
+  if (!allowImportingTsExtensions) {
+    result = result.replace(/\.ts$/, '.js')
+  }
 
   if (!result.startsWith('..')) {
     result = './' + result

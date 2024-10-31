@@ -1,5 +1,5 @@
 /// <reference lib="dom.asynciterable" />
-import { bodylessMethods, cacheableMethods } from '@alien-rpc/route'
+import { bodylessMethods } from '@alien-rpc/route'
 import * as jsonQS from '@json-qs/json-qs'
 import ky, { HTTPError } from 'ky'
 import { buildPath } from 'pathic'
@@ -141,7 +141,7 @@ function createRouteFunction(
           path += '?' + query
         }
       }
-      if (cacheableMethods.has(route.method) && resultCache.has(path)) {
+      if (route.method === 'GET' && resultCache.has(path)) {
         return format.mapCachedResult(resultCache.get(path), client)
       }
     } else {

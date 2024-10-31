@@ -3,6 +3,10 @@ export {}
 
 type Simplify<T> = {} & { [K in keyof T]: T[K] }
 
+//
+// InferParams
+//
+
 /** Extract param types from a route path literal. */
 export type InferParams<P extends string, Value = string> =
   InferParamFromPath<P> extends InferredParams<infer TRequiredParam>
@@ -39,6 +43,33 @@ type AddRequiredParam<
 interface InferredParams<TRequiredParam extends string = string> {
   required: TRequiredParam
 }
+
+//
+// InferParamsArray
+//
+
+export type InferParamsArray<
+  TPath extends string,
+  TValue = string,
+> = TPath extends `${infer TPrefix}/${infer TRest}`
+  ? InferParamElement<TPrefix, InferParamsArray<TRest, TValue>, TValue>
+  : InferParamElement<TPath, [], TValue>
+
+type InferParamElement<
+  TPath extends string,
+  TParams extends TValue[],
+  TValue,
+> = TPath extends '*'
+  ? [...TParams, TValue]
+  : TPath extends `${'*' | ':'}${infer TParam}`
+    ? TParam extends ''
+      ? TParams
+      : [...TParams, TValue]
+    : TParams
+
+//
+// PathTemplate
+//
 
 /** Convert a route path literal to a template type. */
 export type PathTemplate<P extends string> = P extends any

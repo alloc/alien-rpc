@@ -83,6 +83,10 @@ buildPath('/foo/:bar', { bar: undefined }) // => throws Error
 
 Derive an object type from a path pattern.
 
+### InferParamsArray
+
+Derive an array from a path pattern that represents parameter values.
+
 ### PathTemplate
 
 Create a template literal type from a path pattern.

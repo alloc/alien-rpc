@@ -343,7 +343,7 @@ export default (options: Options) =>
       }
 
       const content = sift([
-        `import { Type } from "@sinclair/typebox"${imports}`,
+        `import * as Type from "@sinclair/typebox/type"${imports}`,
         sideEffects.trimStart(),
         `export default [${serverDefinitions.join(', ')}] as const`,
       ]).join('\n\n')

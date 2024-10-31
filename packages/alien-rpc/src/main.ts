@@ -94,7 +94,7 @@ app
           }
         })
         .on('write', file => {
-          log('Writing file:', file)
+          log('Writing file:', path.relative(process.cwd(), file))
         })
         .on('finish', () => {
           log.success('Your files are now up to date!')
@@ -104,7 +104,9 @@ app
         })
 
       await generator
-      log.comment('Watching for changes...')
+      if (watch) {
+        log.comment('Watching for changes...')
+      }
     }
   )
 

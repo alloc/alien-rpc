@@ -17,17 +17,17 @@ export const funFact = route.get("/fun-fact", () => {
 });
 
 /**
- * client/api.ts
+ * client/generated/api.ts
  */
-import { RequestOptions, RpcRoute } from "@alien-rpc/client";
+import { RequestOptions, Route } from "@alien-rpc/client";
 
-export const funFact: RpcRoute<
+export const funFact: Route<
   "v1/fun-fact",
   (requestOptions?: RequestOptions) => Promise<string>
 > = { path: "v1/fun-fact", method: "GET", arity: 1, format: "json" } as any;
 
 /**
- * server/api.ts
+ * server/generated/api.ts
  */
 import { Type } from "@sinclair/typebox";
 
@@ -35,7 +35,7 @@ export default [
   {
     path: "/v1/fun-fact",
     method: "GET",
-    import: async () => (await import("../routes.js")).funFact as any,
+    import: async () => (await import("../../routes.js")).funFact as any,
     format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.String(),

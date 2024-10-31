@@ -37,17 +37,17 @@ export const listPosts = route.get(
 );
 
 /**
- * client/api.ts
+ * client/generated/api.ts
  */
 import {
   RequestOptions,
   RequestParams,
   ResponseStream,
-  RpcRoute,
+  Route,
 } from "@alien-rpc/client";
 import jsonSeq from "@alien-rpc/client/formats/json-seq";
 
-export const listPosts: RpcRoute<
+export const listPosts: Route<
   "posts",
   (
     params?: RequestParams<
@@ -59,7 +59,7 @@ export const listPosts: RpcRoute<
 > = { path: "posts", method: "GET", arity: 2, format: jsonSeq } as any;
 
 /**
- * server/api.ts
+ * server/generated/api.ts
  */
 import { Type } from "@sinclair/typebox";
 
@@ -67,7 +67,7 @@ export default [
   {
     path: "/posts",
     method: "GET",
-    import: async () => (await import("../routes.js")).listPosts as any,
+    import: async () => (await import("../../routes.js")).listPosts as any,
     format: "json-seq",
     requestSchema: Type.Object({
       page: Type.Optional(Type.Number()),

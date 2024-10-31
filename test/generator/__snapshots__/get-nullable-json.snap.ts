@@ -13,11 +13,11 @@ export const getUserById = route.get("/users/:id", async ({ id }, {}) => {
 });
 
 /**
- * client/api.ts
+ * client/generated/api.ts
  */
-import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
+import { RequestOptions, RequestParams, Route } from "@alien-rpc/client";
 
-export const getUserById: RpcRoute<
+export const getUserById: Route<
   "users/:id",
   (
     params: RequestParams<{ id: string }, Record<string, never>>,
@@ -32,7 +32,7 @@ export const getUserById: RpcRoute<
 } as any;
 
 /**
- * server/api.ts
+ * server/generated/api.ts
  */
 import { Type } from "@sinclair/typebox";
 
@@ -41,7 +41,7 @@ export default [
     path: "/users/:id",
     method: "GET",
     pathParams: ["id"],
-    import: async () => (await import("../routes.js")).getUserById as any,
+    import: async () => (await import("../../routes.js")).getUserById as any,
     format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Union([

@@ -27,11 +27,11 @@ export const getSortedPosts = route.get("/posts", ({}, opts: PostSort) => {
 });
 
 /**
- * client/api.ts
+ * client/generated/api.ts
  */
-import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
+import { RequestOptions, RequestParams, Route } from "@alien-rpc/client";
 
-export const getSortedPosts: RpcRoute<
+export const getSortedPosts: Route<
   "posts",
   (
     params: RequestParams<
@@ -39,11 +39,11 @@ export const getSortedPosts: RpcRoute<
       { order: "asc" | "desc"; key: "title" | "date" }
     >,
     requestOptions?: RequestOptions,
-  ) => Promise<Post[]>
+  ) => Promise<Array<{ id: number; title: string; content: string }>>
 > = { path: "posts", method: "GET", arity: 2, format: "json" } as any;
 
 /**
- * server/api.ts
+ * server/generated/api.ts
  */
 import { Type } from "@sinclair/typebox";
 
@@ -51,12 +51,18 @@ export default [
   {
     path: "/posts",
     method: "GET",
-    import: async () => (await import("../routes.js")).getSortedPosts as any,
+    import: async () => (await import("../../routes.js")).getSortedPosts as any,
     format: "json",
     requestSchema: Type.Object({
       order: Type.Union([Type.Literal("asc"), Type.Literal("desc")]),
       key: Type.Union([Type.Literal("title"), Type.Literal("date")]),
     }),
-    responseSchema: Type.Array(Post),
+    responseSchema: Type.Array(
+      Type.Object({
+        id: Type.Number(),
+        title: Type.String(),
+        content: Type.String(),
+      }),
+    ),
   },
 ] as const;

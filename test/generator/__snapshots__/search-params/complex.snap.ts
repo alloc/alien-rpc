@@ -20,23 +20,25 @@ export const complexSearch = route.get(
 );
 
 /**
- * client/api.ts
+ * client/generated/api.ts
  */
-import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
+import { RequestOptions, RequestParams, Route } from "@alien-rpc/client";
 
-export const complexSearch: RpcRoute<
+export const complexSearch: Route<
   "complex",
   (
     params?: RequestParams<
       Record<string, never>,
-      { foo?: string | { bar?: string } | string[] }
+      { foo?: string | { bar?: string } | Array<string> }
     > | null,
     requestOptions?: RequestOptions,
-  ) => Promise<undefined | string | { bar?: undefined | string } | string[]>
+  ) => Promise<
+    undefined | string | { bar?: undefined | string } | Array<string>
+  >
 > = { path: "complex", method: "GET", arity: 2, format: "json" } as any;
 
 /**
- * server/api.ts
+ * server/generated/api.ts
  */
 import { Type } from "@sinclair/typebox";
 
@@ -44,7 +46,7 @@ export default [
   {
     path: "/complex",
     method: "GET",
-    import: async () => (await import("../routes.js")).complexSearch as any,
+    import: async () => (await import("../../routes.js")).complexSearch as any,
     format: "json",
     requestSchema: Type.Object({
       foo: Type.Optional(

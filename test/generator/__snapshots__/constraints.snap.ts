@@ -20,17 +20,17 @@ export const testConstraints = route.get(
 );
 
 /**
- * client/api.ts
+ * client/generated/api.ts
  */
-import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
+import { RequestOptions, RequestParams, Route } from "@alien-rpc/client";
 
-export const testConstraints: RpcRoute<
+export const testConstraints: Route<
   "constraints/:id",
   (
     params: RequestParams<
       { id: string },
       {
-        tuple?: string[];
+        tuple?: Array<string>;
         object?: Record<string, string>;
         email?: string;
         month?: string;
@@ -48,7 +48,7 @@ export const testConstraints: RpcRoute<
 } as any;
 
 /**
- * server/api.ts
+ * server/generated/api.ts
  */
 import { Type } from "@sinclair/typebox";
 import {
@@ -65,7 +65,8 @@ export default [
     path: "/constraints/:id",
     method: "GET",
     pathParams: ["id"],
-    import: async () => (await import("../routes.js")).testConstraints as any,
+    import: async () =>
+      (await import("../../routes.js")).testConstraints as any,
     format: "json",
     pathSchema: Type.Object({
       id: Type.String({ format: "uuid" }),

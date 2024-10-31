@@ -40,11 +40,11 @@ export const getPost = route.get(
 );
 
 /**
- * client/api.ts
+ * client/generated/api.ts
  */
-import { RequestOptions, RequestParams, RpcRoute } from "@alien-rpc/client";
+import { RequestOptions, RequestParams, Route } from "@alien-rpc/client";
 
-export const getPost: RpcRoute<
+export const getPost: Route<
   "posts/:id",
   (
     params: RequestParams<{ id: string }, Record<string, never>>,
@@ -64,7 +64,7 @@ export const getPost: RpcRoute<
 } as any;
 
 /**
- * server/api.ts
+ * server/generated/api.ts
  */
 import { Type } from "@sinclair/typebox";
 
@@ -73,7 +73,7 @@ export default [
     path: "/posts/:id",
     method: "GET",
     pathParams: ["id"],
-    import: async () => (await import("../routes.js")).getPost as any,
+    import: async () => (await import("../../routes.js")).getPost as any,
     format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Object({

@@ -16,9 +16,9 @@ export const foo = route.get("/foo", () => {
 });
 
 /**
- * client/api.ts
+ * client/generated/api.ts
  */
-import { RequestOptions, RpcRoute } from "@alien-rpc/client";
+import { RequestOptions, Route } from "@alien-rpc/client";
 
 /**
  * Get "foo" from the server.
@@ -26,13 +26,13 @@ import { RequestOptions, RpcRoute } from "@alien-rpc/client";
  * @returns "foo"
  * @see https://en.wikipedia.org/wiki/Foo_(disambiguation)
  */
-export const foo: RpcRoute<
+export const foo: Route<
   "foo",
   (requestOptions?: RequestOptions) => Promise<"foo">
 > = { path: "foo", method: "GET", arity: 1, format: "json" } as any;
 
 /**
- * server/api.ts
+ * server/generated/api.ts
  */
 import { Type } from "@sinclair/typebox";
 
@@ -40,7 +40,7 @@ export default [
   {
     path: "/foo",
     method: "GET",
-    import: async () => (await import("../routes.js")).foo as any,
+    import: async () => (await import("../../routes.js")).foo as any,
     format: "json",
     requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Literal("foo"),

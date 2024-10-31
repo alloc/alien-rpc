@@ -138,12 +138,12 @@ export const getFile = route.get('/files/:id', async ({ id }, {}, ctx) => {
 
 ## Exposing routes over HTTP
 
-The `compileRoutes` function creates a middleware function that can be used with [hattip](https://github.com/hattipjs/hattip/tree/main/packages/base/compose). It expects an array of route definitions, which are located wherever you set `--serverOutFile` to when running [@alien-rpc/generator](https://github.com/alloc/alien-rpc/tree/master/packages/generator) through the CLI (it defaults to `./server/api.ts`).
+The `compileRoutes` function creates a middleware function that can be used with [hattip](https://github.com/hattipjs/hattip/tree/main/packages/base/compose). It expects an array of route definitions, which are located wherever you set `--serverOutFile` to when running [@alien-rpc/generator](https://github.com/alloc/alien-rpc/tree/master/packages/generator) through the CLI (it defaults to `./server/generated/api.ts`).
 
 ```ts
 import { compose } from '@hattip/compose'
 import { compileRoutes } from '@alien-rpc/service'
-import routes from './server/api.js'
+import routes from './server/generated/api.js'
 
 export default compose(
   loggingMiddleware(), // <-- hypothetical middleware, runs before your routes

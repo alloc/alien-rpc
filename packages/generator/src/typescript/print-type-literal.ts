@@ -44,15 +44,15 @@ export function printTypeLiteral(
       .join(' & ')
   }
 
-  if (isBuiltInType(type)) {
-    return typeChecker.typeToString(type)
-  }
-
   if (typeChecker.isArrayType(type)) {
     const typeArguments = (type as ts.TypeReference).typeArguments
     if (typeArguments && typeArguments.length > 0) {
       return `Array<${printTypeLiteral(typeArguments[0], typeChecker, opts, seen)}>`
     }
+  }
+
+  if (isBuiltInType(type)) {
+    return typeChecker.typeToString(type)
   }
 
   const typeSymbol = type.getSymbol()

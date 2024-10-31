@@ -31,11 +31,11 @@ export type Options = {
    */
   outDir: string
   /**
-   * @default 'server/api.ts'
+   * @default 'server/generated/api.ts'
    */
   serverOutFile?: string
   /**
-   * @default 'client/api.ts'
+   * @default 'client/generated/api.ts'
    */
   clientOutFile?: string
   /**
@@ -163,10 +163,10 @@ export default (options: Options) =>
 
     options = { ...options }
 
-    options.serverOutFile ??= 'server/api.ts'
+    options.serverOutFile ??= 'server/generated/api.ts'
     options.serverOutFile = path.join(options.outDir, options.serverOutFile)
 
-    options.clientOutFile ??= 'client/api.ts'
+    options.clientOutFile ??= 'client/generated/api.ts'
     options.clientOutFile = path.join(options.outDir, options.clientOutFile)
 
     const serverDefinitions: string[] = []

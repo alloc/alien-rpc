@@ -27,12 +27,12 @@ app
   .option(
     '--serverOutFile <path>',
     'Where to emit the server file, relative to outDir',
-    { default: './server/api.ts' }
+    { default: './server/generated/api.ts' }
   )
   .option(
     '--clientOutFile <path>',
     'Where to emit the client file, relative to outDir',
-    { default: './client/api.ts' }
+    { default: './client/generated/api.ts' }
   )
   .option(
     '--versionPrefix <version>',

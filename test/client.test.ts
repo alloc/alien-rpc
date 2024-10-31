@@ -117,10 +117,10 @@ describe.concurrent('client', async () => {
 
 async function getTestClient() {
   const clientRoutes = await import(
-    './client/__fixtures__/kitchen-sink/client/api.js'
+    './client/__fixtures__/kitchen-sink/client/generated/api.js'
   )
   const { default: serverRoutes } = await import(
-    './client/__fixtures__/kitchen-sink/server/api.js'
+    './client/__fixtures__/kitchen-sink/server/generated/api.js'
   )
 
   const handler = compileRoutes(serverRoutes)

@@ -22,7 +22,7 @@ const enum RequestStep {
   Respond,
 }
 
-export interface RoutesConfig {
+export interface CompileRoutesConfig {
   /**
    * Requests must begin with this prefix to be matched. The prefix should
    * start and end with a slash.
@@ -33,7 +33,7 @@ export interface RoutesConfig {
 
 export function compileRoutes(
   rawRoutes: readonly Route[],
-  config: RoutesConfig = {}
+  config: CompileRoutesConfig = {}
 ) {
   const routesByMethod = prepareRoutes(rawRoutes)
 

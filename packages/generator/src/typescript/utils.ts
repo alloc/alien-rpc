@@ -43,3 +43,11 @@ export function isBuiltInType(type: ts.Type): boolean {
 export function isUndefinedType(type: ts.Type): boolean {
   return Boolean(type.flags & ts.TypeFlags.Undefined)
 }
+
+export function isAssignableTo(
+  typeChecker: ts.TypeChecker,
+  type: ts.Type,
+  target: (typeChecker: ts.TypeChecker) => ts.Type
+) {
+  return typeChecker.isTypeAssignableTo(type, target(typeChecker))
+}

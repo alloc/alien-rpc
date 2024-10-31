@@ -3,7 +3,11 @@ import { ts } from '@ts-morph/common'
 import { debug } from './debug.js'
 import { printTypeLiteral } from './typescript/print-type-literal.js'
 import { SupportingTypes } from './typescript/supporting-types.js'
-import { isAsyncGeneratorType, isObjectType } from './typescript/utils.js'
+import {
+  isAssignableTo,
+  isAsyncGeneratorType,
+  isObjectType,
+} from './typescript/utils.js'
 
 export function analyzeRoutes(
   sourceFile: ts.SourceFile,
@@ -229,12 +233,12 @@ function resolveResultType(
   types: SupportingTypes
 ) {
   // Prevent mapping of `Response` to literal type
-  if (typeChecker.isTypeAssignableTo(type, types.Response(typeChecker))) {
+  if (isAssignableTo(typeChecker, type, types.Response)) {
     return 'Response'
   }
 
   // Coerce `void` to `undefined`
-  if (typeChecker.isTypeAssignableTo(type, types.Void(typeChecker))) {
+  if (isAssignableTo(typeChecker, type, types.Void)) {
     return 'undefined'
   }
 
@@ -264,23 +268,23 @@ function resolveResultFormat(
   if (type.flags & ts.TypeFlags.Any) {
     throw new InvalidResponseTypeError('Your route is not type-safe.')
   }
-  if (typeChecker.isTypeAssignableTo(type, types.Response(typeChecker))) {
+  if (isAssignableTo(typeChecker, type, types.Response)) {
     return 'response'
   }
-  if (typeChecker.isTypeAssignableTo(type, types.RouteIterator(typeChecker))) {
+  if (isAssignableTo(typeChecker, type, types.RouteIterator)) {
     return 'json-seq'
   }
-  if (typeChecker.isTypeAssignableTo(types.Response(typeChecker), type)) {
+  if (isAssignableTo(typeChecker, type, types.Response)) {
     throw new InvalidResponseTypeError(
       'Routes that return a `new Response()` cannot ever return anything else.'
     )
   }
-  if (typeChecker.isTypeAssignableTo(type, types.RouteIterator(typeChecker))) {
+  if (isAssignableTo(typeChecker, type, types.RouteIterator)) {
     throw new InvalidResponseTypeError(
       'Routes that return an iterator cannot ever return anything else.'
     )
   }
-  if (!typeChecker.isTypeAssignableTo(type, types.RouteResult(typeChecker))) {
+  if (!isAssignableTo(typeChecker, type, types.RouteResult)) {
     throw new InvalidResponseTypeError(
       'Your route returns an unsupported type: ' +
         printTypeLiteral(type, typeChecker)

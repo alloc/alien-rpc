@@ -15,19 +15,19 @@ export abstract class HttpError {
 }
 
 /**
- * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/308
- */
-export class PermanentRedirectError extends HttpError {
-  name = 'PermanentRedirectError'
-  status = 308
-}
-
-/**
  * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
  */
 export class TemporaryRedirectError extends HttpError {
   name = 'TemporaryRedirectError'
   status = 307
+}
+
+/**
+ * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/308
+ */
+export class PermanentRedirectError extends HttpError {
+  name = 'PermanentRedirectError'
+  status = 308
 }
 
 /**

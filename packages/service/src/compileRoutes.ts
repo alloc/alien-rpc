@@ -105,6 +105,15 @@ export function compileRoutes(
         // An HttpError is thrown by the application code to indicate a
         // failed request, as opposed to an unexpected error.
         if (HttpError.isHttpError(error)) {
+          if (error.message !== undefined) {
+            return new Response(JSON.stringify({ message: error.message }), {
+              status: error.status,
+              headers: new Headers({
+                ...error.headers,
+                'Content-Type': 'application/json',
+              }),
+            })
+          }
           return new Response(null, error)
         }
         if (!process.env.TEST) {

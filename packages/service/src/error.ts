@@ -6,6 +6,7 @@ export abstract class HttpError {
   readonly [kHttpError] = true
 
   abstract status: number
+  message: string | undefined = undefined
   constructor(readonly headers?: HttpError.Headers) {}
 
   static isHttpError(error: unknown): error is HttpError {
@@ -35,6 +36,12 @@ export class TemporaryRedirectError extends HttpError {
 export class BadRequestError extends HttpError {
   name = 'BadRequestError'
   status = 400
+  constructor(
+    readonly message: string,
+    headers?: HttpError.Headers
+  ) {
+    super(headers)
+  }
 }
 
 /**

@@ -177,7 +177,7 @@ export default (options: Options) =>
     const clientDefinitions: string[] = []
     const serverImports = new Set<string>()
     const stringFormats = new Set<string>()
-    const clientImports = new Set<string>(['RequestOptions', 'RpcRoute'])
+    const clientImports = new Set<string>(['RequestOptions', 'Route'])
     const clientFormats = new Set<string>()
 
     for (const route of routes) {
@@ -317,7 +317,7 @@ export default (options: Options) =>
       clientFormats.add(route.resolvedFormat)
       clientDefinitions.push(
         (description || '') +
-          `export const ${route.exportedName}: RpcRoute<"${clientPathname}", (${clientArgs.join(', ')}) => ${clientReturn}> = {${clientProperties.join(', ')}} as any`
+          `export const ${route.exportedName}: Route<"${clientPathname}", (${clientArgs.join(', ')}) => ${clientReturn}> = {${clientProperties.join(', ')}} as any`
       )
     }
 

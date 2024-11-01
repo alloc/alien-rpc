@@ -19,40 +19,40 @@ describe.concurrent('client', async () => {
 
   test('route with no parameters', async () => {
     const client = await getTestClient()
-    const result = await client.getOne()
+    const result = await client.one()
     expect(result).toBe(1)
   })
 
   test('route with a single parameter', async () => {
     const client = await getTestClient()
 
-    let result = await client.getPostById('123')
+    let result = await client.singleParam('123')
     expect(result).toBe('123')
 
-    result = await client.getPostById({ id: '123' })
+    result = await client.singleParam({ id: '123' })
     expect(result).toBe('123')
   })
 
   test('route with an optional parameter', async () => {
     const client = await getTestClient()
 
-    let result = await client.getAllPosts({ limit: 3 })
+    let result = await client.optionalSearchParam({ limit: 3 })
     expect(result).toEqual([0, 1, 2])
 
-    result = await client.getAllPosts()
+    result = await client.optionalSearchParam()
     expect(result).toEqual([0, 1, 2, 3, 4])
   })
 
   test('route with a complex search parameter', async () => {
     const client = await getTestClient()
 
-    let result = await client.getLength({ val: [1, 2, 3] })
+    let result = await client.complexSearchParam({ val: [1, 2, 3] })
     expect(result).toBe(3)
 
-    result = await client.getLength({ val: 'hello' })
+    result = await client.complexSearchParam({ val: 'hello' })
     expect(result).toBe(5)
 
-    result = await client.getLength({ val: { length: 0 } })
+    result = await client.complexSearchParam({ val: { length: 0 } })
     expect(result).toBe(0)
   })
 

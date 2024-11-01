@@ -16,28 +16,28 @@ import { sleep } from 'radashi'
 /**
  * A route that takes no parameters
  */
-export const getOne = route.get('/one', () => 1)
+export const one = route.get('/one', () => 1)
 
 /**
  * A route that takes a single parameter
  */
-export const getPostById = route.get('/post/:id', ({ id }) => id)
+export const singleParam = route.get('/post/:id', id => id)
 
 /**
  * A route with an optional search parameter
  */
-export const getAllPosts = route.get(
+export const optionalSearchParam = route.get(
   '/posts',
-  ({}, { limit }: { limit?: number }) =>
+  ({ limit }: { limit?: number }) =>
     Array.from({ length: limit ?? 5 }, (_, i) => i)
 )
 
 /**
  * A route with a complex search parameter
  */
-export const getLength = route.get(
+export const complexSearchParam = route.get(
   '/length',
-  ({}, { val }: { val: unknown[] | string | { length: number } }) => val.length
+  ({ val }: { val: unknown[] | string | { length: number } }) => val.length
 )
 
 /**
@@ -45,7 +45,7 @@ export const getLength = route.get(
  */
 export const streamPosts = route.get(
   '/posts/stream',
-  async function* ({}, { offset = 0 }: { offset?: number }) {
+  async function* ({ offset = 0 }: { offset?: number }) {
     yield 1 + offset
     await sleep(5)
 
@@ -64,7 +64,7 @@ export const streamPosts = route.get(
  */
 export const createPost = route.post(
   '/posts',
-  async ({}, input: { title: string; text: string }) => {
+  async (input: { title: string; text: string }) => {
     await sleep(5)
 
     return input
@@ -81,6 +81,6 @@ export const throwError = route.get('/error', () => {
 /**
  * A route that returns a raw Response object
  */
-export const rawResponse = route.get('/raw/*wild', ({ wild }): Response => {
+export const rawResponse = route.get('/raw/*wild', (wild): Response => {
   return new Response(wild)
 })

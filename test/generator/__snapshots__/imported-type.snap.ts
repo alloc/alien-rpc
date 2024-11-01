@@ -26,7 +26,7 @@ import type { Post } from "./post";
 
 export const getPost = route.get(
   "/posts/:id",
-  async ({ id }): Promise<Post> => {
+  async (id: string): Promise<Post> => {
     return {
       id,
       title: "Hello World",
@@ -66,7 +66,7 @@ export const getPost: Route<
 /**
  * server/generated/api.ts
  */
-import { Type } from "@sinclair/typebox";
+import * as Type from "@sinclair/typebox/type";
 
 export default [
   {
@@ -75,7 +75,6 @@ export default [
     pathParams: ["id"],
     import: async () => (await import("../../routes.js")).getPost as any,
     format: "json",
-    requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Object({
       id: Type.String(),
       title: Type.String(),

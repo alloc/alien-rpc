@@ -5,7 +5,7 @@
  */
 import { route } from "@alien-rpc/service";
 
-export const getUserById = route.get("/users/:id", async ({ id }, {}) => {
+export const getUserById = route.get("/users/:id", async (id: string) => {
   if (id === "1") {
     return { id: 1, name: "John" };
   }
@@ -34,7 +34,7 @@ export const getUserById: Route<
 /**
  * server/generated/api.ts
  */
-import { Type } from "@sinclair/typebox";
+import * as Type from "@sinclair/typebox/type";
 
 export default [
   {
@@ -43,7 +43,6 @@ export default [
     pathParams: ["id"],
     import: async () => (await import("../../routes.js")).getUserById as any,
     format: "json",
-    requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Union([
       Type.Null(),
       Type.Object({

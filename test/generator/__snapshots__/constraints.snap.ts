@@ -8,9 +8,10 @@ import { route, t } from "@alien-rpc/service";
 export const testConstraints = route.get(
   "/constraints/:id",
   async (
-    { id }: { id: string & t.Format<"uuid"> },
-    {}: {
-      tuple?: string[] & t.MinItems<1> & t.MaxItems<2>;
+    id: string & t.Format<"uuid">,
+    searchParams: {
+      tuple?: [string, string];
+      array?: string[] & t.MinItems<1> & t.MaxItems<2>;
       object?: Record<string, string> & t.MinProperties<1> & t.MaxProperties<2>;
       email?: string & t.Format<"email">;
       month?: string & t.Pattern<"^[0-9]{4}-(0[1-9]|1[0-2])$">;
@@ -30,7 +31,8 @@ export const testConstraints: Route<
     params: RequestParams<
       { id: string },
       {
-        tuple?: Array<string>;
+        tuple?: [string, string];
+        array?: Array<string>;
         object?: Record<string, string>;
         email?: string;
         month?: string;
@@ -50,7 +52,7 @@ export const testConstraints: Route<
 /**
  * server/generated/api.ts
  */
-import { Type } from "@sinclair/typebox";
+import * as Type from "@sinclair/typebox/type";
 import {
   addStringFormat,
   EmailFormat,
@@ -72,7 +74,8 @@ export default [
       id: Type.String({ format: "uuid" }),
     }),
     requestSchema: Type.Object({
-      tuple: Type.Optional(
+      tuple: Type.Optional(Type.Tuple([Type.String(), Type.String()])),
+      array: Type.Optional(
         Type.Array(Type.String(), { minItems: 1, maxItems: 2 }),
       ),
       object: Type.Optional(

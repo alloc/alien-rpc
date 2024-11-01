@@ -20,7 +20,7 @@ export const voidTest: Route<
 /**
  * server/generated/api.ts
  */
-import { Type } from "@sinclair/typebox";
+import * as Type from "@sinclair/typebox/type";
 
 export default [
   {
@@ -28,7 +28,6 @@ export default [
     method: "POST",
     import: async () => (await import("../../routes.js")).voidTest as any,
     format: "json",
-    requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Undefined(),
   },
 ] as const;

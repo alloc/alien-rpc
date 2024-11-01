@@ -22,7 +22,7 @@ export const test: Route<
 /**
  * server/generated/api.ts
  */
-import { Type } from "@sinclair/typebox";
+import * as Type from "@sinclair/typebox/type";
 
 export default [
   {
@@ -30,7 +30,6 @@ export default [
     method: "GET",
     import: async () => (await import("../../routes.js")).test as any,
     format: "response",
-    requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Any(),
   },
 ] as const;

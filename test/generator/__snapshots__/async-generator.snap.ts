@@ -25,7 +25,7 @@ export const streamNumbers: Route<
 /**
  * server/generated/api.ts
  */
-import { Type } from "@sinclair/typebox";
+import * as Type from "@sinclair/typebox/type";
 
 export default [
   {
@@ -33,7 +33,6 @@ export default [
     method: "GET",
     import: async () => (await import("../../routes.js")).streamNumbers as any,
     format: "json-seq",
-    requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.AsyncIterator(
       Type.Union([Type.Literal(1), Type.Literal(2), Type.Literal(3)]),
     ),

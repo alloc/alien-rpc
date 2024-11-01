@@ -9,7 +9,7 @@ declare const db: any;
 
 export const createUser = route.post(
   "/users",
-  async ({}, { name }: { name: string }) => {
+  async ({ name }: { name: string }) => {
     const id: number = await db.createUser({ name });
     return id;
   },
@@ -31,7 +31,7 @@ export const createUser: Route<
 /**
  * server/generated/api.ts
  */
-import { Type } from "@sinclair/typebox";
+import * as Type from "@sinclair/typebox/type";
 
 export default [
   {

@@ -34,7 +34,7 @@ export const foo: Route<
 /**
  * server/generated/api.ts
  */
-import { Type } from "@sinclair/typebox";
+import * as Type from "@sinclair/typebox/type";
 
 export default [
   {
@@ -42,7 +42,6 @@ export default [
     method: "GET",
     import: async () => (await import("../../routes.js")).foo as any,
     format: "json",
-    requestSchema: Type.Record(Type.String(), Type.Never()),
     responseSchema: Type.Literal("foo"),
   },
 ] as const;

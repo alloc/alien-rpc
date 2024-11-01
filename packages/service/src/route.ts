@@ -77,7 +77,7 @@ type RouteFactory<TMethod extends RouteMethod> = {
     TPath extends MultiParamRoutePath,
     TPathParams extends InferParamsArray<TPath, PathParam> = InferParamsArray<
       TPath,
-      any
+      string
     >,
     TData extends object = any,
     TPlatform = unknown,
@@ -96,7 +96,7 @@ type RouteFactory<TMethod extends RouteMethod> = {
   // Overload: Single path parameter
   <
     TPath extends SingleParamRoutePath,
-    TPathParam extends PathParam = any,
+    TPathParam extends PathParam = string,
     TData extends object = any,
     TPlatform = unknown,
     TResult extends RouteResult = any,

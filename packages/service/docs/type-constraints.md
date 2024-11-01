@@ -9,7 +9,7 @@ import { route, t } from '@alien-rpc/service'
 
 const getUser = route.get(
   '/users/:id',
-  async ({ id }: { id: number & t.MultipleOf<1> & t.Minimum<1> }) => {
+  async (id: number & t.MultipleOf<1> & t.Minimum<1>) => {
     // ...
   }
 )

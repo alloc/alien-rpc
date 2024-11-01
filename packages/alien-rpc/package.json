@@ -1,12 +1,14 @@
 {
   "name": "alien-rpc",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Full-stack library and command-line tool for alien-rpc",
   "type": "module",
   "bin": {
     "alien-rpc": "./dist/main.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "exports": {
     "./client": {
       "types": "./dist/client.d.ts",

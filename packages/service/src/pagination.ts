@@ -1,26 +1,19 @@
 import * as jsonQS from '@json-qs/json-qs'
 import { buildPath, parsePathParams } from 'pathic'
-import type {
-  BuildRouteParams,
-  InferRouteParams,
-  PathParams,
-  RouteDefinition,
-} from './types'
+import type { InferRouteParams, RouteDefinition } from './types'
 
-type PaginationLinkData<
-  TPathParams extends PathParams,
-  TData extends object,
+export type PaginationLink<
+  TParams extends jsonQS.CodableObject = jsonQS.CodableObject,
 > = {
-  route: RouteDefinition<TPathParams, TData>
-  params: BuildRouteParams<TPathParams, TData>
+  route: RouteDefinition
+  params: TParams | null
 }
 
 export type PaginationLinks<
-  TPathParams extends PathParams,
-  TData extends object,
+  TParams extends jsonQS.CodableObject = jsonQS.CodableObject,
 > = {
-  prev: PaginationLinkData<TPathParams, TData> | null
-  next: PaginationLinkData<TPathParams, TData> | null
+  prev: PaginationLink<TParams> | null
+  next: PaginationLink<TParams> | null
 }
 
 /**
@@ -32,26 +25,26 @@ export type PaginationLinks<
  * For a route to paginate itself, it can call `paginate()` with `this` as
  * the first argument.
  */
-export const paginate = <TDefinition extends RouteDefinition>(
+export const paginate = <
+  TDefinition extends RouteDefinition,
+  TParams extends InferRouteParams<TDefinition>,
+>(
   route: TDefinition,
   links: {
-    prev: InferRouteParams<TDefinition> | null
-    next: InferRouteParams<TDefinition> | null
+    prev: TParams | null
+    next: TParams | null
   }
-) => ({
+): PaginationLinks<TParams> => ({
   prev: links.prev && { route, params: links.prev },
   next: links.next && { route, params: links.next },
 })
 
-export function resolvePaginationLink(
-  currentURL: URL,
-  data: PaginationLinkData<any, any>
-) {
-  const query = jsonQS.encode(data.params, {
+export function resolvePaginationLink(currentURL: URL, data: PaginationLink) {
+  const query = jsonQS.encode(data.params!, {
     skippedKeys: parsePathParams(data.route.path),
   })
 
-  let path = buildPath(data.route.path, data.params)
+  let path = buildPath(data.route.path, data.params!)
   if (query) {
     path += '?' + query
   }

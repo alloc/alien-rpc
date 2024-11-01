@@ -29,8 +29,7 @@ export function isAsyncGeneratorType(type: ts.Type): type is ts.TypeReference {
   return Boolean(symbol && symbol.name === 'AsyncGenerator')
 }
 
-export function isBuiltInType(type: ts.Type): boolean {
-  const symbol = type.getSymbol()
+export function isLibSymbol(symbol: ts.Symbol): boolean {
   const declarations = symbol?.getDeclarations()
   return Boolean(
     declarations?.some(declaration => {
@@ -44,10 +43,33 @@ export function isUndefinedType(type: ts.Type): boolean {
   return Boolean(type.flags & ts.TypeFlags.Undefined)
 }
 
+export function isAnyType(type: ts.Type): boolean {
+  return Boolean(type.flags & ts.TypeFlags.Any)
+}
+
 export function isAssignableTo(
   typeChecker: ts.TypeChecker,
   type: ts.Type,
   target: (typeChecker: ts.TypeChecker) => ts.Type
 ) {
   return typeChecker.isTypeAssignableTo(type, target(typeChecker))
+}
+
+export function getArrayElementType(type: ts.Type): ts.Type {
+  return (type as ts.TypeReference).typeArguments![0]
+}
+
+export function* getTupleElements(type: ts.Type): Generator<ts.Symbol> {
+  for (const symbol of type.getProperties()) {
+    if (symbol.escapedName === 'length') break
+    yield symbol
+  }
+}
+
+export function iterableToString(iterable: Iterable<string>): string {
+  let result = ''
+  for (const value of iterable) {
+    result += value
+  }
+  return result
 }

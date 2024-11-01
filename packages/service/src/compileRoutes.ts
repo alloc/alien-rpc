@@ -18,7 +18,7 @@ import { Route } from './types'
 
 const enum RequestStep {
   Match,
-  Decode,
+  Validate,
   Respond,
 }
 
@@ -90,12 +90,11 @@ export function compileRoutes(
 
     try {
       return await matchRoute(url.pathname, async (route, params) => {
-        step = RequestStep.Decode
-        const data = await route.decodeRequestData(ctx)
-        params = route.decodePathData(params)
+        step = RequestStep.Validate
+        const args = await route.getHandlerArgs(params, ctx)
 
         step = RequestStep.Respond
-        const result = await route.responder(params, data, ctx)
+        const result = await route.responder(args, ctx)
 
         step = RequestStep.Match
         return result
@@ -129,7 +128,7 @@ export function compileRoutes(
         console.error(error)
       }
 
-      if (step === RequestStep.Decode) {
+      if (step === RequestStep.Validate) {
         if (isDecodeError(error)) {
           error = error.error
         }

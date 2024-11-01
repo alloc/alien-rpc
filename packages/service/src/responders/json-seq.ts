@@ -1,32 +1,26 @@
-import type { RequestContext } from '@hattip/compose'
 import type { TAsyncIterator } from '@sinclair/typebox'
 import { Value } from '@sinclair/typebox/value'
-import type { JSON, Promisable } from '../internal/types'
+import type { JSON } from '../internal/types'
 import { resolvePaginationLink } from '../pagination'
-import type {
-  Route,
-  RouteDefinition,
-  RouteIterator,
-  RouteResponder,
-} from '../types'
+import type { Route, RouteIterator, RouteResponder } from '../types'
 
-const responder: RouteResponder<
-  RouteDefinition<any, any, Promisable<RouteIterator>>
-> = route => async (params, data, ctx) => {
-  const routeDef = await route.import()
+const responder: RouteResponder =
+  route =>
+  async (args, { url, response }) => {
+    const routeDef = await route.import()
 
-  let result = await routeDef.handler(params, data, ctx)
-  result = Value.Encode(route.responseSchema, result)
+    let result = await routeDef.handler.apply<any, any, any>(routeDef, args)
+    result = Value.Encode(route.responseSchema, result)
 
-  const stream = ReadableStream.from(
-    generateJsonTextSequence(result, route, ctx)
-  )
+    const stream = ReadableStream.from(
+      generateJsonTextSequence(result, route, url)
+    )
 
-  // Don't use "application/json-seq" until it's been standardized.
-  ctx.response.headers.set('Content-Type', 'text/plain; charset=utf-8')
+    // Don't use "application/json-seq" until it's been standardized.
+    response.headers.set('Content-Type', 'text/plain; charset=utf-8')
 
-  return new Response(stream, ctx.response)
-}
+    return new Response(stream, response)
+  }
 
 export default responder
 
@@ -38,7 +32,7 @@ export default responder
 async function* generateJsonTextSequence(
   iterator: RouteIterator,
   route: Route,
-  ctx: RequestContext
+  url: URL
 ) {
   const yieldSchema = (route.responseSchema as TAsyncIterator).items
   const encoder = new TextEncoder()
@@ -55,8 +49,8 @@ async function* generateJsonTextSequence(
         }
 
         value = {
-          $prev: links.prev ? resolvePaginationLink(ctx.url, links.prev) : null,
-          $next: links.next ? resolvePaginationLink(ctx.url, links.next) : null,
+          $prev: links.prev ? resolvePaginationLink(url, links.prev) : null,
+          $next: links.next ? resolvePaginationLink(url, links.next) : null,
         }
       } else {
         value = Value.Encode(yieldSchema, iteration.value)

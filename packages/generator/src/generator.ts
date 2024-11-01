@@ -165,6 +165,10 @@ export default (options: Options) =>
         return routes
       })
 
+    if (!routes.length) {
+      throw new Error('No routes found')
+    }
+
     options = { ...options }
 
     options.serverOutFile ??= 'server/generated/api.ts'
@@ -181,10 +185,15 @@ export default (options: Options) =>
     const clientFormats = new Set<string>()
 
     for (const route of routes) {
-      const pathSchemaDecl =
-        needsPathSchema(route.resolvedArguments[0]) &&
-        generateRuntimeValidator(
-          `type Path = ${route.resolvedArguments[0]}`
+      let pathSchemaDecl = ''
+      let requestSchemaDecl = ''
+
+      if (
+        route.resolvedPathParams &&
+        needsPathSchema(route.resolvedPathParams)
+      ) {
+        pathSchemaDecl = generateRuntimeValidator(
+          `type Path = ${route.resolvedPathParams}`
         ).replace(/\bType\.(Number|Array)\(/g, (match, type) => {
           switch (type) {
             case 'Number':
@@ -196,22 +205,29 @@ export default (options: Options) =>
           }
           return match
         })
+      }
 
-      let requestSchemaDecl = generateRuntimeValidator(
-        `type Request = ${route.resolvedArguments[1]}`
-      )
-      if (!bodylessMethods.has(route.resolvedMethod)) {
-        requestSchemaDecl = requestSchemaDecl.replace(
-          /\bType\.(Date)\(/g,
-          (match, type) => {
-            switch (type) {
-              case 'Date':
-                serverImports.add('DateString')
-                return 'DateString('
-            }
-            return match
-          }
+      const dataArgument =
+        route.resolvedArguments[route.resolvedPathParams ? 1 : 0]
+
+      if (dataArgument && dataArgument !== 'any') {
+        requestSchemaDecl = generateRuntimeValidator(
+          `type Request = ${dataArgument}`
         )
+
+        if (!bodylessMethods.has(route.resolvedMethod)) {
+          requestSchemaDecl = requestSchemaDecl.replace(
+            /\bType\.(Date)\(/g,
+            (match, type) => {
+              switch (type) {
+                case 'Date':
+                  serverImports.add('DateString')
+                  return 'DateString('
+              }
+              return match
+            }
+          )
+        }
       }
 
       const responseSchemaDecl =
@@ -251,33 +267,35 @@ export default (options: Options) =>
         `import: async () => (await import(${JSON.stringify(handlerPath)})).${route.exportedName} as any`,
         `format: "${route.resolvedFormat}"`,
         pathSchemaDecl && `pathSchema: ${pathSchemaDecl}`,
-        `requestSchema: ${requestSchemaDecl}`,
+        requestSchemaDecl && `requestSchema: ${requestSchemaDecl}`,
         `responseSchema: ${responseSchemaDecl}`,
       ])
 
       serverDefinitions.push(`{${serverProperties.join(', ')}}`)
 
-      const resolvedPathParams = stripTypeConstraints(
-        route.resolvedArguments[0]
-      )
-      const resolvedExtraParams = stripTypeConstraints(
-        route.resolvedArguments[1]
-      )
+      const resolvedPathParams = route.resolvedPathParams
+        ? stripTypeConstraints(route.resolvedPathParams)
+        : 'Record<string, never>'
 
-      const expectsParams =
+      const resolvedRequestData =
+        dataArgument && dataArgument !== 'any'
+          ? stripTypeConstraints(dataArgument)
+          : 'Record<string, never>'
+
+      const clientParamsExist =
         resolvedPathParams !== 'Record<string, never>' ||
-        resolvedExtraParams !== 'Record<string, never>'
+        resolvedRequestData !== 'Record<string, never>'
 
-      const optionalParams =
-        !expectsParams ||
+      const clientParamsAreOptional =
+        !clientParamsExist ||
         (arePropertiesOptional(resolvedPathParams) &&
-          arePropertiesOptional(resolvedExtraParams))
+          arePropertiesOptional(resolvedRequestData))
 
       const clientArgs: string[] = ['requestOptions?: RequestOptions']
-      if (expectsParams) {
+      if (clientParamsExist) {
         clientImports.add('RequestParams')
         clientArgs.unshift(
-          `params${optionalParams ? '?' : ''}: RequestParams<${resolvedPathParams}, ${resolvedExtraParams}>${optionalParams ? ' | null' : ''}`
+          `params${clientParamsAreOptional ? '?' : ''}: RequestParams<${resolvedPathParams}, ${resolvedRequestData}>${clientParamsAreOptional ? ' | null' : ''}`
         )
       }
 
@@ -307,7 +325,7 @@ export default (options: Options) =>
       const clientProperties = sift([
         `path: "${clientPathname}"`,
         ...sharedProperties,
-        `arity: ${expectsParams ? 2 : 1}`,
+        `arity: ${clientParamsExist ? 2 : 1}`,
         `format: ${
           /^json-seq$/.test(route.resolvedFormat)
             ? camel(route.resolvedFormat)
@@ -560,9 +578,6 @@ function stripTypeConstraints(type: string) {
 }
 
 function needsPathSchema(type: string) {
-  if (type === 'Record<string, never>') {
-    return false
-  }
   const typeNode = parseTypeLiteral(type)
   if (!ts.isTypeLiteralNode(typeNode)) {
     throw new Error('Expected a type literal')

@@ -7,12 +7,19 @@ import jsonSeqResponder from './json-seq'
 export const supportedResponders: Record<RouteResultFormat, RouteResponder> = {
   json: jsonResponder,
   'json-seq': jsonSeqResponder,
-  response: route => async (params, data, ctx) => {
-    const routeDef = await route.import()
-    const response = await routeDef.handler(params, data, ctx)
-    if (ctx.request.method === 'HEAD' && route.method === 'GET') {
-      return new Response(null, response)
-    }
-    return response
-  },
+  response:
+    route =>
+    async (args, { request }) => {
+      const routeDef = await route.import()
+
+      const response: Response = await routeDef.handler.apply<any, any, any>(
+        routeDef,
+        args
+      )
+
+      if (request.method === 'HEAD' && route.method === 'GET') {
+        return new Response(null, response)
+      }
+      return response
+    },
 }

@@ -8,7 +8,7 @@ import {
   ValueErrorType,
 } from '@sinclair/typebox/value'
 import { supportedResponders } from './responders/index.js'
-import { Route } from './types.js'
+import { Route, RouteHandler } from './types.js'
 
 export type CompiledRoute = ReturnType<typeof compileRoute>
 
@@ -17,17 +17,33 @@ export function compileRoute(route: Route) {
   const decodeRequestData = compileRequestSchema(route)
   const responder = supportedResponders[route.format](route)
 
+  async function getHandlerArgs(
+    params: {},
+    ctx: RequestContext
+  ): Promise<Parameters<RouteHandler>> {
+    const data = await decodeRequestData(ctx)
+
+    if (route.pathParams) {
+      params = decodePathData(params)
+
+      if (route.pathParams.length > 1) {
+        return [Object.values(params), data, ctx]
+      }
+
+      return [params[route.pathParams[0] as keyof typeof params], data, ctx]
+    }
+
+    return [data, ctx]
+  }
+
   return {
     method: route.method,
     path: route.path,
     /**
-     * Decode the path parameters using the route's path schema.
+     * Parse and validate the request, returning an array of arguments to
+     * call the route handler with.
      */
-    decodePathData,
-    /**
-     * Decode the request data using the route's request schema.
-     */
-    decodeRequestData,
+    getHandlerArgs,
     /**
      * Invokes the route handler and prepares the HTTP response according
      * to the route's result format. The caller is responsible for decoding
@@ -45,8 +61,8 @@ export function compileRoute(route: Route) {
      * @param ctx - The route context.
      */
     async handle(params: {}, ctx: RequestContext) {
-      const data = await decodeRequestData(ctx)
-      return responder(decodePathData(params), data, ctx)
+      const args = await getHandlerArgs(params, ctx)
+      return responder(args, ctx)
     },
   }
 }
@@ -63,11 +79,20 @@ function compilePathSchema(
 
 function compileRequestSchema(
   route: Route
-): (ctx: RequestContext) => Promise<object> {
+): (ctx: RequestContext) => Promise<unknown> {
+  if (!route.requestSchema) {
+    return async () => null
+  }
+
   const requestSchema = TypeCompiler.Compile(route.requestSchema)
 
   if (!bodylessMethods.has(route.method)) {
-    return async ({ request }) => requestSchema.Decode(await request.json())
+    return async ({ request }) =>
+      requestSchema.Decode(
+        request.headers.get('Content-Type') === 'application/json'
+          ? await request.json()
+          : {}
+      )
   }
 
   // The only supported record type is Record<string, never> which doesn't

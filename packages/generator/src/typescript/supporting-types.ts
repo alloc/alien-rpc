@@ -12,9 +12,11 @@ export function createSupportingTypes(project: Project, rootDir: string) {
   const typeDeclarations = {
     AnyNonNull: '{}',
     Response: 'globalThis.Response',
+    RouteDefinition: 'import("@alien-rpc/service").RouteDefinition',
     RouteIterator: 'import("@alien-rpc/service").RouteIterator',
     RouteMethod: 'import("@alien-rpc/service").RouteMethod',
     RouteResult: 'import("@alien-rpc/service").RouteResult',
+    RequestContext: 'import("@alien-rpc/service").RequestContext',
     Void: 'void',
   } as const
 

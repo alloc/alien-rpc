@@ -16,10 +16,13 @@ declare const db: {
 
 export const listPosts = route.get(
   '/posts',
-  async function* (
-    {},
-    { page = 1, limit = 10 }: { page?: number; limit?: number }
-  ) {
+  async function* ({
+    page = 1,
+    limit = 10,
+  }: {
+    page?: number
+    limit?: number
+  }) {
     yield* db.streamPosts({ page, limit })
 
     const postCount = await db.countPosts()

@@ -24,13 +24,29 @@ Your routes can be declared anywhere in your codebase, as long as they are _expo
 
 If you prefer all-caps HTTP methods, you can use the exported `route.GET` function instead. There is no functional difference, but it's a matter of personal preference.
 
-Every route handler has 3 arguments:
+### Route Arguments
 
-- `params`: the route's path parameters (empty for routes without path parameters)
-- `data`: the route's request data (either search parameters or JSON body)
-- `ctx`: the request context (as defined by [hattip](https://github.com/hattipjs/hattip/tree/main/packages/base/compose#requestcontext))
+If a route has path parameters, its handler will have 3 arguments (`pathParams`, `requestData`, `ctx`). Otherwise, it will have 2 (`requestData`, `ctx`). The `requestData` is an object of either the route's search parameters (for GET/DELETE/HEAD routes) or its JSON body (for POST/PUT/PATCH routes). The `ctx` argument is the request context, as defined by [hattip](https://github.com/hattipjs/hattip/tree/main/packages/base/compose#requestcontext).
 
-#### Supported HTTP methods
+#### Path parameters
+
+If a route has exactly 1 path parameter, its `pathParams` argument will be a single value. If a route has multiple path parameters, `pathParams` will be an array of values. If you don't explicitly type the `pathParams` argument, each parameter value is typed as a `string`.
+
+```ts
+const getUser = route.get('/users/:id', async id => {
+  // typeof id === 'string'
+})
+
+const getUserInGroup = route.get(
+  '/groups/:groupId/users/:userId',
+  async ([groupId, userId]) => {
+    // typeof groupId === 'string'
+    // typeof userId === 'string'
+  }
+)
+```
+
+### Supported HTTP methods
 
 The following HTTP methods are supported:
 
@@ -56,7 +72,7 @@ Routes can be documented like any TypeScript function.
  *
  * @param id - The ID of the user to retrieve.
  */
-const getUser = route.get('/users/:id', async ({ id }) => {
+const getUser = route.get('/users/:id', async id => {
   // ...
 })
 ```
@@ -71,14 +87,17 @@ Currently, this works for routes, but not their path parameters or request data.
 
 TypeScript types are used by [@alien-rpc/generator](https://github.com/alloc/alien-rpc/tree/master/packages/generator) to determine how your route's path parameters and request data should be validated at runtime.
 
-So if your `getUser` route is expecting the `id` path parameter to be a number, you can define it like this:
+So if your `getUser` route is expecting the `id` path parameter to be a number and the `includePrivate` search parameter to be a boolean, you can define it like this:
 
 ```ts
 import { route } from '@alien-rpc/service'
 
-const getUser = route.get('/users/:id', async ({ id }: { id: number }) => {
-  // ...
-})
+const getUser = route.get(
+  '/users/:id',
+  async (id: number, searchParams: { includePrivate?: boolean }) => {
+    // ...
+  }
+)
 ```
 
 Note that you can also explicitly type your request data, which in case you forgot, is the 2nd argument to your route handler that represents the JSON request body (for POST/PUT/PATCH routes) or search parameters (for GET/HEAD/DELETE routes).
@@ -116,12 +135,29 @@ The [Type Constraints](./docs/type-constraints.md) page has more information on 
 
 &nbsp;
 
-## Customizing the HTTP response
+## Request context
+
+The request context is the last argument of your route handler. It's an object containing information about the incoming request, such as the request method, headers, and URL. [See here](https://github.com/hattipjs/hattip/tree/main/packages/base/compose#requestcontext) for a complete list of properties and methods in the `RequestContext` type.
+
+Note that your route handler _always_ receives an object representing the _request data_ (either search parameters or JSON body). Therefore, to access the request context, you need to declare an argument name for the request data first. See `_data` in the example below:
+
+```ts
+export const getApplStockPrice = route.get(
+  '/stocks/appl',
+  async (_data, ctx) => {
+    ctx.url // => [object URL]
+    ctx.request.url // => "/stocks/appl"
+    ctx.request.headers // => [object Headers]
+  }
+)
+```
+
+### Response manipulation
 
 The request context contains a `response` object property with a `status` number and a `headers` object. You can modify these properties to customize the HTTP response.
 
 ```ts
-export const getFile = route.get('/files/:id', async ({ id }, {}, ctx) => {
+export const getFile = route.get('/files/:id', async (id, _, ctx) => {
   ctx.response.status = 200 // Note: The default status is 200
 
   ctx.response.headers.set('Content-Type', 'application/pdf')
@@ -146,11 +182,14 @@ import { compileRoutes } from '@alien-rpc/service'
 import routes from './server/generated/api.js'
 
 export default compose(
-  loggingMiddleware(), // <-- hypothetical middleware, runs before your routes
+  loggingMiddleware(), // <-- runs before your routes
   compileRoutes(routes),
-  ssrMiddleware() // <-- hypothetical middleware, runs after your routes
+  ssrMiddleware() // <-- runs after your routes
 )
 ```
+
+> [!NOTE]
+> In the example above, the `loggingMiddleware` and `ssrMiddleware` are hypothetical. Creating your own [middleware](https://github.com/hattipjs/hattip/tree/main/packages/base/compose#handler) is as easy as declaring a function (optionally `async`) that receives a `RequestContext` object and returns one of the following: a `Response` object, any object with a `toResponse` method, or nothing (aka `void`).
 
 If you save the code above in the `./server/handler.ts` module, you could start your server in the `./server/main.ts` module like this:
 
@@ -174,12 +213,9 @@ Errors thrown by your route handlers are assumed to be unintentional, unless you
 ```ts
 import { route, UnauthorizedError } from '@alien-rpc/service'
 
-export const getPrivateProfile = route.get(
-  '/users/:id/private',
-  async ({ id }) => {
-    throw new UnauthorizedError()
-  }
-)
+export const getPrivateProfile = route.get('/users/:id/private', async id => {
+  throw new UnauthorizedError()
+})
 ```
 
 For more details, see the [HTTP errors](./docs/http-errors.md) page.
@@ -210,7 +246,7 @@ The `paginate` function allows you to provide pagination links in the response. 
 The `paginate` function takes two arguments:
 
 - `route`: A reference to the current route (via `this`) or another route (by the identifier you exported it with)
-- `links`: An object with the `prev` and `next` pagination links, which must provide an object containing search parameters for the next/previous set of results
+- `links`: An object with the `prev` and `next` pagination links, which must provide an object containing path parameters and/or search parameters for the next/previous set of results
 
 You _must_ return the `paginate` function's result from your route handler.
 
@@ -219,7 +255,7 @@ import { route, paginate } from '@alien-rpc/service'
 
 export const streamPosts = route.get(
   '/posts',
-  async function* ({}, { offset, limit }: { offset: number; limit: number }) {
+  async function* ({ offset, limit }: { offset: number; limit: number }) {
     let count = 0
     for await (const post of db.posts.find({ offset, limit })) {
       yield post
@@ -233,6 +269,8 @@ export const streamPosts = route.get(
 )
 ```
 
+Pagination is an optional feature. It not only supports an offset+limit style of pagination, but any other kind, like cursor-based pagination. When calling a paginated route through the `alien-rpc` client, two methods (`previousPage` and `nextPage`) are added to the `ResponseStream` object returned by that route's client method.
+
 ### Streaming arbitrary data
 
 If you need to stream data that isn't JSON, your route's handler needs to return a `Response` object whose body is a `ReadableStream`.
@@ -243,19 +281,16 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { Readable } from 'node:stream'
 
-export const downloadFile = route.get(
-  '/files/*filename',
-  async ({ filename }) => {
-    const fileStream = fs.createReadStream(path.join('./uploads', filename))
+export const downloadFile = route.get('/files/*filename', async filename => {
+  const fileStream = fs.createReadStream(path.join('./uploads', filename))
 
-    return new Response(Readable.toWeb(fileStream), {
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'Content-Disposition': `attachment; filename="${filename}"`,
-      },
-    })
-  }
-)
+  return new Response(Readable.toWeb(fileStream), {
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    },
+  })
+})
 ```
 
 &nbsp;

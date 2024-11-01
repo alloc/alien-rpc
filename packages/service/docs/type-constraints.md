@@ -21,6 +21,8 @@ Note that you can use type aliases to avoid repeating yourself.
 type PositiveInteger = number & t.MultipleOf<1> & t.Minimum<1>
 ```
 
+&nbsp;
+
 #### Array Constraints
 
 ## MinItems
@@ -40,6 +42,8 @@ For example, when limiting users to selecting no more than 5 tags for their prod
 Ensures all elements in an array are unique (no duplicates).
 
 For example, when ensuring a list of user IDs contains no duplicates in a bulk operation: `userIds: number[] & t.UniqueItems<true>`
+
+&nbsp;
 
 #### Date Constraints
 
@@ -73,6 +77,8 @@ Ensures a timestamp is a multiple of a specific value, useful for time slot alig
 
 For example, when ensuring meeting start times align with 30-minute slots: `startTime: Date & t.MultipleOfTimestamp<1800000>` (30 minutes in milliseconds)
 
+&nbsp;
+
 #### Number Constraints
 
 ## Minimum
@@ -105,6 +111,8 @@ Ensures a number is a multiple of a specific value.
 
 For example, when ensuring product quantities are ordered in multiples of 5: `quantity: number & t.MultipleOf<5>`
 
+&nbsp;
+
 #### Object Constraints
 
 ## MinProperties
@@ -124,6 +132,8 @@ For example, when limiting the number of custom fields in a form submission: `cu
 Controls whether an object can have properties not defined in its type.
 
 For example, when ensuring a user profile update only contains allowed fields like name and email: `profile: { name: string, email: string } & t.AdditionalProperties<false>`
+
+&nbsp;
 
 #### String Constraints
 

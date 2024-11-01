@@ -32,19 +32,22 @@ pnpm add @sinclair/typebox
 
 Alien RPC is unopinionated about your project structure, but it's assumed your client code and server code are in separate directories.
 
-Before you use the code generator, you'll want to get familiar with how to define routes. Give [the readme](https://github.com/alloc/alien-rpc/tree/master/packages/service#readme) for the `@alien-rpc/service` package a read, then come back here afterwards.
+> [!IMPORTANT]
+> Before you use the code generator, you'll want to get familiar with how to define routes. Give [this page](https://github.com/alloc/alien-rpc/tree/master/packages/service#readme) a read, then come back here afterwards.
 
-The code generator can be customized with a number of options. You can use the `--help` flag to see all the options available. For now, we'll keep it simple and use only a few.
+The code generator can be customized with a variety of options. You can use the `--help` flag to see all the options available. For now, we'll keep it simple and use only a few.
 
-By default, the code generator assumes you'll run it from the root directory of your project. It will emit _route definitions_ to the `client/generated/api.ts` and `server/generated/api.ts` files, unless told otherwise via the `--clientOutFile` and `--serverOutFile` options respectively.
+By default, the code generator assumes you'll run it from the root directory of your project (the one that contains your `client` and `server` package directories). It will emit _route definitions_ to the `client/generated/api.ts` and `server/generated/api.ts` files, unless told otherwise via the `--clientOutFile` and `--serverOutFile` options respectively. Feel free to customize this to match your project structure.
 
-#### API Versioning
+### API Versioning
 
-With the `--versionPrefix` option, you can prefix every route with an API version (e.g. `/v1/foo`).
+With the `--versionPrefix` option, you can prefix every route with an API version.
+
+For example, using `--versionPrefix v1` would turn the `/foo` route into `/v1/foo`. Note that you could use any prefix you want (e.g. a date or a name), not just a version number.
 
 This allows for breaking changes to your API without breaking existing client applications. Currently, you're on the hook for managing and deploying multiple versions of your API's server code, which is necessary during the gradual migration process.
 
-#### Running the Code Generator
+### Running the Code Generator
 
 The code generator _must_ be told where to find your routes, which is typically done with a glob pattern. At this point, you should have at least one route defined in your server code. I like to keep my routes in the `src/api` directory of my server package, so we'll use that in the following example. Any unflagged arguments will be interpreted as glob patterns, used to search for routes:
 

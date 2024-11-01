@@ -77,11 +77,9 @@ function compilePathSchema(
   return params => params
 }
 
-function compileRequestSchema(
-  route: Route
-): (ctx: RequestContext) => Promise<unknown> {
+function compileRequestSchema(route: Route): (ctx: RequestContext) => unknown {
   if (!route.requestSchema) {
-    return async () => null
+    return () => null
   }
 
   const requestSchema = TypeCompiler.Compile(route.requestSchema)

@@ -1,9 +1,11 @@
 {
   "name": "@alien-rpc/service",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Service library for alien-rpc",
   "type": "module",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

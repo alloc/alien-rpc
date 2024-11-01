@@ -1,5 +1,7 @@
 # alien-rpc
 
+RPC/REST hybrid middleware for Node.js and Bun. Comes with a type-safe client library, pure-TypeScript request validation, and JSON streaming. Powered by popular open-source libraries, like [Ky](https://github.com/sindresorhus/ky), [TypeBox](https://github.com/sinclairzx81/typebox), and [Hattip](https://github.com/hattipjs/hattip).
+
 ## Features
 
 - Type-safe RPC routes with TypeScript and compile-time code generation

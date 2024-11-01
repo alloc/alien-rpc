@@ -10,7 +10,7 @@ RPC/REST hybrid middleware for Node.js and Bun. Comes with a type-safe client li
 - No batched requests or funneling through a single endpoint, allowing for easy debugging and usage tracking
 - Request/response validators are auto-generated at compile-time from your TypeScript definitions (powered by [typebox](https://github.com/sinclairzx81/typebox) and [typebox-codegen](https://github.com/sinclairzx81/typebox-codegen))
 - Streaming JSON responses powered by [async generators](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AsyncGenerator) and the [JSON Text Sequence](https://www.rfc-editor.org/rfc/rfc7464.html) RFC
-- Type-safe route parameters (e.g. `/users/:id` or `/foo/*bar`) and efficient route matching via [pathic](./packages/pathic)
+- Type-safe route parameters (e.g. `/users/:id` or `/foo/*bar`) and efficient route matching via [pathic](https://github.com/alloc/alien-rpc/tree/master/packages/pathic)
 - Full JSON support in compact query strings via [json-qs](https://github.com/alloc/json-qs)
 - Based on [Hattip.js](https://github.com/hattipjs/hattip) for HTTP server and middleware, with adapters for many target platforms
 

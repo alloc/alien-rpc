@@ -74,7 +74,10 @@ export function compileRoutes(
     }
 
     const corsHeaders = await allowOriginAndCredentials(ctx, config.cors ?? {})
-    if (!corsHeaders['Access-Control-Allow-Origin']) {
+    if (
+      corsHeaders['Access-Control-Allow-Origin'] !==
+      (ctx.request.headers.get('Origin') || '')
+    ) {
       return new Response(null, { status: 403 })
     }
 

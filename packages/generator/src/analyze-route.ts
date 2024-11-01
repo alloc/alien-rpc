@@ -12,57 +12,6 @@ import {
   isAsyncGeneratorType,
 } from './typescript/utils.js'
 
-export function analyzeRoutes(
-  sourceFile: ts.SourceFile,
-  typeChecker: ts.TypeChecker,
-  types: SupportingTypes
-) {
-  const routes: AnalyzedRoute[] = []
-
-  ts.forEachChild(sourceFile, node => {
-    if (
-      !ts.isVariableStatement(node) ||
-      !node.modifiers ||
-      node.modifiers.every(
-        modifier => modifier.kind !== ts.SyntaxKind.ExportKeyword
-      )
-    ) {
-      return
-    }
-
-    const declaration = node.declarationList.declarations[0]
-    if (!ts.isVariableDeclaration(declaration)) {
-      return
-    }
-
-    const symbol =
-      declaration.name && typeChecker.getSymbolAtLocation(declaration.name)
-    if (!symbol) {
-      return
-    }
-
-    const routeName = symbol.getName()
-    try {
-      const route = analyzeRoute(
-        sourceFile.fileName,
-        routeName,
-        declaration,
-        typeChecker,
-        types
-      )
-      if (route) {
-        debug('extracted route', route)
-        routes.push(route)
-      }
-    } catch (error: any) {
-      Object.assign(error, { routeName })
-      throw error
-    }
-  })
-
-  return routes
-}
-
 export type AnalyzedRoute = {
   fileName: string
   exportedName: string
@@ -75,12 +24,13 @@ export type AnalyzedRoute = {
   resolvedResult: string
 }
 
-function analyzeRoute(
+export function analyzeRoute(
   fileName: string,
   routeName: string,
   declaration: ts.VariableDeclaration,
   typeChecker: ts.TypeChecker,
-  types: SupportingTypes
+  types: SupportingTypes,
+  referencedTypes: Map<ts.Symbol, string>
 ): AnalyzedRoute | null {
   debug(`Analyzing route "${routeName}"`)
 
@@ -196,6 +146,7 @@ function analyzeRoute(
       typeChecker,
       {
         omitUndefinedLiteral: true,
+        referencedTypes,
       }
     )
 
@@ -211,13 +162,14 @@ function analyzeRoute(
             const propType =
               propSymbol && typeChecker.getTypeOfSymbol(propSymbol)
 
-            return `${prop}: ${propType ? printTypeLiteralToString(propType, typeChecker) : 'unknown'}`
+            return `${prop}: ${propType ? printTypeLiteralToString(propType, typeChecker, { referencedTypes }) : 'unknown'}`
           })
           .join(', ')} }`
       } else if (typeChecker.isArrayType(argumentType)) {
         const elementType = printTypeLiteralToString(
           getArrayElementType(argumentType),
-          typeChecker
+          typeChecker,
+          { referencedTypes }
         )
         resolvedPathParams = `{ ${pathParams
           .map(param => {
@@ -231,7 +183,8 @@ function analyzeRoute(
   const resolvedResult = resolveResultType(
     handlerResultType,
     typeChecker,
-    types
+    types,
+    referencedTypes
   )
 
   const resolvedFormat = resolveResultFormat(
@@ -287,7 +240,8 @@ function extractDescription(declaration: ts.VariableDeclaration) {
 function resolveResultType(
   type: ts.Type,
   typeChecker: ts.TypeChecker,
-  types: SupportingTypes
+  types: SupportingTypes,
+  referencedTypes?: Map<ts.Symbol, string>
 ) {
   // Prevent mapping of `Response` to literal type
   if (isAssignableTo(typeChecker, type, types.Response)) {
@@ -304,12 +258,13 @@ function resolveResultType(
   if (isAsyncGeneratorType(type) && hasTypeArguments(type)) {
     const yieldType = printTypeLiteralToString(
       type.typeArguments[0],
-      typeChecker
+      typeChecker,
+      { referencedTypes }
     )
     return `AsyncIterableIterator<${yieldType}>`
   }
 
-  return printTypeLiteralToString(type, typeChecker)
+  return printTypeLiteralToString(type, typeChecker, { referencedTypes })
 }
 
 interface TypeArguments {

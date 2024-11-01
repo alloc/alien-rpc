@@ -4,7 +4,7 @@ import {
   getTupleElements,
   isInterfaceType,
   isLibSymbol,
-  isObjectType,
+  isObjectLiteral,
   isTypeAlias,
   isUndefinedType,
   iterableToString,
@@ -12,6 +12,14 @@ import {
 
 export interface PrintTypeLiteralOptions {
   omitUndefinedLiteral?: boolean
+  /**
+   * Collect referenced types instead of printing them as type literals.
+   */
+  referencedTypes?: Map<ts.Symbol, string>
+  /**
+   * @internal Indicates a symbol that must be printed as a type literal.
+   */
+  currentSymbol?: ts.Symbol
 }
 
 export function printTypeLiteralToString(
@@ -49,10 +57,46 @@ export function* printTypeLiteral(
     } else {
       const typeSymbol = type.getSymbol()
       if (!typeSymbol || isLibSymbol(typeSymbol)) {
-        yield typeChecker.typeToString(type)
+        return yield typeChecker.typeToString(type)
+      }
+
+      if (
+        type.aliasSymbol &&
+        opts.referencedTypes &&
+        opts.currentSymbol !== type.aliasSymbol
+      ) {
+        const declarations = type.aliasSymbol.getDeclarations()
+        if (!declarations) {
+          throw new Error('Type alias declaration not found')
+        }
+
+        const typeAlias = typeChecker.getTypeOfSymbol(
+          type.aliasSymbol
+        ) as ts.TypeReference
+
+        const typeArguments = typeChecker.getTypeArguments(typeAlias)
+        if (typeArguments.length > 0) {
+          // TODO: Support generic type aliases
+          yield* printTypeLiteral(type, typeChecker, opts, seen)
+        } else {
+          yield type.aliasSymbol.name
+
+          if (!opts.referencedTypes.has(type.aliasSymbol)) {
+            seen.delete(type)
+            opts.referencedTypes.set(
+              type.aliasSymbol,
+              printTypeLiteralToString(
+                type,
+                typeChecker,
+                { ...opts, currentSymbol: type.aliasSymbol },
+                seen
+              )
+            )
+          }
+        }
       } else if (isTypeAlias(typeSymbol)) {
         yield* printTypeLiteral(type, typeChecker, opts, seen)
-      } else if (isObjectType(typeSymbol) || isInterfaceType(typeSymbol)) {
+      } else if (isObjectLiteral(typeSymbol) || isInterfaceType(typeSymbol)) {
         yield* printObjectTypeLiteral(type, typeChecker, opts, seen)
       } else {
         yield typeChecker.typeToString(type)

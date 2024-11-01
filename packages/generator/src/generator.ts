@@ -5,7 +5,8 @@ import { jumpgen, JumpgenFS } from 'jumpgen'
 import path from 'path'
 import { parsePathParams } from 'pathic'
 import { camel, pascal, sift } from 'radashi'
-import { AnalyzedRoute, analyzeRoutes } from './analyze-routes.js'
+import { AnalyzedFile, analyzeFile } from './analyze-file.js'
+import { AnalyzedRoute } from './analyze-route.js'
 import { reportDiagnostics } from './diagnostics.js'
 import { typeConstraints } from './type-constraints.js'
 import { TypeScriptToTypeBox } from './typebox-codegen/typescript/generator.js'
@@ -61,7 +62,7 @@ export type Options = {
 interface Store {
   project: Project
   types: SupportingTypes
-  routesByFile: Map<ts.SourceFile, AnalyzedRoute[]>
+  analyzedFiles: Map<ts.SourceFile, AnalyzedFile>
 }
 
 type Event = { type: 'route'; route: AnalyzedRoute }
@@ -70,13 +71,15 @@ export default (options: Options) =>
   jumpgen<Store, Event, void>('alien-rpc', async context => {
     const { fs, dedent, root, store, emit, changes } = context
 
-    const sourceFilePaths = fs.scan(options.include, {
+    const entryFilePaths = fs.scan(options.include, {
       cwd: root,
       absolute: true,
     })
 
-    if (!sourceFilePaths.length) {
-      throw new Error(`No source files found for ${options.include}`)
+    if (!entryFilePaths.length) {
+      throw new Error(
+        `No files matching ${JSON.stringify(options.include)} were found in ${JSON.stringify(root)}`
+      )
     }
 
     if (store.project == null) {
@@ -92,10 +95,10 @@ export default (options: Options) =>
         store.project,
         path.dirname(tsConfigFilePath)
       )
-      for (const filePath of sourceFilePaths) {
+      for (const filePath of entryFilePaths) {
         store.project.createSourceFile(filePath, fs.read(filePath, 'utf8'))
       }
-      store.routesByFile = new Map()
+      store.analyzedFiles = new Map()
     } else {
       for (let { file, event } of changes) {
         file = path.join(root, file)
@@ -103,7 +106,7 @@ export default (options: Options) =>
         if (event === 'add') {
           store.project.createSourceFile(file, fs.read(file, 'utf8'))
         } else {
-          store.routesByFile.delete(store.project.getSourceFileOrThrow(file))
+          store.analyzedFiles.delete(store.project.getSourceFileOrThrow(file))
           if (event === 'unlink') {
             store.project.removeSourceFile(file)
           } else {
@@ -114,7 +117,7 @@ export default (options: Options) =>
       store.types.clear()
     }
 
-    const { project, types, routesByFile } = store
+    const { project, types, analyzedFiles } = store
 
     project.resolveSourceFileDependencies()
 
@@ -133,25 +136,26 @@ export default (options: Options) =>
       )
     })
 
+    const referencedTypes = new Map<ts.Symbol, string>()
     const routes = project
       .getSourceFiles()
-      .filter(file => sourceFilePaths.includes(file.fileName))
+      .filter(sourceFile => entryFilePaths.includes(sourceFile.fileName))
       .flatMap(sourceFile => {
-        let routes = routesByFile.get(sourceFile)
-        if (!routes) {
-          routes = analyzeRoutes(sourceFile, typeChecker, types)
-          routesByFile.set(sourceFile, routes)
+        let metadata = analyzedFiles.get(sourceFile)
+        if (!metadata) {
+          metadata = analyzeFile(sourceFile, typeChecker, types)
+          analyzedFiles.set(sourceFile, metadata)
 
           // Prepend the API version to all route pathnames.
           if (options.versionPrefix) {
-            for (const route of routes) {
+            for (const route of metadata.routes) {
               route.resolvedPathname = `/${options.versionPrefix}${route.resolvedPathname}`
             }
           }
 
-          routes.forEach(route => {
+          for (const route of metadata.routes) {
             emit({ type: 'route', route })
-          })
+          }
 
           if (context.isWatchMode)
             watchDependencies(
@@ -162,11 +166,14 @@ export default (options: Options) =>
               fs
             )
         }
-        return routes
+        for (const [symbol, type] of metadata.referencedTypes) {
+          referencedTypes.set(symbol, type)
+        }
+        return metadata.routes
       })
 
     if (!routes.length) {
-      throw new Error('No routes found')
+      throw new Error('No routes were exported by the included files')
     }
 
     options = { ...options }
@@ -177,12 +184,13 @@ export default (options: Options) =>
     options.clientOutFile ??= 'client/generated/api.ts'
     options.clientOutFile = path.join(options.outDir, options.clientOutFile)
 
-    const serverDefinitions: string[] = []
     const clientDefinitions: string[] = []
-    const serverImports = new Set<string>()
-    const stringFormats = new Set<string>()
     const clientImports = new Set<string>(['RequestOptions', 'Route'])
     const clientFormats = new Set<string>()
+
+    const serverDefinitions: string[] = []
+    const serverImports = new Set<string>()
+    const serverCheckedStringFormats = new Set<string>()
 
     for (const route of routes) {
       let pathSchemaDecl = ''
@@ -240,7 +248,7 @@ export default (options: Options) =>
         requestSchemaDecl +
         responseSchemaDecl
       ).matchAll(/Type\.String\(.*?format:\s*['"](\w+)['"].*?\)/g)) {
-        stringFormats.add(match[1])
+        serverCheckedStringFormats.add(match[1])
       }
 
       const handlerPath = resolveImportPath(
@@ -340,6 +348,18 @@ export default (options: Options) =>
       )
     }
 
+    const clientTypeAliases = Array.from(referencedTypes.entries())
+      .map(([symbol, type]) => `type ${symbol.getName()} = ${type}`)
+      .join('\n')
+
+    const serverTypeAliases =
+      clientTypeAliases &&
+      TypeScriptToTypeBox.Generate(clientTypeAliases, {
+        useTypeBoxImport: false,
+        useEmitConstOnly: true,
+        typeTags: typeConstraints,
+      })
+
     const writeServerDefinitions = (outFile: string) => {
       let imports = ''
       let sideEffects = ''
@@ -347,22 +367,23 @@ export default (options: Options) =>
       if (serverImports.size > 0) {
         imports += `\nimport { ${[...serverImports].sort().join(', ')} } from "@alien-rpc/service/typebox"`
       }
-      if (stringFormats.size > 0) {
-        const sortedFormats = [...stringFormats].sort()
-        const exportedFormats = sortedFormats.map(
+      if (serverCheckedStringFormats.size > 0) {
+        const sortedStringFormats = [...serverCheckedStringFormats].sort()
+        const importedStringFormats = sortedStringFormats.map(
           name => pascal(name) + 'Format'
         )
 
-        imports += `\nimport { addStringFormat, ${exportedFormats.join(', ')} } from "@alien-rpc/service/format"`
+        imports += `\nimport { addStringFormat, ${importedStringFormats.join(', ')} } from "@alien-rpc/service/format"`
 
-        sortedFormats.forEach((format, index) => {
-          sideEffects += `\naddStringFormat(${JSON.stringify(format)}, ${exportedFormats[index]})`
+        sortedStringFormats.forEach((format, index) => {
+          sideEffects += `\naddStringFormat(${JSON.stringify(format)}, ${importedStringFormats[index]})`
         })
       }
 
       const content = sift([
         `import * as Type from "@sinclair/typebox/type"${imports}`,
         sideEffects.trimStart(),
+        serverTypeAliases,
         `export default [${serverDefinitions.join(', ')}] as const`,
       ]).join('\n\n')
 
@@ -384,11 +405,11 @@ export default (options: Options) =>
         ).join('')
       }
 
-      const content = dedent/* ts */ `
-        import { ${[...clientImports].sort().join(', ')} } from '@alien-rpc/client'${imports}
-
-        ${clientDefinitions.join('\n\n')}
-      `
+      const content = sift([
+        `import { ${[...clientImports].sort().join(', ')} } from "@alien-rpc/client"${imports}`,
+        clientTypeAliases.replace(/^(type|interface)/gm, 'export $1'),
+        ...clientDefinitions,
+      ]).join('\n\n')
 
       fs.write(outFile, content)
     }

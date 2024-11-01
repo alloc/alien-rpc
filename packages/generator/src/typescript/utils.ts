@@ -8,7 +8,7 @@ export function isInterfaceType(symbol: ts.Symbol): boolean {
   return Boolean(symbol.flags & ts.SymbolFlags.Interface)
 }
 
-export function isObjectType(symbol: ts.Symbol): boolean {
+export function isObjectLiteral(symbol: ts.Symbol): boolean {
   return Boolean(
     symbol.flags & ts.SymbolFlags.TypeLiteral ||
       symbol.flags & ts.SymbolFlags.ObjectLiteral
@@ -47,6 +47,16 @@ export function isAnyType(type: ts.Type): boolean {
   return Boolean(type.flags & ts.TypeFlags.Any)
 }
 
+export function isObjectType(type: ts.Type): type is ts.ObjectType {
+  return Boolean(type.flags & ts.TypeFlags.Object)
+}
+
+export function isTypeReference(type: ts.Type): type is ts.TypeReference {
+  return (
+    isObjectType(type) && Boolean(type.objectFlags & ts.ObjectFlags.Reference)
+  )
+}
+
 export function isAssignableTo(
   typeChecker: ts.TypeChecker,
   type: ts.Type,
@@ -72,4 +82,16 @@ export function iterableToString(iterable: Iterable<string>): string {
     result += value
   }
   return result
+}
+
+export function getNodeLocation(node: ts.Node) {
+  const sourceFile = node.getSourceFile()
+  const { line, character } = sourceFile.getLineAndCharacterOfPosition(
+    node.getStart()
+  )
+  return {
+    fileName: sourceFile.fileName,
+    lineNumber: line + 1,
+    columnNumber: character + 1,
+  }
 }

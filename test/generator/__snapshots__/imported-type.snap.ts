@@ -41,17 +41,15 @@ export const getPost = route.get("/posts/:id", async (id): Promise<Post> => {
  */
 import { RequestOptions, RequestParams, Route } from "@alien-rpc/client";
 
+export type Author = { id: string; name: string };
+export type Post = { id: string; title: string; body: string; author: Author };
+
 export const getPost: Route<
   "posts/:id",
   (
     params: RequestParams<{ id: string }, Record<string, never>>,
     requestOptions?: RequestOptions,
-  ) => Promise<{
-    id: string;
-    title: string;
-    body: string;
-    author: { id: string; name: string };
-  }>
+  ) => Promise<Post>
 > = {
   path: "posts/:id",
   method: "GET",
@@ -65,6 +63,18 @@ export const getPost: Route<
  */
 import * as Type from "@sinclair/typebox/type";
 
+const Author = Type.Object({
+  id: Type.String(),
+  name: Type.String(),
+});
+
+const Post = Type.Object({
+  id: Type.String(),
+  title: Type.String(),
+  body: Type.String(),
+  author: Author,
+});
+
 export default [
   {
     path: "/posts/:id",
@@ -72,14 +82,6 @@ export default [
     pathParams: ["id"],
     import: async () => (await import("../../routes.js")).getPost as any,
     format: "json",
-    responseSchema: Type.Object({
-      id: Type.String(),
-      title: Type.String(),
-      body: Type.String(),
-      author: Type.Object({
-        id: Type.String(),
-        name: Type.String(),
-      }),
-    }),
+    responseSchema: Post,
   },
 ] as const;

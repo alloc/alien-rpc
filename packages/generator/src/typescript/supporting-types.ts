@@ -8,15 +8,19 @@ export type SupportingTypes = ReturnType<typeof createSupportingTypes>
  * client and server. They help us ensure that the routes don't use any
  * unsupported types.
  */
-export function createSupportingTypes(project: Project, rootDir: string) {
+export function createSupportingTypes(
+  project: Project,
+  rootDir: string,
+  serviceModuleId: string
+) {
   const typeDeclarations = {
     AnyNonNull: '{}',
     Response: 'globalThis.Response',
-    RouteDefinition: 'import("@alien-rpc/service").RouteDefinition',
-    RouteIterator: 'import("@alien-rpc/service").RouteIterator',
-    RouteMethod: 'import("@alien-rpc/service").RouteMethod',
-    RouteResult: 'import("@alien-rpc/service").RouteResult',
-    RequestContext: 'import("@alien-rpc/service").RequestContext',
+    RouteDefinition: `import("${serviceModuleId}").RouteDefinition`,
+    RouteIterator: `import("${serviceModuleId}").RouteIterator`,
+    RouteMethod: `import("${serviceModuleId}").RouteMethod`,
+    RouteResult: `import("${serviceModuleId}").RouteResult`,
+    RequestContext: `import("${serviceModuleId}").RequestContext`,
     Void: 'void',
   } as const
 

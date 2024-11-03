@@ -4,7 +4,7 @@ import { ts } from '@ts-morph/common'
 import { jumpgen, JumpgenFS } from 'jumpgen'
 import path from 'path'
 import { parsePathParams } from 'pathic'
-import { camel, pascal, sift } from 'radashi'
+import { camel, guard, pascal, sift } from 'radashi'
 import { AnalyzedFile, analyzeFile } from './analyze-file.js'
 import { AnalyzedRoute } from './analyze-route.js'
 import { reportDiagnostics } from './diagnostics.js'
@@ -69,7 +69,7 @@ type Event = { type: 'route'; route: AnalyzedRoute }
 
 export default (options: Options) =>
   jumpgen<Store, Event, void>('alien-rpc', async context => {
-    const { fs, dedent, root, store, emit, changes } = context
+    const { fs, root, store, emit, changes } = context
 
     const entryFilePaths = fs.scan(options.include, {
       cwd: root,
@@ -82,6 +82,14 @@ export default (options: Options) =>
       )
     }
 
+    options = { ...options }
+
+    options.serverOutFile ??= 'server/generated/api.ts'
+    options.serverOutFile = path.join(options.outDir, options.serverOutFile)
+
+    options.clientOutFile ??= 'client/generated/api.ts'
+    options.clientOutFile = path.join(options.outDir, options.clientOutFile)
+
     if (store.project == null) {
       const tsConfigFilePath = path.resolve(
         root,
@@ -93,7 +101,8 @@ export default (options: Options) =>
       })
       store.types = createSupportingTypes(
         store.project,
-        path.dirname(tsConfigFilePath)
+        path.dirname(tsConfigFilePath),
+        resolveServiceModule(options.serverOutFile)
       )
       for (const filePath of entryFilePaths) {
         store.project.createSourceFile(filePath, fs.read(filePath, 'utf8'))
@@ -175,14 +184,6 @@ export default (options: Options) =>
     if (!routes.length) {
       throw new Error('No routes were exported by the included files')
     }
-
-    options = { ...options }
-
-    options.serverOutFile ??= 'server/generated/api.ts'
-    options.serverOutFile = path.join(options.outDir, options.serverOutFile)
-
-    options.clientOutFile ??= 'client/generated/api.ts'
-    options.clientOutFile = path.join(options.outDir, options.clientOutFile)
 
     const clientDefinitions: string[] = []
     const clientImports = new Set<string>(['RequestOptions', 'Route'])
@@ -613,4 +614,15 @@ function needsPathSchema(type: string) {
     }
   }
   return false
+}
+
+function resolveServiceModule(importer: string) {
+  for (const id of ['alien-rpc/service', '@alien-rpc/service']) {
+    if (guard(() => import.meta.resolve(id, new URL(importer, 'file://')))) {
+      return id
+    }
+  }
+  throw new Error(
+    'Could not find @alien-rpc/service from this module: ' + importer
+  )
 }

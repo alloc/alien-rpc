@@ -1,6 +1,7 @@
 import { bodylessMethods } from '@alien-rpc/route'
 import { createProject, Project } from '@ts-morph/bootstrap'
 import { ts } from '@ts-morph/common'
+import createResolver from 'esm-resolve'
 import { jumpgen, JumpgenFS } from 'jumpgen'
 import path from 'path'
 import { parsePathParams } from 'pathic'
@@ -83,6 +84,7 @@ export default (options: Options) =>
     }
 
     options = { ...options }
+    options.outDir = path.resolve(root, options.outDir)
 
     options.serverOutFile ??= 'server/generated/api.ts'
     options.serverOutFile = path.join(options.outDir, options.serverOutFile)
@@ -617,8 +619,9 @@ function needsPathSchema(type: string) {
 }
 
 function resolveServiceModule(importer: string) {
+  const resolve = createResolver(importer)
   for (const id of ['alien-rpc/service', '@alien-rpc/service']) {
-    if (guard(() => import.meta.resolve(id, new URL(importer, 'file://')))) {
+    if (guard(() => resolve(id))) {
       return id
     }
   }

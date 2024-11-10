@@ -198,7 +198,7 @@ export default (options: Options) =>
     }
 
     const clientDefinitions: string[] = []
-    const clientImports = new Set<string>(['RequestOptions', 'Route'])
+    const clientTypeImports = new Set<string>(['RequestOptions', 'Route'])
     const clientFormats = new Set<string>()
 
     const serverDefinitions: string[] = []
@@ -314,7 +314,7 @@ export default (options: Options) =>
 
       const clientArgs: string[] = ['requestOptions?: RequestOptions']
       if (clientParamsExist) {
-        clientImports.add('RequestParams')
+        clientTypeImports.add('RequestParams')
         clientArgs.unshift(
           `params${clientParamsAreOptional ? '?' : ''}: RequestParams<${resolvedPathParams}, ${resolvedRequestData}>${clientParamsAreOptional ? ' | null' : ''}`
         )
@@ -322,12 +322,12 @@ export default (options: Options) =>
 
       let clientReturn: string
       if (route.resolvedFormat === 'json-seq') {
-        clientImports.add('ResponseStream')
+        clientTypeImports.add('ResponseStream')
         clientReturn = route.resolvedResult.replace(/^\w+/, 'ResponseStream')
       } else if (route.resolvedFormat === 'json') {
         clientReturn = `Promise<${route.resolvedResult}>`
       } else if (route.resolvedFormat === 'response') {
-        clientImports.add('ResponsePromise')
+        clientTypeImports.add('ResponsePromise')
         clientReturn = 'ResponsePromise'
       } else {
         throw new Error(`Unsupported response format: ${route.resolvedFormat}`)
@@ -419,7 +419,7 @@ export default (options: Options) =>
       }
 
       const content = sift([
-        `import { ${[...clientImports].sort().join(', ')} } from "${store.clientModuleId}"` +
+        `import type { ${[...clientTypeImports].sort().join(', ')} } from "${store.clientModuleId}"` +
           imports,
         clientTypeAliases.replace(/^(type|interface)/gm, 'export $1'),
         ...clientDefinitions,

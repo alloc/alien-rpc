@@ -89,10 +89,10 @@ export default (options: Options) =>
     options.outDir = path.resolve(root, options.outDir)
 
     options.serverOutFile ??= 'server/generated/api.ts'
-    options.serverOutFile = path.join(options.outDir, options.serverOutFile)
+    options.serverOutFile = path.resolve(options.outDir, options.serverOutFile)
 
     options.clientOutFile ??= 'client/generated/api.ts'
-    options.clientOutFile = path.join(options.outDir, options.clientOutFile)
+    options.clientOutFile = path.resolve(options.outDir, options.clientOutFile)
 
     if (store.project == null) {
       const tsConfigFilePath = path.resolve(

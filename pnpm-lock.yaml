@@ -37,11 +37,11 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0
       '@hattip/adapter-test':
-        specifier: ^0.0.48
-        version: 0.0.48
+        specifier: ^0.0.49
+        version: 0.0.49
       '@hattip/compose':
-        specifier: ^0.0.48
-        version: 0.0.48
+        specifier: ^0.0.49
+        version: 0.0.49
       '@ts-morph/common':
         specifier: ^0.25.0
         version: 0.25.0
@@ -151,8 +151,8 @@ importers:
   packages/service:
     dependencies:
       '@hattip/compose':
-        specifier: ^0.0.48
-        version: 0.0.48
+        specifier: '*'
+        version: 0.0.49
       '@json-qs/json-qs':
         specifier: ^1.2.0
         version: 1.2.0
@@ -457,17 +457,17 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@hattip/adapter-test@0.0.48':
-    resolution: {integrity: sha512-UJp63VFAKeGLq4ycW72mM8KBT1VUaXQt9mL9EQwKou6e6xbkMSpt+HIBoRq68oShE1qbygS8cgm/2j5ShzV9mw==}
+  '@hattip/adapter-test@0.0.49':
+    resolution: {integrity: sha512-DkWG9zyDd0P+8a7E+p6aH/s5tRWkZ1ZdgGsXMFnGT/6Z7i8/V598t4GvzTFZdGXK5FKtNZIYKS5og1udJ9bL4A==}
 
-  '@hattip/compose@0.0.48':
-    resolution: {integrity: sha512-4Hdk6JBk7Cb65BpgodcK69OdiXqBQ0CM4WRRzzcA1gPRkfBucmv06Wx/q5v6ZtkfwCIqTP09KSi+HmIPj7935A==}
+  '@hattip/compose@0.0.49':
+    resolution: {integrity: sha512-jEJGi6EdHpLJGxpFMqcF2J6cNYKGhkDyepXtR7Esxthk5rWC37lFQEl19rWsYOqByn4zpwq87W8qGgsl940dWQ==}
 
-  '@hattip/core@0.0.48':
-    resolution: {integrity: sha512-rx28E2Ofl2GpJ73Uw011d1kM3kLyuFTijcBZjRWZn6cZ6qmFI194BZLtsvvO3ocBgyUUVv4JPC9PdH5FGA/ZoA==}
+  '@hattip/core@0.0.49':
+    resolution: {integrity: sha512-3/ZJtC17cv8m6Sph8+nw4exUp9yhEf2Shi7HK6AHSUSBtaaQXZ9rJBVxTfZj3PGNOR/P49UBXOym/52WYKFTJQ==}
 
-  '@hattip/polyfills@0.0.48':
-    resolution: {integrity: sha512-r9Q5cGpAyN/2HL3UI1z1prrIok3kopnszgXFIP1Ns4lMsukc9bYosrDVH2ZKIJ4Zowzi6kzH0/kE6VsUgfuESQ==}
+  '@hattip/polyfills@0.0.49':
+    resolution: {integrity: sha512-5g7W5s6Gq+HDxwULGFQ861yAnEx3yd9V8GDwS96HBZ1nM1u93vN+KTuwXvNsV7Z3FJmCrD/pgU8WakvchclYuA==}
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -654,12 +654,12 @@ packages:
   '@vitest/utils@2.1.2':
     resolution: {integrity: sha512-zMO2KdYy6mx56btx9JvAqAZ6EyS3g49krMPPrgOp1yxGZiA93HumGk+bZ5jIZtOg5/VBYl5eBmGRQHqq4FG6uQ==}
 
-  '@whatwg-node/fetch@0.9.21':
-    resolution: {integrity: sha512-Wt0jPb+04JjobK0pAAN7mEHxVHcGA9HoP3OyCsZtyAecNQeADXCZ1MihFwVwjsgaRYuGVmNlsCmLxlG6mor8Gw==}
+  '@whatwg-node/fetch@0.9.23':
+    resolution: {integrity: sha512-7xlqWel9JsmxahJnYVUj/LLxWcnA93DR4c9xlw3U814jWTiYalryiH1qToik1hOxweKKRLi4haXHM5ycRksPBA==}
     engines: {node: '>=18.0.0'}
 
-  '@whatwg-node/node-fetch@0.5.26':
-    resolution: {integrity: sha512-4jXDeZ4IH4bylZ6wu14VEx0aDXXhrN4TC279v9rPmn08g4EYekcYf8wdcOOnS9STjDkb6x77/6xBUTqxGgjr8g==}
+  '@whatwg-node/node-fetch@0.6.0':
+    resolution: {integrity: sha512-tcZAhrpx6oVlkEsRngeTEEE7I5/QdLjeEz4IlekabGaESP7+Dkm/6a9KcF1KdCBB7mO9PXtBkwCuTCt8+UPg8Q==}
     engines: {node: '>=18.0.0'}
 
   ansi-regex@5.0.1:
@@ -1465,21 +1465,21 @@ snapshots:
   '@esbuild/win32-x64@0.21.5':
     optional: true
 
-  '@hattip/adapter-test@0.0.48':
+  '@hattip/adapter-test@0.0.49':
     dependencies:
-      '@hattip/core': 0.0.48
-      '@hattip/polyfills': 0.0.48
+      '@hattip/core': 0.0.49
+      '@hattip/polyfills': 0.0.49
 
-  '@hattip/compose@0.0.48':
+  '@hattip/compose@0.0.49':
     dependencies:
-      '@hattip/core': 0.0.48
+      '@hattip/core': 0.0.49
 
-  '@hattip/core@0.0.48': {}
+  '@hattip/core@0.0.49': {}
 
-  '@hattip/polyfills@0.0.48':
+  '@hattip/polyfills@0.0.49':
     dependencies:
-      '@hattip/core': 0.0.48
-      '@whatwg-node/fetch': 0.9.21
+      '@hattip/core': 0.0.49
+      '@whatwg-node/fetch': 0.9.23
       node-fetch-native: 1.6.4
 
   '@isaacs/cliui@8.0.2':
@@ -1647,12 +1647,12 @@ snapshots:
       loupe: 3.1.2
       tinyrainbow: 1.2.0
 
-  '@whatwg-node/fetch@0.9.21':
+  '@whatwg-node/fetch@0.9.23':
     dependencies:
-      '@whatwg-node/node-fetch': 0.5.26
+      '@whatwg-node/node-fetch': 0.6.0
       urlpattern-polyfill: 10.0.0
 
-  '@whatwg-node/node-fetch@0.5.26':
+  '@whatwg-node/node-fetch@0.6.0':
     dependencies:
       '@kamilkisiela/fast-url-parser': 1.1.4
       busboy: 1.6.0

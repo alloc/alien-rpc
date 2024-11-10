@@ -265,7 +265,7 @@ export default (options: Options) =>
       }
 
       const handlerPath = resolveImportPath(
-        path.join(root, options.serverOutFile),
+        options.serverOutFile,
         route.fileName,
         compilerOptions.allowImportingTsExtensions
       )

@@ -64,6 +64,8 @@ interface Store {
   project: Project
   types: SupportingTypes
   analyzedFiles: Map<ts.SourceFile, AnalyzedFile>
+  serviceModuleId: string
+  clientModuleId: string
 }
 
 type Event = { type: 'route'; route: AnalyzedRoute }
@@ -101,10 +103,18 @@ export default (options: Options) =>
         tsConfigFilePath,
         skipAddingFilesFromTsConfig: true,
       })
+      store.serviceModuleId = resolveModule(options.serverOutFile, [
+        'alien-rpc/service',
+        '@alien-rpc/service',
+      ])
+      store.clientModuleId = resolveModule(options.clientOutFile, [
+        'alien-rpc/client',
+        '@alien-rpc/client',
+      ])
       store.types = createSupportingTypes(
         store.project,
         path.dirname(tsConfigFilePath),
-        resolveServiceModule(options.serverOutFile)
+        store.serviceModuleId
       )
       for (const filePath of entryFilePaths) {
         store.project.createSourceFile(filePath, fs.read(filePath, 'utf8'))
@@ -368,7 +378,7 @@ export default (options: Options) =>
       let sideEffects = ''
 
       if (serverImports.size > 0) {
-        imports += `\nimport { ${[...serverImports].sort().join(', ')} } from "@alien-rpc/service/typebox"`
+        imports += `\nimport { ${[...serverImports].sort().join(', ')} } from "${store.serviceModuleId}/typebox"`
       }
       if (serverCheckedStringFormats.size > 0) {
         const sortedStringFormats = [...serverCheckedStringFormats].sort()
@@ -376,7 +386,7 @@ export default (options: Options) =>
           name => pascal(name) + 'Format'
         )
 
-        imports += `\nimport { addStringFormat, ${importedStringFormats.join(', ')} } from "@alien-rpc/service/format"`
+        imports += `\nimport { addStringFormat, ${importedStringFormats.join(', ')} } from "${store.serviceModuleId}/format"`
 
         sortedStringFormats.forEach((format, index) => {
           sideEffects += `\naddStringFormat(${JSON.stringify(format)}, ${importedStringFormats[index]})`
@@ -404,12 +414,13 @@ export default (options: Options) =>
         imports += Array.from(
           clientFormats,
           format =>
-            `\nimport ${camel(format)} from '@alien-rpc/client/formats/${format}'`
+            `\nimport ${camel(format)} from "${store.clientModuleId}/formats/${format}"`
         ).join('')
       }
 
       const content = sift([
-        `import { ${[...clientImports].sort().join(', ')} } from "@alien-rpc/client"${imports}`,
+        `import { ${[...clientImports].sort().join(', ')} } from "${store.clientModuleId}"` +
+          imports,
         clientTypeAliases.replace(/^(type|interface)/gm, 'export $1'),
         ...clientDefinitions,
       ]).join('\n\n')
@@ -618,14 +629,18 @@ function needsPathSchema(type: string) {
   return false
 }
 
-function resolveServiceModule(importer: string) {
+function resolveModule(importer: string, candidateIds: string[]) {
   const resolve = createResolver(importer)
-  for (const id of ['alien-rpc/service', '@alien-rpc/service']) {
+  for (const id of candidateIds) {
     if (guard(() => resolve(id))) {
       return id
     }
   }
   throw new Error(
-    'Could not find @alien-rpc/service from this module: ' + importer
+    'Could not find any of the following modules: ' +
+      candidateIds.join(', ') +
+      '\n' +
+      'from this module: ' +
+      importer
   )
 }

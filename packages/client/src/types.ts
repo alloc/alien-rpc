@@ -82,6 +82,15 @@ export type ClientOptions = Omit<
   'method' | 'body' | 'json' | 'searchParams'
 > & {
   /**
+   * Control how errors are handled.
+   *
+   * - `return`: Return a tuple of `[error, undefined]`.
+   * - `reject`: Reject the promise with the error.
+   *
+   * @default 'reject'
+   */
+  errorMode?: ErrorMode
+  /**
    * This cache is checked before sending a `GET` request. It remains empty
    * until you manually call the `Client#setResponse` method.
    *
@@ -168,3 +177,5 @@ export interface RouteResultCache {
   set: (path: string, response: unknown) => void
   delete: (path: string) => void
 }
+
+export type ErrorMode = 'return' | 'reject'

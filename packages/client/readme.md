@@ -19,6 +19,9 @@ Where you import the generated `API` namespace depends on what you passed to the
 
 The `defineClient` function also accepts an options object, which supports [all Ky options](https://github.com/sindresorhus/ky?tab=readme-ov-file#options) in addition to the following:
 
+- `errorMode`: A string that determines how errors are handled by the client.
+  - `'reject'`: Errors reject the query promise. _This is the default._
+  - `'return'`: Errors are returned as a tuple with the error as the first element and the result as the second element. If an error is returned, the result will be `undefined`, and vice versa.
 - `resultCache`: A cache for storing the results of your `GET` routes. This cache is checked before sending a `GET` request. It remains empty until you manually call the `Client#setCachedResponse` method.
   - Probably the only time you might set this is if you want a “least-recently-used” cache (e.g. you might use [quick-lru](https://github.com/sindresorhus/quick-lru)), whereas the default cache is a simple `Map` whose size is unbounded.
 

@@ -3,12 +3,14 @@ import { bodylessMethods } from '@alien-rpc/route'
 import * as jsonQS from '@json-qs/json-qs'
 import ky, { HTTPError } from 'ky'
 import { buildPath } from 'pathic'
-import { isString } from 'radashi'
+import { isPromise, isString } from 'radashi'
 import jsonFormat from './formats/json.js'
 import responseFormat from './formats/response.js'
 import {
   CachedRouteResult,
   ClientOptions,
+  ErrorMode,
+  ResponseStream,
   ResultFormatter,
   Route,
   RoutePathname,
@@ -29,20 +31,33 @@ interface ClientPrototype<API extends Record<string, Route>> {
   unsetCachedResponse: <P extends RoutePathname<API>>(path: P) => void
 }
 
-export type Client<API extends Record<string, Route> = Record<string, Route>> =
-  ClientPrototype<API> & {
-    [TKey in keyof API]: Extract<API[TKey], Route>['callee']
-  }
+export type Client<
+  API extends Record<string, Route> = Record<string, Route>,
+  Options extends ClientOptions = ClientOptions,
+> = ClientPrototype<API> & {
+  [TKey in keyof API]: Extract<API[TKey], Route>['callee'] extends (
+    ...args: infer TArgs
+  ) => infer TResult
+    ? (
+        ...args: TArgs
+      ) => TResult extends ResponseStream<any>
+        ? TResult
+        : Options['errorMode'] extends 'return'
+          ? Promise<[Error, undefined] | [undefined, Awaited<TResult>]>
+          : TResult
+    : never
+}
 
-export function defineClient<API extends Record<string, Route>>(
-  routes: API,
-  options: ClientOptions = {}
-): Client<API> {
-  const { resultCache = new Map(), ...defaults } = options
+export function defineClient<
+  API extends Record<string, Route>,
+  Options extends ClientOptions = ClientOptions,
+>(routes: API, options = {} as Options): Client<API, Options> {
+  const { errorMode = 'reject', resultCache = new Map(), ...defaults } = options
   const { hooks } = defaults
 
   return createClientProxy(
     routes,
+    errorMode,
     resultCache,
     ky.create({
       ...defaults,
@@ -67,15 +82,20 @@ async function extendHTTPError(error: HTTPError) {
   return error
 }
 
-function createClientProxy<API extends Record<string, Route>>(
+function createClientProxy<
+  API extends Record<string, Route>,
+  Options extends ClientOptions,
+>(
   routes: API,
+  errorMode: ErrorMode,
   resultCache: RouteResultCache,
   request: typeof ky
-): Client<API> {
+): Client<API, Options> {
   const client: ClientPrototype<API> = {
     extend: defaults =>
       createClientProxy(
         routes,
+        defaults.errorMode ?? errorMode,
         defaults.resultCache ?? resultCache,
         request.extend(defaults)
       ),
@@ -96,6 +116,7 @@ function createClientProxy<API extends Record<string, Route>>(
       if (Object.prototype.hasOwnProperty.call(routes, key)) {
         return createRouteFunction(
           routes[key as keyof API],
+          errorMode,
           resultCache,
           request,
           proxy
@@ -110,6 +131,7 @@ function createClientProxy<API extends Record<string, Route>>(
 
 function createRouteFunction(
   route: Route,
+  errorMode: ErrorMode,
   resultCache: RouteResultCache,
   request: typeof ky,
   client: Client
@@ -158,6 +180,16 @@ function createRouteFunction(
       method: route.method,
     })
 
+    if (errorMode === 'return') {
+      const result = format.parseResponse(promisedResponse, client)
+      if (isPromise(result)) {
+        return result.then(
+          result => [undefined, result],
+          error => [error, undefined]
+        )
+      }
+      return result
+    }
     return format.parseResponse(promisedResponse, client)
   }
 }

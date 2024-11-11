@@ -159,6 +159,7 @@ type HasSingleKey<T extends object> = keyof T extends infer TKey
 export type { ResponsePromise } from 'ky'
 
 export interface ResponseStream<T> extends AsyncIterableIterator<T> {
+  toArray(): Promise<T[]>
   /**
    * Fetch the next page of results. Exists only if there is a next page and
    * after the current stream has been fully consumed.

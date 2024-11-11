@@ -12,10 +12,11 @@ export default {
 } satisfies ResultFormatter<ResponseStream<any>, unknown[]>
 
 function parseResponse(promisedResponse: Promise<Response>, client: Client) {
-  // Keep a reference to the iterator, so we can attach previousPage
-  //and nextPage methods when a pagination result is provided.
+  // This reference is used to attach previousPage and nextPage methods
+  // when a pagination result is provided.
   let responseStream!: ResponseStream<any>
-  return (responseStream = (async function* () {
+
+  async function* parse() {
     const response = await promisedResponse
     if (!response.body) {
       return
@@ -28,12 +29,17 @@ function parseResponse(promisedResponse: Promise<Response>, client: Client) {
         yield value
       }
     }
-  })())
+  }
+
+  responseStream = parse() as any
+  responseStream.toArray = toArray
+  return responseStream
 }
 
 function mapCachedResult(values: unknown[], client: Client) {
   let responseStream!: ResponseStream<any>
-  return (responseStream = (async function* () {
+
+  async function* parse() {
     if (!values.length) {
       return
     }
@@ -43,7 +49,19 @@ function mapCachedResult(values: unknown[], client: Client) {
       values = values.slice(0, -1)
     }
     yield* values
-  })())
+  }
+
+  responseStream = parse() as any
+  responseStream.toArray = toArray
+  return responseStream
+}
+
+async function toArray(this: AsyncGenerator<any>) {
+  const result = []
+  for await (const value of this) {
+    result.push(value)
+  }
+  return result
 }
 
 function requestPage(client: Client, path: string, options?: RequestOptions) {

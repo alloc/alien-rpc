@@ -15,6 +15,7 @@ import {
   createSupportingTypes,
   SupportingTypes,
 } from './typescript/supporting-types.js'
+import { findTsConfigFiles } from './typescript/tsconfig.js'
 
 export type Options = {
   /**
@@ -205,6 +206,11 @@ export default (options: Options) =>
     const serverImports = new Set<string>()
     const serverCheckedStringFormats = new Set<string>()
 
+    const tsconfigs = findTsConfigFiles(fs, project)
+    const serverTsConfig = tsconfigs.find(tsconfig =>
+      tsconfig.paths.filePaths.includes(options.serverOutFile)
+    )!
+
     for (const route of routes) {
       let pathSchemaDecl = ''
       let requestSchemaDecl = ''
@@ -267,7 +273,7 @@ export default (options: Options) =>
       const handlerPath = resolveImportPath(
         options.serverOutFile,
         route.fileName,
-        compilerOptions.allowImportingTsExtensions
+        serverTsConfig.compilerOptions.allowImportingTsExtensions
       )
 
       const pathParams = parsePathParams(route.resolvedPathname)

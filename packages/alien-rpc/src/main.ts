@@ -90,7 +90,11 @@ app
         })
         .on('custom', event => {
           if (event.type === 'route') {
-            log('Generated route:', event.route.resolvedPathname)
+            log(
+              'Generated route:',
+              event.route.resolvedMethod,
+              event.route.resolvedPathname
+            )
           }
         })
         .on('write', file => {

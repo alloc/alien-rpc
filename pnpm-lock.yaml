@@ -7,6 +7,11 @@ settings:
 overrides:
   '@sinclair/typebox': ^0.33.17
 
+patchedDependencies:
+  '@ts-morph/bootstrap':
+    hash: xmkvzvywuugw5rixlkpaha53b4
+    path: patches/@ts-morph__bootstrap.patch
+
 importers:
 
   .:
@@ -117,7 +122,7 @@ importers:
         version: 0.33.17
       '@ts-morph/bootstrap':
         specifier: ^0.25.0
-        version: 0.25.0
+        version: 0.25.0(patch_hash=xmkvzvywuugw5rixlkpaha53b4)
       '@ts-morph/common':
         specifier: ^0.25.0
         version: 0.25.0
@@ -128,8 +133,8 @@ importers:
         specifier: ^1.0.11
         version: 1.0.11
       jumpgen:
-        specifier: 0.1.0-beta.13
-        version: 0.1.0-beta.13
+        specifier: ^0.1.0
+        version: 0.1.0
       typescript:
         specifier: '*'
         version: 5.6.3
@@ -890,8 +895,8 @@ packages:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
     engines: {node: '>=10'}
 
-  jumpgen@0.1.0-beta.13:
-    resolution: {integrity: sha512-7UH1qJMHtlH+JrqvwpEavAZdHpeeRSNV/NvM5Wy8yWSCRE0//gIHyP/ZgZeGRZMXLWbRM8Z12VPANeSs34WPyg==}
+  jumpgen@0.1.0:
+    resolution: {integrity: sha512-NNJBCxalWDM/gMZ3rP7LI0kKDa7L4BXGdu36noM+WvI90ZxIuHFmW3LSbncRrHgMm8988lS3an4L4PA4RRkAbA==}
 
   kleur@4.1.5:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
@@ -1579,7 +1584,7 @@ snapshots:
 
   '@sinclair/typebox@0.33.17': {}
 
-  '@ts-morph/bootstrap@0.25.0':
+  '@ts-morph/bootstrap@0.25.0(patch_hash=xmkvzvywuugw5rixlkpaha53b4)':
     dependencies:
       '@ts-morph/common': 0.25.0
 
@@ -1917,7 +1922,7 @@ snapshots:
 
   joycon@3.1.1: {}
 
-  jumpgen@0.1.0-beta.13:
+  jumpgen@0.1.0:
     dependencies:
       chokidar: 4.0.1
       picomatch: 4.0.2

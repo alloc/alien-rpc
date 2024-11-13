@@ -1,6 +1,6 @@
 {
   "name": "alien-rpc",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Full-stack library and command-line tool for alien-rpc",
   "type": "module",
   "bin": {

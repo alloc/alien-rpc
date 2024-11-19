@@ -117,9 +117,9 @@ export function compilePaths(paths: string[]): PathMatcher {
         ({ parser, index, offset }) => {
           parser.lastIndex = offset ?? prefix.length
 
-          const pathMatch = parser.exec(path)
-          if (pathMatch) {
-            return callback(index, pathMatch.groups ?? {}, ...args)
+          // V8 has a fast path for RegExp.test, so prefer it over exec.
+          if (parser.test(path)) {
+            return callback(index, parser.exec(path)!.groups ?? {}, ...args)
           }
         }
       )

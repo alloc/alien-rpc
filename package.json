@@ -39,9 +39,6 @@
   "pnpm": {
     "overrides": {
       "@sinclair/typebox": "$@sinclair/typebox"
-    },
-    "patchedDependencies": {
-      "@ts-morph/bootstrap": "patches/@ts-morph__bootstrap.patch"
     }
   }
 }

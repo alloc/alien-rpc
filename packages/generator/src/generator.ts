@@ -553,7 +553,7 @@ function watchDependencies(
   seen.add(sourceFile)
 
   // Use a private API to get the referenced modules.
-  const imports = (sourceFile as any).imports as ts.StringLiteral[]
+  const imports = ((sourceFile as any).imports ?? []) as ts.StringLiteral[]
 
   for (const specifier of imports) {
     // Note: We *could* watch failedLookupLocations, but the memory

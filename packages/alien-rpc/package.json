@@ -10,6 +10,10 @@
     "dist"
   ],
   "exports": {
+    "./client/formats/*": {
+      "types": "./dist/client/formats/*.d.ts",
+      "import": "./dist/client/formats/*.js"
+    },
     "./client": {
       "types": "./dist/client.d.ts",
       "import": "./dist/client.js"

@@ -1,19 +1,19 @@
 import { bodylessMethods } from '@alien-rpc/route'
-import { createProject, Project } from '@ts-morph/bootstrap'
-import { ts } from '@ts-morph/common'
+import { createProject, type Project } from '@ts-morph/bootstrap'
+import { FileUtils, injectTypeScriptModule, type ts } from '@ts-morph/common'
 import createResolver from 'esm-resolve'
-import { jumpgen, JumpgenFS } from 'jumpgen'
+import { jumpgen, type JumpgenFS } from 'jumpgen'
 import path from 'path'
 import { parsePathParams } from 'pathic'
 import { camel, guard, pascal, sift } from 'radashi'
-import { AnalyzedFile, analyzeFile } from './analyze-file.js'
-import { AnalyzedRoute } from './analyze-route.js'
+import { type AnalyzedFile, analyzeFile } from './analyze-file.js'
+import type { AnalyzedRoute } from './analyze-route.js'
 import { reportDiagnostics } from './diagnostics.js'
 import { typeConstraints } from './type-constraints.js'
-import { TypeScriptToTypeBox } from './typebox-codegen/typescript/generator.js'
+import * as TypeBoxCodegen from './typebox-codegen'
 import {
   createSupportingTypes,
-  SupportingTypes,
+  type SupportingTypes,
 } from './typescript/supporting-types.js'
 import { findTsConfigFiles } from './typescript/tsconfig.js'
 
@@ -62,6 +62,7 @@ export type Options = {
 }
 
 interface Store {
+  ts: TypeScriptModule
   project: Project
   types: SupportingTypes
   analyzedFiles: Map<ts.SourceFile, AnalyzedFile>
@@ -71,9 +72,16 @@ interface Store {
 
 type Event = { type: 'route'; route: AnalyzedRoute }
 
-export default (options: Options) =>
+export default (rawOptions: Options) =>
   jumpgen<Store, Event, void>('alien-rpc', async context => {
     const { fs, root, store, emit, changes } = context
+
+    const options = {
+      ...rawOptions,
+      outDir: path.resolve(root, rawOptions.outDir),
+      serverOutFile: rawOptions.serverOutFile ?? 'server/generated/api.ts',
+      clientOutFile: rawOptions.clientOutFile ?? 'client/generated/api.ts',
+    }
 
     const entryFilePaths = fs.scan(options.include, {
       cwd: root,
@@ -86,13 +94,7 @@ export default (options: Options) =>
       )
     }
 
-    options = { ...options }
-    options.outDir = path.resolve(root, options.outDir)
-
-    options.serverOutFile ??= 'server/generated/api.ts'
     options.serverOutFile = path.resolve(options.outDir, options.serverOutFile)
-
-    options.clientOutFile ??= 'client/generated/api.ts'
     options.clientOutFile = path.resolve(options.outDir, options.clientOutFile)
 
     if (store.project == null) {
@@ -100,6 +102,13 @@ export default (options: Options) =>
         root,
         options.tsConfigFile ?? 'tsconfig.json'
       )
+
+      // Find the "typescript" package installed in the project.
+      const compilerPath = import.meta.resolve('typescript', tsConfigFilePath)
+      store.ts = wrapTypeScriptModule(await import(compilerPath))
+
+      injectTypeScriptModule(store.ts as any)
+
       store.project = await createProject({
         tsConfigFilePath,
         skipAddingFilesFromTsConfig: true,
@@ -113,6 +122,7 @@ export default (options: Options) =>
         '@alien-rpc/client',
       ])
       store.types = createSupportingTypes(
+        store.ts,
         store.project,
         path.dirname(tsConfigFilePath),
         store.serviceModuleId
@@ -139,7 +149,9 @@ export default (options: Options) =>
       store.types.clear()
     }
 
-    const { project, types, analyzedFiles } = store
+    const { ts, project, types, analyzedFiles } = store
+
+    console.log(ts)
 
     project.resolveSourceFileDependencies()
 
@@ -148,8 +160,8 @@ export default (options: Options) =>
     const compilerOptions = program.getCompilerOptions()
     const moduleResolutionHost = project.getModuleResolutionHost()
 
-    reportDiagnostics(program, options.verbose, (specifier, importer) => {
-      watchMissingImport(
+    reportDiagnostics(ts, program, options.verbose, (specifier, importer) => {
+      ts.watchMissingImport(
         importer,
         specifier,
         compilerOptions,
@@ -165,7 +177,7 @@ export default (options: Options) =>
       .flatMap(sourceFile => {
         let metadata = analyzedFiles.get(sourceFile)
         if (!metadata) {
-          metadata = analyzeFile(sourceFile, typeChecker, types)
+          metadata = analyzeFile(ts, sourceFile, typeChecker, types)
           analyzedFiles.set(sourceFile, metadata)
 
           // Prepend the API version to all route pathnames.
@@ -179,14 +191,15 @@ export default (options: Options) =>
             emit({ type: 'route', route })
           }
 
-          if (context.isWatchMode)
-            watchDependencies(
+          if (context.isWatchMode) {
+            ts.watchDependencies(
               sourceFile,
               compilerOptions,
               moduleResolutionHost,
               project,
               fs
             )
+          }
         }
         for (const [symbol, type] of metadata.referencedTypes) {
           referencedTypes.set(symbol, type)
@@ -208,7 +221,12 @@ export default (options: Options) =>
 
     const tsconfigs = findTsConfigFiles(fs, project)
     const serverTsConfig = tsconfigs.find(tsconfig =>
-      tsconfig.paths.filePaths.includes(options.serverOutFile)
+      tsconfig.paths.filePaths.includes(
+        FileUtils.getStandardizedAbsolutePath(
+          project.fileSystem,
+          options.serverOutFile!
+        )
+      )
     )!
 
     for (const route of routes) {
@@ -217,10 +235,12 @@ export default (options: Options) =>
 
       if (
         route.resolvedPathParams &&
-        needsPathSchema(route.resolvedPathParams)
+        ts.needsPathSchema(route.resolvedPathParams)
       ) {
-        pathSchemaDecl = generateRuntimeValidator(
-          `type Path = ${route.resolvedPathParams}`
+        pathSchemaDecl = (
+          await ts.generateRuntimeValidator(
+            `type Path = ${route.resolvedPathParams}`
+          )
         ).replace(/\bType\.(Number|Array)\(/g, (match, type) => {
           switch (type) {
             case 'Number':
@@ -238,7 +258,7 @@ export default (options: Options) =>
         route.resolvedArguments[route.resolvedPathParams ? 1 : 0]
 
       if (dataArgument && dataArgument !== 'any') {
-        requestSchemaDecl = generateRuntimeValidator(
+        requestSchemaDecl = await ts.generateRuntimeValidator(
           `type Request = ${dataArgument}`
         )
 
@@ -260,7 +280,9 @@ export default (options: Options) =>
       const responseSchemaDecl =
         route.resolvedFormat === 'response'
           ? `Type.Any()`
-          : generateRuntimeValidator(`type Response = ${route.resolvedResult}`)
+          : await ts.generateRuntimeValidator(
+              `type Response = ${route.resolvedResult}`
+            )
 
       for (const match of (
         pathSchemaDecl +
@@ -315,8 +337,8 @@ export default (options: Options) =>
 
       const clientParamsAreOptional =
         !clientParamsExist ||
-        (arePropertiesOptional(resolvedPathParams) &&
-          arePropertiesOptional(resolvedRequestData))
+        (ts.arePropertiesOptional(resolvedPathParams) &&
+          ts.arePropertiesOptional(resolvedRequestData))
 
       const clientArgs: string[] = ['requestOptions?: RequestOptions']
       if (clientParamsExist) {
@@ -373,11 +395,7 @@ export default (options: Options) =>
 
     const serverTypeAliases =
       clientTypeAliases &&
-      TypeScriptToTypeBox.Generate(clientTypeAliases, {
-        useTypeBoxImport: false,
-        useEmitConstOnly: true,
-        typeTags: typeConstraints,
-      })
+      (await ts.generateServerTypeAliases(clientTypeAliases, typeConstraints))
 
     const writeServerDefinitions = (outFile: string) => {
       let imports = ''
@@ -438,38 +456,6 @@ export default (options: Options) =>
     writeClientDefinitions(options.clientOutFile)
   })
 
-function generateRuntimeValidator(code: string) {
-  const generatedCode = TypeScriptToTypeBox.Generate(code, {
-    useTypeBoxImport: false,
-    useEmitConstOnly: true,
-    typeTags: typeConstraints,
-  })
-
-  const sourceFile = ts.createSourceFile(
-    'validator.ts',
-    generatedCode,
-    ts.ScriptTarget.Latest,
-    true
-  )
-
-  const constStatement = sourceFile.statements.find(
-    (statement): statement is ts.VariableStatement =>
-      ts.isVariableStatement(statement) &&
-      statement.declarationList.declarations.length === 1 &&
-      statement.declarationList.declarations[0].initializer !== undefined
-  )
-
-  if (constStatement) {
-    const initializer =
-      constStatement.declarationList.declarations[0].initializer
-    if (initializer) {
-      return initializer.getText()
-    }
-  }
-
-  throw new Error('Failed to parse TypeBox validator')
-}
-
 function resolveImportPath(
   fromPath: string,
   toPath: string,
@@ -487,128 +473,194 @@ function resolveImportPath(
   return result
 }
 
-function arePropertiesOptional(objectLiteralType: string): boolean {
-  if (objectLiteralType === 'Record<string, never>') {
-    return true
+type TypeScriptModule = ReturnType<typeof wrapTypeScriptModule>
+
+function wrapTypeScriptModule(ts: typeof import('typescript')) {
+  function parseTypeLiteral(type: string) {
+    const sourceFile = ts.createSourceFile(
+      'temp.ts',
+      `type Temp = ${type}`,
+      ts.ScriptTarget.Latest
+    )
+    return (sourceFile.statements[0] as ts.TypeAliasDeclaration).type
   }
-  const typeNode = parseTypeLiteral(objectLiteralType)
-  if (ts.isTypeLiteralNode(typeNode)) {
-    return typeNode.members.every(member => {
-      if (ts.isPropertySignature(member)) {
-        return member.questionToken !== undefined
+
+  return {
+    ...ts,
+    arePropertiesOptional(objectLiteralType: string): boolean {
+      if (objectLiteralType === 'Record<string, never>') {
+        return true
+      }
+      const typeNode = parseTypeLiteral(objectLiteralType)
+      if (ts.isTypeLiteralNode(typeNode)) {
+        return typeNode.members.every(member => {
+          if (ts.isPropertySignature(member)) {
+            return member.questionToken !== undefined
+          }
+          return false
+        })
       }
       return false
-    })
-  }
-  return false
-}
-
-function parseTypeLiteral(type: string) {
-  const sourceFile = ts.createSourceFile(
-    'temp.ts',
-    `type Temp = ${type}`,
-    ts.ScriptTarget.Latest
-  )
-  return (sourceFile.statements[0] as ts.TypeAliasDeclaration).type
-}
-
-function watchMissingImport(
-  sourceFile: ts.SourceFile,
-  specifier: string,
-  compilerOptions: ts.CompilerOptions,
-  moduleResolutionHost: ts.ModuleResolutionHost,
-  fs: JumpgenFS
-) {
-  const { failedLookupLocations, affectingLocations } = ts.resolveModuleName(
-    specifier,
-    sourceFile.fileName,
-    compilerOptions,
-    moduleResolutionHost
-  ) as unknown as {
-    failedLookupLocations: string[]
-    affectingLocations?: string[]
-  }
-
-  const watchPaths = [
-    ...(failedLookupLocations ?? []),
-    ...(affectingLocations ?? []),
-  ]
-
-  if (watchPaths.length > 0) {
-    fs.watch(watchPaths, {
-      cause: sourceFile.fileName,
-    })
-  }
-}
-
-function watchDependencies(
-  sourceFile: ts.SourceFile,
-  compilerOptions: ts.CompilerOptions,
-  moduleResolutionHost: ts.ModuleResolutionHost,
-  project: Project,
-  fs: JumpgenFS,
-  seen = new Set<ts.SourceFile>()
-): Set<ts.SourceFile> {
-  if (seen.has(sourceFile)) return seen
-  seen.add(sourceFile)
-
-  // Use a private API to get the referenced modules.
-  const imports = ((sourceFile as any).imports ?? []) as ts.StringLiteral[]
-
-  for (const specifier of imports) {
-    // Note: We *could* watch failedLookupLocations, but the memory
-    // cost may not be worth it and I'm too lazy to check, so let's
-    // just do less to be safe.
-    const { resolvedModule, affectingLocations } = ts.resolveModuleName(
-      specifier.text,
-      sourceFile.fileName,
-      compilerOptions,
-      moduleResolutionHost
-    ) as {
-      resolvedModule?: ts.ResolvedModuleFull
-      failedLookupLocations: string[]
-      affectingLocations?: string[]
-    }
-
-    if (resolvedModule) {
-      const resolvedPath = resolvedModule.resolvedFileName
-
-      // There's no need to watch certain dependencies that won't influence
-      // the inferred type of a route.
-      if (/\/node_modules\/(@sinclair\/typebox)\//.test(resolvedPath)) {
-        return seen
+    },
+    needsPathSchema(type: string) {
+      const typeNode = parseTypeLiteral(type)
+      if (!ts.isTypeLiteralNode(typeNode)) {
+        throw new Error('Expected a type literal')
       }
-
-      fs.watch(resolvedPath, {
-        cause: sourceFile.fileName,
+      for (const member of typeNode.members) {
+        if (!ts.isPropertySignature(member)) {
+          throw new Error('Expected a property signature')
+        }
+        const memberType = member.type
+        if (!memberType || memberType.kind !== ts.SyntaxKind.StringKeyword) {
+          return true
+        }
+      }
+      return false
+    },
+    async generateRuntimeValidator(code: string) {
+      const generatedCode = TypeBoxCodegen.generateTypes(ts, code, {
+        emitConstOnly: true,
+        includeTypeBoxImport: false,
+        typeTags: typeConstraints,
       })
 
-      // An original path will exist if the import resolved to a symlink.
-      // In that case, originalPath is the symlink location.
-      const originalPath = (resolvedModule as any).originalPath
-      if (originalPath) {
-        fs.watch(originalPath, {
+      const sourceFile = ts.createSourceFile(
+        'validator.ts',
+        generatedCode,
+        ts.ScriptTarget.Latest,
+        true
+      )
+
+      const constStatement = sourceFile.statements.find(
+        (statement): statement is ts.VariableStatement =>
+          ts.isVariableStatement(statement) &&
+          statement.declarationList.declarations.length === 1 &&
+          statement.declarationList.declarations[0].initializer !== undefined
+      )
+
+      if (constStatement) {
+        const initializer =
+          constStatement.declarationList.declarations[0].initializer
+        if (initializer) {
+          return initializer.getText()
+        }
+      }
+
+      throw new Error('Failed to parse TypeBox validator')
+    },
+    async generateServerTypeAliases(
+      clientTypeAliases: string,
+      typeConstraints: string[]
+    ) {
+      return TypeBoxCodegen.generateTypes(ts, clientTypeAliases, {
+        emitConstOnly: true,
+        includeTypeBoxImport: false,
+        typeTags: typeConstraints,
+      })
+    },
+    watchMissingImport(
+      sourceFile: ts.SourceFile,
+      specifier: string,
+      compilerOptions: ts.CompilerOptions,
+      moduleResolutionHost: ts.ModuleResolutionHost,
+      fs: JumpgenFS
+    ) {
+      const { failedLookupLocations, affectingLocations } =
+        ts.resolveModuleName(
+          specifier,
+          sourceFile.fileName,
+          compilerOptions,
+          moduleResolutionHost
+        ) as unknown as {
+          failedLookupLocations: string[]
+          affectingLocations?: string[]
+        }
+
+      const watchPaths = [
+        ...(failedLookupLocations ?? []),
+        ...(affectingLocations ?? []),
+      ]
+
+      if (watchPaths.length > 0) {
+        fs.watch(watchPaths, {
           cause: sourceFile.fileName,
         })
       }
+    },
+    watchDependencies(
+      sourceFile: ts.SourceFile,
+      compilerOptions: ts.CompilerOptions,
+      moduleResolutionHost: ts.ModuleResolutionHost,
+      project: Project,
+      fs: JumpgenFS,
+      seen = new Set<ts.SourceFile>()
+    ): Set<ts.SourceFile> {
+      if (seen.has(sourceFile)) {
+        return seen
+      }
+      seen.add(sourceFile)
 
-      watchDependencies(
-        project.getSourceFileOrThrow(resolvedPath),
-        compilerOptions,
-        moduleResolutionHost,
-        project,
-        fs,
-        seen
-      )
-    }
+      // Use a private API to get the referenced modules.
+      const imports = ((sourceFile as any).imports ?? []) as ts.StringLiteral[]
 
-    if (affectingLocations)
-      fs.watch(affectingLocations, {
-        cause: sourceFile.fileName,
-      })
+      for (const specifier of imports) {
+        // Note: We *could* watch failedLookupLocations, but the memory
+        // cost may not be worth it and I'm too lazy to check, so let's
+        // just do less to be safe.
+        const { resolvedModule, affectingLocations } = ts.resolveModuleName(
+          specifier.text,
+          sourceFile.fileName,
+          compilerOptions,
+          moduleResolutionHost
+        ) as {
+          resolvedModule?: ts.ResolvedModuleFull
+          failedLookupLocations: string[]
+          affectingLocations?: string[]
+        }
+
+        if (resolvedModule) {
+          const resolvedPath = resolvedModule.resolvedFileName
+
+          // There's no need to watch certain dependencies that won't influence
+          // the inferred type of a route.
+          if (/\/node_modules\/(@sinclair\/typebox)\//.test(resolvedPath)) {
+            return seen
+          }
+
+          fs.watch(resolvedPath, {
+            cause: sourceFile.fileName,
+          })
+
+          // An original path will exist if the import resolved to a symlink.
+          // In that case, originalPath is the symlink location.
+          const originalPath = (resolvedModule as any).originalPath
+          if (originalPath) {
+            fs.watch(originalPath, {
+              cause: sourceFile.fileName,
+            })
+          }
+
+          this.watchDependencies(
+            project.getSourceFileOrThrow(resolvedPath),
+            compilerOptions,
+            moduleResolutionHost,
+            project,
+            fs,
+            seen
+          )
+        }
+
+        if (affectingLocations) {
+          fs.watch(affectingLocations, {
+            cause: sourceFile.fileName,
+          })
+        }
+      }
+
+      return seen
+    },
   }
-
-  return seen
 }
 
 function stripTypeConstraints(type: string) {
@@ -616,23 +668,6 @@ function stripTypeConstraints(type: string) {
     new RegExp(` & (${typeConstraints.join('|')})(?:\<.+?\>)?`, 'g'),
     ''
   )
-}
-
-function needsPathSchema(type: string) {
-  const typeNode = parseTypeLiteral(type)
-  if (!ts.isTypeLiteralNode(typeNode)) {
-    throw new Error('Expected a type literal')
-  }
-  for (const member of typeNode.members) {
-    if (!ts.isPropertySignature(member)) {
-      throw new Error('Expected a property signature')
-    }
-    const memberType = member.type
-    if (!memberType || memberType.kind !== ts.SyntaxKind.StringKeyword) {
-      return true
-    }
-  }
-  return false
 }
 
 function resolveModule(importer: string, candidateIds: string[]) {

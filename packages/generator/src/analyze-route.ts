@@ -1,5 +1,5 @@
 import type { RouteMethod, RouteResultFormat } from '@alien-rpc/route'
-import { ts } from '@ts-morph/common'
+import type { ts } from '@ts-morph/common'
 import { parsePathParams } from 'pathic'
 import { debug } from './debug.js'
 import { printTypeLiteralToString } from './typescript/print-type-literal.js'
@@ -25,6 +25,7 @@ export type AnalyzedRoute = {
 }
 
 export function analyzeRoute(
+  ts: typeof import('typescript'),
   fileName: string,
   routeName: string,
   declaration: ts.VariableDeclaration,
@@ -188,6 +189,7 @@ export function analyzeRoute(
   )
 
   const resolvedFormat = resolveResultFormat(
+    ts,
     handlerResultType,
     typeChecker,
     types
@@ -196,7 +198,7 @@ export function analyzeRoute(
   return {
     fileName,
     exportedName: routeName,
-    description: extractDescription(declaration),
+    description: extractDescription(ts, declaration),
     resolvedPathParams,
     resolvedFormat,
     resolvedMethod: parsedMethod,
@@ -206,7 +208,10 @@ export function analyzeRoute(
   }
 }
 
-function extractDescription(declaration: ts.VariableDeclaration) {
+function extractDescription(
+  ts: typeof import('typescript'),
+  declaration: ts.VariableDeclaration
+) {
   const docs = ts.getJSDocCommentsAndTags(declaration)
   if (docs.length > 0) {
     return docs
@@ -276,6 +281,7 @@ function hasTypeArguments(type: ts.Type): type is ts.Type & TypeArguments {
 }
 
 function resolveResultFormat(
+  ts: typeof import('typescript'),
   type: ts.Type,
   typeChecker: ts.TypeChecker,
   types: SupportingTypes

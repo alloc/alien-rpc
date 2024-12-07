@@ -1,4 +1,4 @@
-import { Project, ts } from '@ts-morph/bootstrap'
+import type { Project, ts } from '@ts-morph/bootstrap'
 import path from 'node:path'
 
 export type SupportingTypes = ReturnType<typeof createSupportingTypes>
@@ -9,9 +9,10 @@ export type SupportingTypes = ReturnType<typeof createSupportingTypes>
  * unsupported types.
  */
 export function createSupportingTypes(
+  ts: typeof import('typescript'),
   project: Project,
   rootDir: string,
-  serviceModuleId: string
+  serviceModuleId: string,
 ) {
   const typeDeclarations = {
     AnyNonNull: '{}',
@@ -32,7 +33,7 @@ export function createSupportingTypes(
       // something is misconfigured on the user's end.
       if (typeChecker.isTypeAssignableTo(types.AnyNonNull(typeChecker), type)) {
         throw new Error(
-          `Could not resolve Response type. Make sure @types/node is installed in your project. If already installed, it may need to be re-installed.`
+          `Could not resolve Response type. Make sure @types/node is installed in your project. If already installed, it may need to be re-installed.`,
         )
       }
     },
@@ -41,7 +42,7 @@ export function createSupportingTypes(
       // something is misconfigured on the user's end.
       if (typeChecker.isTypeAssignableTo(types.AnyNonNull(typeChecker), type)) {
         throw new Error(
-          `Could not resolve RouteIterator type. Make sure your tsconfig has "es2018" or higher in its \`lib\` array.`
+          `Could not resolve RouteIterator type. Make sure your tsconfig has "es2018" or higher in its \`lib\` array.`,
         )
       }
     },
@@ -51,7 +52,7 @@ export function createSupportingTypes(
     path.join(rootDir, '.alien-rpc/support.ts'),
     Object.entries(typeDeclarations)
       .map(([id, aliasedType]) => `export type ${id} = ${aliasedType}`)
-      .join('\n')
+      .join('\n'),
   )
 
   type TypeGetter = (typeChecker: ts.TypeChecker) => ts.Type
@@ -75,7 +76,7 @@ export function createSupportingTypes(
         const typeNode = syntaxList.getChildAt(i)
         if (!ts.isTypeAliasDeclaration(typeNode)) {
           throw new Error(
-            `Expected "${typeName}" to be TypeAliasDeclaration, got ${ts.SyntaxKind[typeNode.kind]}`
+            `Expected "${typeName}" to be TypeAliasDeclaration, got ${ts.SyntaxKind[typeNode.kind]}`,
           )
         }
 
@@ -89,7 +90,7 @@ export function createSupportingTypes(
       }
 
       return [typeName, getType] as const
-    })
+    }),
   ) as any
 
   types.clear = () => {

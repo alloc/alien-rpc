@@ -1,4 +1,4 @@
-import { ts } from '@ts-morph/common'
+import type { ts } from '@ts-morph/common'
 import { AnalyzedRoute, analyzeRoute } from './analyze-route.js'
 import { debug } from './debug.js'
 import { SupportingTypes } from './typescript/supporting-types.js'
@@ -6,6 +6,7 @@ import { SupportingTypes } from './typescript/supporting-types.js'
 export type AnalyzedFile = ReturnType<typeof analyzeFile>
 
 export function analyzeFile(
+  ts: typeof import('typescript'),
   sourceFile: ts.SourceFile,
   typeChecker: ts.TypeChecker,
   types: SupportingTypes
@@ -38,6 +39,7 @@ export function analyzeFile(
     const routeName = symbol.getName()
     try {
       const route = analyzeRoute(
+        ts,
         sourceFile.fileName,
         routeName,
         declaration,

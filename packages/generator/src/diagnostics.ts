@@ -1,4 +1,4 @@
-import { ts } from '@ts-morph/common'
+import type { ts } from '@ts-morph/common'
 
 const reportDiagnostic = process.env.TEST
   ? (message: string): void => {
@@ -9,6 +9,7 @@ const reportDiagnostic = process.env.TEST
   : console.warn
 
 export function reportDiagnostics(
+  ts: typeof import('typescript'),
   program: ts.Program,
   verbose: boolean | undefined,
   onModuleNotFound: (specifier: string, importer: ts.SourceFile) => void

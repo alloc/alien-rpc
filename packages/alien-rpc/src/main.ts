@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import cac from 'cac'
 import path from 'node:path'
+import { isArray } from 'radashi'
 import { log } from './common/log.js'
 import { registerConsoleShortcuts, Shortcut } from './common/stdin.js'
 
@@ -95,6 +96,12 @@ app
               event.route.resolvedMethod,
               event.route.resolvedPathname
             )
+          } else if (event.type === 'info') {
+            if (isArray(event.message)) {
+              log(...event.message)
+            } else {
+              log(event.message)
+            }
           }
         })
         .on('write', file => {

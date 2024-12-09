@@ -70,7 +70,9 @@ interface Store {
   clientModuleId: string
 }
 
-type Event = { type: 'route'; route: AnalyzedRoute }
+type Event =
+  | { type: 'route'; route: AnalyzedRoute }
+  | { type: 'info'; message: string | [string, ...any[]] }
 
 export default (rawOptions: Options) =>
   jumpgen<Store, Event, void>('alien-rpc', async context => {

@@ -11,7 +11,7 @@ import { reportDiagnostics } from './diagnostics.js'
 import type { Event, Options, Store } from './generator-types.js'
 import { typeConstraints } from './type-constraints.js'
 import { createSupportingTypes } from './typescript/supporting-types.js'
-import { findTsConfigFiles } from './typescript/tsconfig.js'
+import { createTsConfigCache } from './typescript/tsconfig.js'
 import { wrapTypeScriptModule } from './typescript/wrap.js'
 
 export default (rawOptions: Options) =>
@@ -51,7 +51,7 @@ export default (rawOptions: Options) =>
       ])
 
       const ts = await import(compilerPath)
-      store.ts = wrapTypeScriptModule(ts, fs, store, context.isWatchMode)
+      store.ts = wrapTypeScriptModule(ts, fs, store, !!context.watcher)
       injectTypeScriptModule(ts)
 
       emit({
@@ -80,11 +80,12 @@ export default (rawOptions: Options) =>
         store.serviceModuleId
       )
 
+      store.tsConfigCache = createTsConfigCache(fs, store.project)
+
       store.deletedFiles = new Set()
       store.analyzedFiles = new Map()
       store.includedFiles = new Set()
       store.directories = new Map()
-      store.tsConfigFiles = new Map()
     } else {
       store.types.clear()
       store.deletedFiles.clear()
@@ -102,27 +103,35 @@ export default (rawOptions: Options) =>
             fs.read(affectedFilePath, 'utf8')
           )
         } else {
+          const tsConfig = store.tsConfigCache.get(affectedFilePath)
+          if (tsConfig) {
+            store.tsConfigCache.invalidate(affectedFilePath)
+            continue
+          }
+
           const affectedSourceFile =
-            store.project.getSourceFileOrThrow(affectedFilePath)
+            store.project.getSourceFile(affectedFilePath)
 
-          store.analyzedFiles.delete(affectedSourceFile)
+          if (affectedSourceFile) {
+            store.analyzedFiles.delete(affectedSourceFile)
 
-          if (change.event === 'unlink') {
-            const directoryPath = path.dirname(affectedSourceFile.fileName)
-            const directory = store.directories.get(directoryPath)
-            if (
-              directory?.files.delete(affectedSourceFile) &&
-              directory.files.size === 0
-            ) {
-              store.directories.delete(directoryPath)
+            if (change.event === 'unlink') {
+              const directoryPath = path.dirname(affectedSourceFile.fileName)
+              const directory = store.directories.get(directoryPath)
+              if (
+                directory?.files.delete(affectedSourceFile) &&
+                directory.files.size === 0
+              ) {
+                store.directories.delete(directoryPath)
+              }
+              store.deletedFiles.add(affectedFilePath)
+              store.project.removeSourceFile(affectedFilePath)
+            } else {
+              store.project.updateSourceFile(
+                affectedFilePath,
+                fs.read(affectedFilePath, 'utf8')
+              )
             }
-            store.deletedFiles.add(affectedFilePath)
-            store.project.removeSourceFile(affectedFilePath)
-          } else {
-            store.project.updateSourceFile(
-              affectedFilePath,
-              fs.read(affectedFilePath, 'utf8')
-            )
           }
         }
       }
@@ -188,7 +197,7 @@ export default (rawOptions: Options) =>
       verbose: options.verbose,
       ignoreFile: file => !includedFiles.has(file),
       onModuleNotFound: (specifier, importer) =>
-        context.isWatchMode &&
+        context.watcher &&
         ts.watchMissingImport(
           importer,
           specifier,
@@ -205,13 +214,11 @@ export default (rawOptions: Options) =>
     const serverImports = new Set<string>()
     const serverCheckedStringFormats = new Set<string>()
 
-    const tsconfigs = findTsConfigFiles(fs, project)
-    const serverTsConfig = tsconfigs.find(tsconfig =>
-      tsconfig.paths.filePaths.includes(
-        FileUtils.getStandardizedAbsolutePath(
-          project.fileSystem,
-          options.serverOutFile!
-        )
+
+    const serverTsConfig = store.tsConfigCache.findUp(
+      FileUtils.getStandardizedAbsolutePath(
+        project.fileSystem,
+        path.dirname(options.serverOutFile)
       )
     )!
 

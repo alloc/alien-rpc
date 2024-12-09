@@ -1,8 +1,9 @@
 import { Project } from '@ts-morph/bootstrap'
-import type { ts } from '@ts-morph/common'
+import { FileUtils, type ts } from '@ts-morph/common'
 import { JumpgenFS } from 'jumpgen'
 import path from 'node:path'
 import {
+  Directory,
   ResolvedModuleWithFailedLookupLocations,
   Store,
 } from '../generator-types.js'
@@ -60,48 +61,15 @@ export function wrapTypeScriptModule(
       resolvedModule: ts.ResolvedModuleFull | undefined,
       affectingLocations: string[] | undefined,
       sourceFile: ts.SourceFile
-    ) => void
+    ) => void,
+    onDirectory: (directory: Directory) => void
   ): void {
-    const directoryPath = path.dirname(sourceFile.fileName)
+    const directoryPath = FileUtils.getStandardizedAbsolutePath(
+      project.fileSystem,
+      path.dirname(sourceFile.fileName)
+    )
 
-    let directory = store.directories.get(directoryPath)
-    if (!directory) {
-      const tsConfigFilePath = fs.findUp('tsconfig.json', {
-        cwd: directoryPath,
-      })
-
-      store.directories.set(
-        directoryPath,
-        (directory = {
-          files: new Set(),
-          resolutionCache: new Map(),
-          seenSpecifiers: new Set(),
-          tsConfigFilePath,
-          get tsConfig() {
-            if (!tsConfigFilePath) {
-              return null
-            }
-            let tsConfig = store.tsConfigFiles.get(tsConfigFilePath)
-            if (!tsConfig) {
-              if (isWatchMode) {
-                fs.watch(tsConfigFilePath)
-              }
-              tsConfig = project.resolveTsConfig(tsConfigFilePath)
-              store.tsConfigFiles.set(tsConfigFilePath, tsConfig)
-            }
-            return tsConfig
-          },
-          get compilerOptions() {
-            return this.tsConfig?.compilerOptions ?? compilerOptions
-          },
-          get filePaths() {
-            return this.tsConfig?.paths.filePaths ?? []
-          },
-        })
-      )
-    }
-
-    directory.files.add(sourceFile)
+    let directory: Directory | undefined
 
     // Use a private API to get the referenced modules.
     const imports = ((sourceFile as any).imports ?? []) as ts.StringLiteral[]
@@ -111,10 +79,25 @@ export function wrapTypeScriptModule(
         continue
       }
 
+      if (!directory) {
+        directory = store.directories.get(directoryPath)
+        if (!directory)
+          store.directories.set(
+            directoryPath,
+            (directory = {
+              files: new Set(),
+              resolutionCache: new Map(),
+              seenSpecifiers: new Set(),
+              tsConfig: store.tsConfigCache.findUp(directoryPath),
+            })
+          )
+      }
+
       let resolution = directory.resolutionCache.get(specifier.text)
 
       if (!directory.seenSpecifiers.has(specifier.text)) {
         directory.seenSpecifiers.add(specifier.text)
+
         if (resolution) {
           const resolvedFileName = resolution.resolvedModule?.resolvedFileName
 
@@ -134,7 +117,7 @@ export function wrapTypeScriptModule(
         resolution = ts.resolveModuleName(
           specifier.text,
           sourceFile.fileName,
-          directory.compilerOptions,
+          directory.tsConfig?.compilerOptions ?? compilerOptions,
           moduleResolutionHost
         ) as ResolvedModuleWithFailedLookupLocations
 
@@ -149,6 +132,12 @@ export function wrapTypeScriptModule(
         resolution.affectingLocations,
         sourceFile
       )
+    }
+
+    // The directory won't exist if no imports needed resolution.
+    if (directory) {
+      directory.files.add(sourceFile)
+      onDirectory(directory)
     }
   }
 
@@ -207,6 +196,15 @@ export function wrapTypeScriptModule(
             descend(
               project.addSourceFileAtPathSync(resolvedModule.resolvedFileName)
             )
+          }
+        },
+        directory => {
+          // If a directory's tsconfig was used to resolve an import, watch
+          // it and invalidate the rootSourceFile if it changes.
+          if (isWatchMode && directory.tsConfig) {
+            fs.watch(directory.tsConfig.fileName, {
+              cause: rootSourceFile.fileName,
+            })
           }
         }
       )

@@ -1,8 +1,12 @@
 import type { Project } from '@ts-morph/bootstrap'
-import type { StandardizedFilePath, ts } from '@ts-morph/common'
+import type { ts } from '@ts-morph/common'
 import type { AnalyzedFile } from './analyze-file.js'
 import type { AnalyzedRoute } from './analyze-route.js'
 import type { SupportingTypes } from './typescript/supporting-types.js'
+import type {
+  TsConfigCache,
+  TsConfigResolution,
+} from './typescript/tsconfig.js'
 import type { TypeScriptWrap } from './typescript/wrap.js'
 
 export type Options = {
@@ -51,6 +55,7 @@ export type Options = {
 
 export interface Store {
   tsConfigFilePath: string
+  tsConfigCache: TsConfigCache
   ts: TypeScriptWrap
   project: Project
   types: SupportingTypes
@@ -87,19 +92,6 @@ export interface Store {
    * The second key is the import specifier.
    */
   directories: Map<string, Directory>
-  /**
-   * A cache of `tsconfig.json` file paths to their compiler options.
-   */
-  tsConfigFiles: Map<string, TsConfigResolution>
-}
-
-export interface TsConfigResolution {
-  readonly compilerOptions: ts.CompilerOptions
-  readonly paths: {
-    filePaths: StandardizedFilePath[]
-    directoryPaths: StandardizedFilePath[]
-  }
-  readonly errors: ts.Diagnostic[]
 }
 
 export interface Directory {
@@ -115,10 +107,7 @@ export interface Directory {
    * once per run.
    */
   seenSpecifiers: Set<string>
-  tsConfigFilePath: string | null
-  get tsConfig(): TsConfigResolution | null
-  get compilerOptions(): ts.CompilerOptions
-  get filePaths(): StandardizedFilePath[]
+  tsConfig: TsConfigResolution | null
 }
 
 export interface ResolvedModuleWithFailedLookupLocations {

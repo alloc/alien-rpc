@@ -1,4 +1,5 @@
 import type { ts } from '@ts-morph/common'
+import { CompilerAPI } from './typescript/wrap.js'
 
 const reportDiagnostic = process.env.TEST
   ? (message: string): void => {
@@ -9,10 +10,17 @@ const reportDiagnostic = process.env.TEST
   : console.warn
 
 export function reportDiagnostics(
-  ts: typeof import('typescript'),
+  ts: CompilerAPI,
   program: ts.Program,
-  verbose: boolean | undefined,
-  onModuleNotFound: (specifier: string, importer: ts.SourceFile) => void
+  {
+    verbose,
+    ignoreFile,
+    onModuleNotFound,
+  }: {
+    verbose: boolean | undefined
+    ignoreFile: (file: ts.SourceFile) => boolean
+    onModuleNotFound: (specifier: string, importer: ts.SourceFile) => void
+  }
 ) {
   program.getGlobalDiagnostics().forEach(diagnostic => {
     reportDiagnostic(
@@ -34,6 +42,9 @@ export function reportDiagnostics(
       continue
     }
     if (!verbose && sourceFile.fileName.includes('node_modules')) {
+      continue
+    }
+    if (ignoreFile(sourceFile)) {
       continue
     }
     program.getSemanticDiagnostics(sourceFile).forEach(diagnostic => {

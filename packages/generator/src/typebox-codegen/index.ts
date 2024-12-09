@@ -1,5 +1,5 @@
+import type { ts } from '@ts-morph/common'
 import { camel } from 'radashi'
-import type ts from 'typescript'
 
 export type { Options as TypeScriptToTypeBoxOptions }
 
@@ -40,7 +40,7 @@ interface Options {
 }
 
 export function generateTypes(
-  ts: typeof import('typescript'),
+  ts: CompilerAPI,
   code: string,
   options: Options
 ): string {
@@ -62,7 +62,7 @@ export function generateTypes(
 
 /** Processes a TypeScript source file */
 function processSourceFile(
-  ts: typeof import('typescript'),
+  ts: CompilerAPI,
   sourceFile: ts.SourceFile,
   options: Required<Options>
 ): string {

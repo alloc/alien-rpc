@@ -2,11 +2,12 @@ import type { ts } from '@ts-morph/common'
 import { AnalyzedRoute, analyzeRoute } from './analyze-route.js'
 import { debug } from './debug.js'
 import { SupportingTypes } from './typescript/supporting-types.js'
+import { CompilerAPI } from './typescript/wrap.js'
 
 export type AnalyzedFile = ReturnType<typeof analyzeFile>
 
 export function analyzeFile(
-  ts: typeof import('typescript'),
+  ts: CompilerAPI,
   sourceFile: ts.SourceFile,
   typeChecker: ts.TypeChecker,
   types: SupportingTypes

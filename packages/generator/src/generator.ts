@@ -1,78 +1,18 @@
 import { bodylessMethods } from '@alien-rpc/route'
-import { createProject, type Project } from '@ts-morph/bootstrap'
+import { createProject } from '@ts-morph/bootstrap'
 import { FileUtils, injectTypeScriptModule, type ts } from '@ts-morph/common'
 import createResolver from 'esm-resolve'
-import { jumpgen, type JumpgenFS } from 'jumpgen'
+import { FileChange, jumpgen } from 'jumpgen'
 import path from 'path'
 import { parsePathParams } from 'pathic'
 import { camel, guard, pascal, sift } from 'radashi'
-import { type AnalyzedFile, analyzeFile } from './analyze-file.js'
-import type { AnalyzedRoute } from './analyze-route.js'
+import { analyzeFile } from './analyze-file.js'
 import { reportDiagnostics } from './diagnostics.js'
+import type { Event, Options, Store } from './generator-types.js'
 import { typeConstraints } from './type-constraints.js'
-import * as TypeBoxCodegen from './typebox-codegen'
-import {
-  createSupportingTypes,
-  type SupportingTypes,
-} from './typescript/supporting-types.js'
+import { createSupportingTypes } from './typescript/supporting-types.js'
 import { findTsConfigFiles } from './typescript/tsconfig.js'
-
-export type Options = {
-  /**
-   * Paths to modules that export route definitions. Glob patterns are
-   * allowed. Negated glob patterns (e.g. `!foo`) are also supported.
-   */
-  include: string | string[]
-  /**
-   * Path to the `tsconfig.json` file. Relative to the root directory.
-   *
-   * @default "tsconfig.json"
-   */
-  tsConfigFile?: string
-  /**
-   * The directory to output the generated files.
-   */
-  outDir: string
-  /**
-   * @default 'server/generated/api.ts'
-   */
-  serverOutFile?: string
-  /**
-   * @default 'client/generated/api.ts'
-   */
-  clientOutFile?: string
-  /**
-   * Your API's current version. There is no convention for what this
-   * should be, but using the release date (e.g. `2024-10-31`) or a
-   * semantic major version (e.g. `v1` or `v2`) are popular choices. Note
-   * that its value is prefixed to every route pathname, so `/foo` becomes
-   * `/v1/foo`.
-   *
-   * If not defined, the API won't be versioned, which means breaking
-   * changes to your API could break active sessions in your client
-   * application.
-   */
-  versionPrefix?: string
-  /**
-   * When true, diagnostics for node_modules are printed to the console.
-   *
-   * @default false
-   */
-  verbose?: boolean
-}
-
-interface Store {
-  ts: TypeScriptModule
-  project: Project
-  types: SupportingTypes
-  analyzedFiles: Map<ts.SourceFile, AnalyzedFile>
-  serviceModuleId: string
-  clientModuleId: string
-}
-
-type Event =
-  | { type: 'route'; route: AnalyzedRoute }
-  | { type: 'info'; message: string | [string, ...any[]] }
+import { wrapTypeScriptModule } from './typescript/wrap.js'
 
 export default (rawOptions: Options) =>
   jumpgen<Store, Event, void>('alien-rpc', async context => {
@@ -83,7 +23,7 @@ export default (rawOptions: Options) =>
       outDir: path.resolve(root, rawOptions.outDir),
       serverOutFile: rawOptions.serverOutFile ?? 'server/generated/api.ts',
       clientOutFile: rawOptions.clientOutFile ?? 'client/generated/api.ts',
-    }
+    } satisfies Options
 
     const entryFilePaths = fs.scan(options.include, {
       cwd: root,
@@ -99,61 +39,96 @@ export default (rawOptions: Options) =>
     options.serverOutFile = path.resolve(options.outDir, options.serverOutFile)
     options.clientOutFile = path.resolve(options.outDir, options.clientOutFile)
 
-    if (store.project == null) {
-      const tsConfigFilePath = path.resolve(
+    if (isProjectInvalidated(store, changes)) {
+      const tsConfigFilePath = (store.tsConfigFilePath ??= path.resolve(
         root,
         options.tsConfigFile ?? 'tsconfig.json'
-      )
+      ))
 
       // Find the "typescript" package installed in the project.
-      const compilerPath = import.meta.resolve('typescript', tsConfigFilePath)
-      store.ts = wrapTypeScriptModule(await import(compilerPath))
+      const compilerPath = resolveModule('path', tsConfigFilePath, [
+        'typescript',
+      ])
 
-      injectTypeScriptModule(store.ts as any)
+      const ts = await import(compilerPath)
+      store.ts = wrapTypeScriptModule(ts, fs, store, context.isWatchMode)
+      injectTypeScriptModule(ts)
+
+      emit({
+        type: 'info',
+        message: ['Loaded typescript@%s from', ts.version, compilerPath],
+      })
 
       store.project = await createProject({
         tsConfigFilePath,
-        skipAddingFilesFromTsConfig: true,
+        skipFileDependencyResolution: true,
       })
-      store.serviceModuleId = resolveModule(options.serverOutFile, [
+
+      store.serviceModuleId = resolveModule('id', options.serverOutFile, [
         'alien-rpc/service',
         '@alien-rpc/service',
       ])
-      store.clientModuleId = resolveModule(options.clientOutFile, [
+      store.clientModuleId = resolveModule('id', options.clientOutFile, [
         'alien-rpc/client',
         '@alien-rpc/client',
       ])
+
       store.types = createSupportingTypes(
         store.ts,
         store.project,
         path.dirname(tsConfigFilePath),
         store.serviceModuleId
       )
-      for (const filePath of entryFilePaths) {
-        store.project.createSourceFile(filePath, fs.read(filePath, 'utf8'))
-      }
-      store.analyzedFiles = new Map()
-    } else {
-      for (let { file, event } of changes) {
-        file = path.join(root, file)
 
-        if (event === 'add') {
-          store.project.createSourceFile(file, fs.read(file, 'utf8'))
+      store.deletedFiles = new Set()
+      store.analyzedFiles = new Map()
+      store.includedFiles = new Set()
+      store.directories = new Map()
+      store.tsConfigFiles = new Map()
+    } else {
+      store.types.clear()
+      store.deletedFiles.clear()
+      store.includedFiles.clear()
+      store.directories.forEach(directory => {
+        directory.seenSpecifiers.clear()
+      })
+
+      for (const change of changes) {
+        const affectedFilePath = path.join(root, change.file)
+
+        if (change.event === 'add') {
+          store.project.createSourceFile(
+            affectedFilePath,
+            fs.read(affectedFilePath, 'utf8')
+          )
         } else {
-          store.analyzedFiles.delete(store.project.getSourceFileOrThrow(file))
-          if (event === 'unlink') {
-            store.project.removeSourceFile(file)
+          const affectedSourceFile =
+            store.project.getSourceFileOrThrow(affectedFilePath)
+
+          store.analyzedFiles.delete(affectedSourceFile)
+
+          if (change.event === 'unlink') {
+            const directoryPath = path.dirname(affectedSourceFile.fileName)
+            const directory = store.directories.get(directoryPath)
+            if (
+              directory?.files.delete(affectedSourceFile) &&
+              directory.files.size === 0
+            ) {
+              store.directories.delete(directoryPath)
+            }
+            store.deletedFiles.add(affectedFilePath)
+            store.project.removeSourceFile(affectedFilePath)
           } else {
-            store.project.updateSourceFile(file, fs.read(file, 'utf8'))
+            store.project.updateSourceFile(
+              affectedFilePath,
+              fs.read(affectedFilePath, 'utf8')
+            )
           }
         }
       }
-      store.types.clear()
     }
 
-    const { ts, project, types, analyzedFiles } = store
-
-    console.log(ts)
+    const { ts, project, types, analyzedFiles, includedFiles } = store
 
     project.resolveSourceFileDependencies()
 
@@ -161,18 +136,8 @@ export default (rawOptions: Options) =>
     const typeChecker = program.getTypeChecker()
     const compilerOptions = program.getCompilerOptions()
     const moduleResolutionHost = project.getModuleResolutionHost()
-
-    reportDiagnostics(ts, program, options.verbose, (specifier, importer) => {
-      ts.watchMissingImport(
-        importer,
-        specifier,
-        compilerOptions,
-        moduleResolutionHost,
-        fs
-      )
-    })
-
     const referencedTypes = new Map<ts.Symbol, string>()
+
     const routes = project
       .getSourceFiles()
       .filter(sourceFile => entryFilePaths.includes(sourceFile.fileName))
@@ -192,26 +157,45 @@ export default (rawOptions: Options) =>
           for (const route of metadata.routes) {
             emit({ type: 'route', route })
           }
-
-          if (context.isWatchMode) {
-            ts.watchDependencies(
-              sourceFile,
-              compilerOptions,
-              moduleResolutionHost,
-              project,
-              fs
-            )
-          }
         }
+        ts.collectDependencies(
+          sourceFile,
+          compilerOptions,
+          moduleResolutionHost,
+          project
+        )
         for (const [symbol, type] of metadata.referencedTypes) {
           referencedTypes.set(symbol, type)
         }
         return metadata.routes
       })
 
+    // After we've traversed the module graph, we can clean up the
+    // resolution cache.
+    store.directories.forEach(directory => {
+      for (const specifier of directory.resolutionCache.keys()) {
+        if (!directory.seenSpecifiers.has(specifier)) {
+          directory.resolutionCache.delete(specifier)
+        }
+      }
+    })
+
     if (!routes.length) {
       throw new Error('No routes were exported by the included files')
     }
+
+    reportDiagnostics(ts, program, {
+      verbose: options.verbose,
+      ignoreFile: file => !includedFiles.has(file),
+      onModuleNotFound: (specifier, importer) =>
+        context.isWatchMode &&
+        ts.watchMissingImport(
+          importer,
+          specifier,
+          compilerOptions,
+          moduleResolutionHost
+        ),
+    })
 
     const clientDefinitions: string[] = []
     const clientTypeImports = new Set<string>(['RequestOptions', 'Route'])
@@ -458,6 +442,13 @@ export default (rawOptions: Options) =>
     writeClientDefinitions(options.clientOutFile)
   })
 
+function isProjectInvalidated(store: Store, changes: FileChange[]) {
+  return (
+    !store.tsConfigFilePath ||
+    changes.some(change => change.file === store.tsConfigFilePath)
+  )
+}
+
 function resolveImportPath(
   fromPath: string,
   toPath: string,
@@ -475,196 +466,6 @@ function resolveImportPath(
   return result
 }
 
-type TypeScriptModule = ReturnType<typeof wrapTypeScriptModule>
-
-function wrapTypeScriptModule(ts: typeof import('typescript')) {
-  function parseTypeLiteral(type: string) {
-    const sourceFile = ts.createSourceFile(
-      'temp.ts',
-      `type Temp = ${type}`,
-      ts.ScriptTarget.Latest
-    )
-    return (sourceFile.statements[0] as ts.TypeAliasDeclaration).type
-  }
-
-  return {
-    ...ts,
-    arePropertiesOptional(objectLiteralType: string): boolean {
-      if (objectLiteralType === 'Record<string, never>') {
-        return true
-      }
-      const typeNode = parseTypeLiteral(objectLiteralType)
-      if (ts.isTypeLiteralNode(typeNode)) {
-        return typeNode.members.every(member => {
-          if (ts.isPropertySignature(member)) {
-            return member.questionToken !== undefined
-          }
-          return false
-        })
-      }
-      return false
-    },
-    needsPathSchema(type: string) {
-      const typeNode = parseTypeLiteral(type)
-      if (!ts.isTypeLiteralNode(typeNode)) {
-        throw new Error('Expected a type literal')
-      }
-      for (const member of typeNode.members) {
-        if (!ts.isPropertySignature(member)) {
-          throw new Error('Expected a property signature')
-        }
-        const memberType = member.type
-        if (!memberType || memberType.kind !== ts.SyntaxKind.StringKeyword) {
-          return true
-        }
-      }
-      return false
-    },
-    async generateRuntimeValidator(code: string) {
-      const generatedCode = TypeBoxCodegen.generateTypes(ts, code, {
-        emitConstOnly: true,
-        includeTypeBoxImport: false,
-        typeTags: typeConstraints,
-      })
-
-      const sourceFile = ts.createSourceFile(
-        'validator.ts',
-        generatedCode,
-        ts.ScriptTarget.Latest,
-        true
-      )
-
-      const constStatement = sourceFile.statements.find(
-        (statement): statement is ts.VariableStatement =>
-          ts.isVariableStatement(statement) &&
-          statement.declarationList.declarations.length === 1 &&
-          statement.declarationList.declarations[0].initializer !== undefined
-      )
-
-      if (constStatement) {
-        const initializer =
-          constStatement.declarationList.declarations[0].initializer
-        if (initializer) {
-          return initializer.getText()
-        }
-      }
-
-      throw new Error('Failed to parse TypeBox validator')
-    },
-    async generateServerTypeAliases(
-      clientTypeAliases: string,
-      typeConstraints: string[]
-    ) {
-      return TypeBoxCodegen.generateTypes(ts, clientTypeAliases, {
-        emitConstOnly: true,
-        includeTypeBoxImport: false,
-        typeTags: typeConstraints,
-      })
-    },
-    watchMissingImport(
-      sourceFile: ts.SourceFile,
-      specifier: string,
-      compilerOptions: ts.CompilerOptions,
-      moduleResolutionHost: ts.ModuleResolutionHost,
-      fs: JumpgenFS
-    ) {
-      const { failedLookupLocations, affectingLocations } =
-        ts.resolveModuleName(
-          specifier,
-          sourceFile.fileName,
-          compilerOptions,
-          moduleResolutionHost
-        ) as unknown as {
-          failedLookupLocations: string[]
-          affectingLocations?: string[]
-        }
-
-      const watchPaths = [
-        ...(failedLookupLocations ?? []),
-        ...(affectingLocations ?? []),
-      ]
-
-      if (watchPaths.length > 0) {
-        fs.watch(watchPaths, {
-          cause: sourceFile.fileName,
-        })
-      }
-    },
-    watchDependencies(
-      sourceFile: ts.SourceFile,
-      compilerOptions: ts.CompilerOptions,
-      moduleResolutionHost: ts.ModuleResolutionHost,
-      project: Project,
-      fs: JumpgenFS,
-      seen = new Set<ts.SourceFile>()
-    ): Set<ts.SourceFile> {
-      if (seen.has(sourceFile)) {
-        return seen
-      }
-      seen.add(sourceFile)
-
-      // Use a private API to get the referenced modules.
-      const imports = ((sourceFile as any).imports ?? []) as ts.StringLiteral[]
-
-      for (const specifier of imports) {
-        // Note: We *could* watch failedLookupLocations, but the memory
-        // cost may not be worth it and I'm too lazy to check, so let's
-        // just do less to be safe.
-        const { resolvedModule, affectingLocations } = ts.resolveModuleName(
-          specifier.text,
-          sourceFile.fileName,
-          compilerOptions,
-          moduleResolutionHost
-        ) as {
-          resolvedModule?: ts.ResolvedModuleFull
-          failedLookupLocations: string[]
-          affectingLocations?: string[]
-        }
-
-        if (resolvedModule) {
-          const resolvedPath = resolvedModule.resolvedFileName
-
-          // There's no need to watch certain dependencies that won't influence
-          // the inferred type of a route.
-          if (/\/node_modules\/(@sinclair\/typebox)\//.test(resolvedPath)) {
-            return seen
-          }
-
-          fs.watch(resolvedPath, {
-            cause: sourceFile.fileName,
-          })
-
-          // An original path will exist if the import resolved to a symlink.
-          // In that case, originalPath is the symlink location.
-          const originalPath = (resolvedModule as any).originalPath
-          if (originalPath) {
-            fs.watch(originalPath, {
-              cause: sourceFile.fileName,
-            })
-          }
-
-          this.watchDependencies(
-            project.getSourceFileOrThrow(resolvedPath),
-            compilerOptions,
-            moduleResolutionHost,
-            project,
-            fs,
-            seen
-          )
-        }
-
-        if (affectingLocations) {
-          fs.watch(affectingLocations, {
-            cause: sourceFile.fileName,
-          })
-        }
-      }
-
-      return seen
-    },
-  }
-}
-
 function stripTypeConstraints(type: string) {
   return type.replace(
     new RegExp(` & (${typeConstraints.join('|')})(?:\<.+?\>)?`, 'g'),
@@ -672,11 +473,16 @@ function stripTypeConstraints(type: string) {
   )
 }
 
-function resolveModule(importer: string, candidateIds: string[]) {
-  const resolve = createResolver(importer)
+function resolveModule(
+  returnKind: 'path' | 'id',
+  importer: string,
+  candidateIds: string[]
+) {
+  const resolve = createResolver(importer, { resolveToAbsolute: true })
   for (const id of candidateIds) {
-    if (guard(() => resolve(id))) {
-      return id
+    const resolvedId = guard(() => resolve(id))
+    if (resolvedId) {
+      return returnKind === 'path' ? resolvedId : id
     }
   }
   throw new Error(

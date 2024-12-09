@@ -11,6 +11,7 @@ import {
   isAssignableTo,
   isAsyncGeneratorType,
 } from './typescript/utils.js'
+import { CompilerAPI } from './typescript/wrap.js'
 
 export type AnalyzedRoute = {
   fileName: string
@@ -25,7 +26,7 @@ export type AnalyzedRoute = {
 }
 
 export function analyzeRoute(
-  ts: typeof import('typescript'),
+  ts: CompilerAPI,
   fileName: string,
   routeName: string,
   declaration: ts.VariableDeclaration,
@@ -209,7 +210,7 @@ export function analyzeRoute(
 }
 
 function extractDescription(
-  ts: typeof import('typescript'),
+  ts: CompilerAPI,
   declaration: ts.VariableDeclaration
 ) {
   const docs = ts.getJSDocCommentsAndTags(declaration)
@@ -281,7 +282,7 @@ function hasTypeArguments(type: ts.Type): type is ts.Type & TypeArguments {
 }
 
 function resolveResultFormat(
-  ts: typeof import('typescript'),
+  ts: CompilerAPI,
   type: ts.Type,
   typeChecker: ts.TypeChecker,
   types: SupportingTypes

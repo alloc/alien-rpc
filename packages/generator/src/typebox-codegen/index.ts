@@ -292,9 +292,8 @@ function processSourceFile(
 
     // Type.Intersect
     else if (ts.isIntersectionTypeNode(node)) {
-      const typeNodes: ts.TypeNode[] = []
       let tagNodes: ts.TypeReferenceNode[] | undefined
-      for (const type of node.types) {
+      const typeNodes = node.types.filter(type => {
         if (
           ts.isTypeReferenceNode(type) &&
           options.typeTags.includes(type.getChildAt(0).getText())
@@ -302,13 +301,22 @@ function processSourceFile(
           tagNodes ??= []
           tagNodes.push(type)
         } else {
-          typeNodes.push(type)
+          return true
         }
-      }
+      })
       if (typeNodes.length === 0) {
         throw new Error('Type cannot only contain type tags')
       }
       if (typeNodes.length > 1) {
+        for (const type of typeNodes) {
+          if (
+            type.kind === ts.SyntaxKind.NumberKeyword ||
+            type.kind === ts.SyntaxKind.StringKeyword
+          ) {
+            yield* lazyRender(type)
+            return // Assume it's a branded primitive.
+          }
+        }
         const types = typeNodes.map(type => render(type)).join(',\n')
         yield `Type.Intersect([\n${types}\n]${renderTypeTags(tagNodes, ', ')})`
       } else {

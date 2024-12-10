@@ -25,35 +25,55 @@ export interface PrintTypeLiteralOptions {
 export function printTypeLiteralToString(
   type: ts.Type,
   typeChecker: ts.TypeChecker,
-  opts: PrintTypeLiteralOptions = {},
-  seen = new Set<ts.Type>()
+  opts: PrintTypeLiteralOptions = {}
 ) {
-  return iterableToString(printTypeLiteral(type, typeChecker, opts, seen))
+  return iterableToString(printTypeLiteral(type, typeChecker, opts))
 }
+
+const cacheGeneratedStrings = <
+  Key extends object,
+  T extends (key: Key, ...args: any[]) => Generator<string>,
+>(
+  fn: T,
+  resultCache: WeakMap<Key, string[]> = new WeakMap()
+) =>
+  ((key: Key, ...args: any[]): Generator<string> => {
+    if (resultCache.has(key)) {
+      return (function* () {
+        yield* resultCache.get(key)!
+      })()
+    }
+
+    const generator = fn(key, ...args)
+    const parts: string[] = []
+
+    return (function* () {
+      for (const value of generator) {
+        parts.push(value)
+        yield value
+      }
+      resultCache.set(key, parts)
+    })()
+  }) as T
 
 /**
  * Convert a given type to its string representation, resolving any type
  * names into type literals (recursively).
  */
-export function* printTypeLiteral(
-  type: ts.Type,
-  typeChecker: ts.TypeChecker,
-  opts: PrintTypeLiteralOptions = {},
-  seen = new Set<ts.Type>()
-): Generator<string> {
-  if (seen.has(type)) {
-    yield typeChecker.typeToString(type)
-  } else {
-    seen.add(type)
-
+export const printTypeLiteral = cacheGeneratedStrings(
+  function* printTypeLiteral(
+    type: ts.Type,
+    typeChecker: ts.TypeChecker,
+    opts: PrintTypeLiteralOptions = {}
+  ): Generator<string> {
     if (type.isUnion()) {
-      yield* printUnionLiteral(type, typeChecker, opts, seen)
+      yield* printUnionLiteral(type, typeChecker, opts)
     } else if (type.isIntersection()) {
-      yield* printIntersectionLiteral(type, typeChecker, opts, seen)
+      yield* printIntersectionLiteral(type, typeChecker, opts)
     } else if (typeChecker.isTupleType(type)) {
-      yield* printTupleLiteral(type, typeChecker, opts, seen)
+      yield* printTupleLiteral(type, typeChecker, opts)
     } else if (typeChecker.isArrayType(type)) {
-      yield* printArrayLiteral(type, typeChecker, opts, seen)
+      yield* printArrayLiteral(type, typeChecker, opts)
     } else {
       const typeSymbol = type.getSymbol()
       if (!typeSymbol || isLibSymbol(typeSymbol)) {
@@ -77,39 +97,35 @@ export function* printTypeLiteral(
         const typeArguments = typeChecker.getTypeArguments(typeAlias)
         if (typeArguments.length > 0) {
           // TODO: Support generic type aliases
-          yield* printTypeLiteral(type, typeChecker, opts, seen)
+          yield* printTypeLiteral(type, typeChecker, opts)
         } else {
           yield type.aliasSymbol.name
 
           if (!opts.referencedTypes.has(type.aliasSymbol)) {
-            seen.delete(type)
             opts.referencedTypes.set(
               type.aliasSymbol,
-              printTypeLiteralToString(
-                type,
-                typeChecker,
-                { ...opts, currentSymbol: type.aliasSymbol },
-                seen
-              )
+              printTypeLiteralToString(type, typeChecker, {
+                ...opts,
+                currentSymbol: type.aliasSymbol,
+              })
             )
           }
         }
       } else if (isTypeAlias(typeSymbol)) {
-        yield* printTypeLiteral(type, typeChecker, opts, seen)
+        yield* printTypeLiteral(type, typeChecker, opts)
       } else if (isObjectLiteral(typeSymbol) || isInterfaceType(typeSymbol)) {
-        yield* printObjectTypeLiteral(type, typeChecker, opts, seen)
+        yield* printObjectTypeLiteral(type, typeChecker, opts)
       } else {
         yield typeChecker.typeToString(type)
       }
     }
   }
-}
+)
 
 function* printUnionLiteral(
   type: ts.UnionType,
   typeChecker: ts.TypeChecker,
-  opts: PrintTypeLiteralOptions,
-  seen: Set<ts.Type>
+  opts: PrintTypeLiteralOptions
 ) {
   const variants = opts.omitUndefinedLiteral
     ? type.types.filter(variant => !isUndefinedType(variant))
@@ -119,40 +135,37 @@ function* printUnionLiteral(
     if (i > 0) {
       yield ' | '
     }
-    yield* printTypeLiteral(variants[i], typeChecker, opts, seen)
+    yield* printTypeLiteral(variants[i], typeChecker, opts)
   }
 }
 
 function* printIntersectionLiteral(
   type: ts.IntersectionType,
   typeChecker: ts.TypeChecker,
-  opts: PrintTypeLiteralOptions,
-  seen: Set<ts.Type>
+  opts: PrintTypeLiteralOptions
 ) {
   for (let i = 0; i < type.types.length; i++) {
     if (i > 0) {
       yield ' & '
     }
-    yield* printTypeLiteral(type.types[i], typeChecker, opts, seen)
+    yield* printTypeLiteral(type.types[i], typeChecker, opts)
   }
 }
 
 function* printArrayLiteral(
   type: ts.Type,
   typeChecker: ts.TypeChecker,
-  opts: PrintTypeLiteralOptions,
-  seen: Set<ts.Type>
+  opts: PrintTypeLiteralOptions
 ) {
   yield 'Array<'
-  yield* printTypeLiteral(getArrayElementType(type), typeChecker, opts, seen)
+  yield* printTypeLiteral(getArrayElementType(type), typeChecker, opts)
   yield '>'
 }
 
 function* printTupleLiteral(
   type: ts.Type,
   typeChecker: ts.TypeChecker,
-  opts: PrintTypeLiteralOptions,
-  seen: Set<ts.Type>
+  opts: PrintTypeLiteralOptions
 ) {
   yield '['
   let i = 0
@@ -163,8 +176,7 @@ function* printTupleLiteral(
     yield* printTypeLiteral(
       typeChecker.getTypeOfSymbol(element),
       typeChecker,
-      opts,
-      seen
+      opts
     )
   }
   yield ']'
@@ -173,8 +185,7 @@ function* printTupleLiteral(
 function* printObjectTypeLiteral(
   type: ts.Type,
   typeChecker: ts.TypeChecker,
-  opts: PrintTypeLiteralOptions,
-  seen: Set<ts.Type>
+  opts: PrintTypeLiteralOptions
 ) {
   yield '{ '
 
@@ -192,8 +203,7 @@ function* printObjectTypeLiteral(
     yield* printTypeLiteral(
       typeChecker.getTypeOfSymbol(prop),
       typeChecker,
-      opts,
-      seen
+      opts
     )
   }
 
@@ -203,7 +213,7 @@ function* printObjectTypeLiteral(
       yield '; '
     }
     yield '[key: string]: '
-    yield* printTypeLiteral(stringIndexType, typeChecker, opts, seen)
+    yield* printTypeLiteral(stringIndexType, typeChecker, opts)
     yield ']'
   }
 
@@ -213,7 +223,7 @@ function* printObjectTypeLiteral(
       yield '; '
     }
     yield '[index: number]: '
-    yield* printTypeLiteral(numberIndexType, typeChecker, opts, seen)
+    yield* printTypeLiteral(numberIndexType, typeChecker, opts)
     yield ']'
   }
 

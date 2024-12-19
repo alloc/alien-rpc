@@ -1,11 +1,14 @@
-import { defineClient } from './client.js'
+import { Simplify } from 'radashi'
+import { Client, defineClient } from './client.js'
 import { ClientOptions, Route } from './types.js'
 
-export function defineClientFactory<API extends Record<string, Route>>(
-  routes: API,
-  defaults: ClientOptions = {}
-) {
-  return (options?: ClientOptions) =>
+export function defineClientFactory<
+  API extends Record<string, Route>,
+  TDefaultOptions extends ClientOptions = Record<string, never>,
+>(routes: API, defaults: TDefaultOptions = {} as TDefaultOptions) {
+  return <TOptions extends ClientOptions = Record<string, never>>(
+    options?: TOptions
+  ): Client<API, Overwrite<TDefaultOptions, TOptions>> =>
     defineClient(routes, {
       ...defaults,
       ...options,
@@ -13,6 +16,13 @@ export function defineClientFactory<API extends Record<string, Route>>(
       hooks: mergeHooks(defaults.hooks, options?.hooks),
     })
 }
+
+type Overwrite<T, U> =
+  T extends Record<string, never>
+    ? U
+    : U extends Record<string, never>
+      ? T
+      : Simplify<Omit<T, keyof U> & U>
 
 function mergeHeaders(
   left: ClientOptions['headers'],

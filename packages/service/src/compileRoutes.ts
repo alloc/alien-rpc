@@ -124,7 +124,7 @@ export function compileRoutes(
         if (process.env.NODE_ENV === 'production') {
           return new Response(null, { status: 500 })
         }
-        return new ErrorResponse(500, { message: error.message })
+        return new ErrorResponse(500, error)
       }
 
       if (process.env.NODE_ENV === 'development') {
@@ -142,7 +142,12 @@ export function compileRoutes(
       }
 
       // Otherwise, it's a malformed request.
-      return new ErrorResponse(400, { message: error.message })
+      return new ErrorResponse(
+        400,
+        process.env.NODE_ENV === 'production'
+          ? { message: error.message }
+          : error
+      )
     }
   }
 }

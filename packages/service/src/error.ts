@@ -50,6 +50,12 @@ export class BadRequestError extends HttpError {
 export class UnauthorizedError extends HttpError {
   name = 'UnauthorizedError'
   status = 401
+  constructor(
+    readonly message: string,
+    headers?: HttpError.Headers
+  ) {
+    super(headers)
+  }
 }
 
 /**

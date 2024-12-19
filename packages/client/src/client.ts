@@ -75,9 +75,6 @@ async function extendHTTPError(error: HTTPError) {
   if (response.headers.get('Content-Type') === 'application/json') {
     const errorInfo = await response.json<any>()
     Object.assign(error, errorInfo)
-    if ('path' in errorInfo) {
-      error.message += `\n     Path: ${errorInfo.path}\n    Value: ${errorInfo.value}\n  Request: ${request.method} ${request.url}`
-    }
   }
   return error
 }

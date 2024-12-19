@@ -25,6 +25,8 @@ function parseResponse(promisedResponse: Promise<Response>, client: Client) {
     for await (const value of response.body.pipeThrough(parser)) {
       if (value && isPagination(value)) {
         attachPageMethods(responseStream, value, client)
+      } else if (value != null && isRouteError(value)) {
+        throw Object.assign(new Error(), value.$error)
       } else {
         yield value
       }
@@ -93,6 +95,13 @@ function isPagination(arg: {}): arg is RoutePagination {
     Object.prototype.hasOwnProperty.call(arg, '$prev') &&
     Object.prototype.hasOwnProperty.call(arg, '$next') &&
     hasExactKeyCount(arg, 2)
+  )
+}
+
+function isRouteError(arg: {}): arg is { $error: any } {
+  return (
+    Object.prototype.hasOwnProperty.call(arg, '$error') &&
+    hasExactKeyCount(arg, 1)
   )
 }
 

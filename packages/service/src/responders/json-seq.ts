@@ -37,17 +37,18 @@ async function* generateJsonTextSequence(
   const yieldSchema = (route.responseSchema as TAsyncIterator).items
   const encoder = new TextEncoder()
 
-  try {
-    while (true) {
+  let done: boolean | undefined
+  let value: JSON
+  do {
+    try {
       const iteration = await iterator.next()
-
-      let value: JSON
       if (iteration.done) {
         const links = iteration.value
         if (!links) {
           return
         }
 
+        done = true
         value = {
           $prev: links.prev ? resolvePaginationLink(url, links.prev) : null,
           $next: links.next ? resolvePaginationLink(url, links.next) : null,
@@ -55,17 +56,20 @@ async function* generateJsonTextSequence(
       } else {
         value = Value.Encode(yieldSchema, iteration.value)
       }
-
-      yield encoder.encode('\u001E') // ASCII record separator
-      yield encoder.encode(JSON.stringify(value))
-      yield encoder.encode('\n')
-
-      if (iteration.done) {
-        return
+    } catch (error: any) {
+      done = true
+      value = {
+        $error: {
+          ...error,
+          message: error.message,
+          stack:
+            process.env.NODE_ENV !== 'production' ? error.stack : undefined,
+        },
       }
     }
-  } catch (error: any) {
-    // console.error(error)
-    throw error
-  }
+
+    yield encoder.encode('\u001E') // ASCII record separator
+    yield encoder.encode(JSON.stringify(value))
+    yield encoder.encode('\n')
+  } while (!done)
 }

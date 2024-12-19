@@ -214,7 +214,6 @@ export default (rawOptions: Options) =>
     const serverImports = new Set<string>()
     const serverCheckedStringFormats = new Set<string>()
 
-
     const serverTsConfig = store.tsConfigCache.findUp(
       FileUtils.getStandardizedAbsolutePath(
         project.fileSystem,

@@ -1,5 +1,5 @@
-import { Client } from '../client.js'
-import {
+import type { Client } from '../client.js'
+import type {
   RequestOptions,
   ResponseStream,
   ResultFormatter,
@@ -12,10 +12,6 @@ export default {
 } satisfies ResultFormatter<ResponseStream<any>, unknown[]>
 
 function parseResponse(promisedResponse: Promise<Response>, client: Client) {
-  // This reference is used to attach previousPage and nextPage methods
-  // when a pagination result is provided.
-  let responseStream!: ResponseStream<any>
-
   async function* parse() {
     const response = await promisedResponse
     if (!response.body) {
@@ -23,7 +19,7 @@ function parseResponse(promisedResponse: Promise<Response>, client: Client) {
     }
     const parser = new TransformStream(parseJSONSequence())
     for await (const value of response.body.pipeThrough(parser)) {
-      if (value && isPagination(value)) {
+      if (value != null && isRoutePagination(value)) {
         attachPageMethods(responseStream, value, client)
       } else if (value != null && isRouteError(value)) {
         throw Object.assign(new Error(), value.$error)
@@ -33,7 +29,7 @@ function parseResponse(promisedResponse: Promise<Response>, client: Client) {
     }
   }
 
-  responseStream = parse() as any
+  const responseStream: ResponseStream<any> = parse() as any
   responseStream.toArray = toArray
   return responseStream
 }
@@ -46,7 +42,7 @@ function mapCachedResult(values: unknown[], client: Client) {
       return
     }
     const lastValue = values[values.length - 1]
-    if (lastValue && isPagination(lastValue)) {
+    if (lastValue && isRoutePagination(lastValue)) {
       attachPageMethods(responseStream, lastValue, client)
       values = values.slice(0, -1)
     }
@@ -88,7 +84,7 @@ function attachPageMethods(
   }
 }
 
-function isPagination(arg: {}): arg is RoutePagination {
+function isRoutePagination(arg: {}): arg is RoutePagination {
   // The server ensures both `prev` and `next` are defined, even though the
   // RpcPagination type says otherwise.
   return (

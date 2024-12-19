@@ -1,25 +1,25 @@
-import { RouteMethod } from '@alien-rpc/route'
-import { RequestContext } from '@hattip/compose'
-import { ValueError } from '@sinclair/typebox/errors'
+import type { RouteMethod } from '@alien-rpc/route'
+import type { RequestContext } from '@hattip/compose'
+import type { ValueError } from '@sinclair/typebox/errors'
 import {
   TransformDecodeCheckError,
   TransformDecodeError,
 } from '@sinclair/typebox/value'
 import { compilePaths } from 'pathic'
 import { mapValues } from 'radashi'
-import { CompiledRoute, compileRoute } from './compileRoute.js'
+import { type CompiledRoute, compileRoute } from './compileRoute.js'
 import {
   allowOriginAndCredentials,
   compilePreflightHandler,
-  CorsConfig,
+  type CorsConfig,
 } from './cors.js'
 import { HttpError } from './error.js'
-import { Route } from './types'
+import type { Route } from './types'
 
-const enum RequestStep {
-  Match,
-  Validate,
-  Respond,
+enum RequestStep {
+  Match = 0,
+  Validate = 1,
+  Respond = 2,
 }
 
 export interface CompileRoutesConfig {

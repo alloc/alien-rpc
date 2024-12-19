@@ -127,7 +127,7 @@ export function compileRoutes(
         return new ErrorResponse(500, error)
       }
 
-      if (process.env.NODE_ENV === 'development') {
+      if (!process.env.TEST && process.env.NODE_ENV === 'development') {
         console.error(error)
       }
 

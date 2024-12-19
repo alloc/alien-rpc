@@ -14,8 +14,22 @@ import {
 import { CompilerAPI } from './typescript/wrap.js'
 
 export type AnalyzedRoute = {
+  /**
+   * The file name of the source file that contains this route.
+   */
   fileName: string
+  /**
+   * Zero-indexed line number in the source file indicating where the route
+   * is defined.
+   */
+  lineNumber: number
+  /**
+   * The name of the route in a JavaScript environment.
+   */
   exportedName: string
+  /**
+   * If the route has a JSDoc comment, this is the comment's text.
+   */
   description: string | undefined
   resolvedPathParams: string
   resolvedFormat: RouteResultFormat
@@ -28,6 +42,7 @@ export type AnalyzedRoute = {
 export function analyzeRoute(
   ts: CompilerAPI,
   fileName: string,
+  lineNumber: number,
   routeName: string,
   declaration: ts.VariableDeclaration,
   typeChecker: ts.TypeChecker,
@@ -198,6 +213,7 @@ export function analyzeRoute(
 
   return {
     fileName,
+    lineNumber,
     exportedName: routeName,
     description: extractDescription(ts, declaration),
     resolvedPathParams,

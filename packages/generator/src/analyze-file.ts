@@ -42,6 +42,7 @@ export function analyzeFile(
       const route = analyzeRoute(
         ts,
         sourceFile.fileName,
+        sourceFile.getLineAndCharacterOfPosition(declaration.getStart()).line,
         routeName,
         declaration,
         typeChecker,

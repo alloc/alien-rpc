@@ -237,6 +237,15 @@ export const streamPosts = route.get('/posts', async function* () {
 
 This takes advantage of the [JSON Text Sequence](https://www.rfc-editor.org/rfc/rfc7464.html) format. Any JSON-compatible data can be yielded by your route handler. This allows the client to start receiving data before the route handler has finished executing.
 
+### Reserved keys
+
+For generator-based routes, you must never yield objects of the following shape:
+
+- `{ $error: any }`
+- `{ $prev: any; $next: any }`
+
+These yield types are reserved for pagination and error handling.
+
 ### Pagination
 
 The `paginate` function allows you to provide pagination links in the response. This is only supported for routes whose handler is an async generator.

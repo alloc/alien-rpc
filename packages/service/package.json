@@ -11,9 +11,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./format": {
-      "types": "./dist/format.d.ts",
-      "import": "./dist/format.js"
+    "./formats": {
+      "types": "./dist/formats.d.ts",
+      "import": "./dist/formats.js"
     },
     "./typebox": {
       "types": "./dist/typebox.d.ts",

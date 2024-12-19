@@ -22,6 +22,10 @@
       "types": "./dist/generator.d.ts",
       "import": "./dist/generator.js"
     },
+    "./service/formats": {
+      "types": "./dist/service/formats.d.ts",
+      "import": "./dist/service/formats.js"
+    },
     "./service": {
       "types": "./dist/service.d.ts",
       "import": "./dist/service.js"

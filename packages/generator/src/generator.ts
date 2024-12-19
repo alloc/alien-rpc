@@ -402,7 +402,7 @@ export default (rawOptions: Options) =>
           name => pascal(name) + 'Format'
         )
 
-        imports += `\nimport { addStringFormat, ${importedStringFormats.join(', ')} } from "${store.serviceModuleId}/format"`
+        imports += `\nimport { addStringFormat, ${importedStringFormats.join(', ')} } from "${store.serviceModuleId}/formats"`
 
         sortedStringFormats.forEach((format, index) => {
           sideEffects += `\naddStringFormat(${JSON.stringify(format)}, ${importedStringFormats[index]})`

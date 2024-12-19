@@ -132,11 +132,9 @@ export function compileRoutes(
       }
 
       if (step === RequestStep.Validate) {
-        if (isDecodeError(error)) {
-          error = error.error
-        }
-        if (isDecodeCheckError(error)) {
-          const { message, path, value } = firstLeafError(error.error)
+        const checkError = isDecodeError(error) ? error.error : error
+        if (isDecodeCheckError(checkError)) {
+          const { message, path, value } = firstLeafError(checkError.error)
           return new ErrorResponse(400, { message, path, value })
         }
       }

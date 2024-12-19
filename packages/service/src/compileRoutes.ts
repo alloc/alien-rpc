@@ -124,7 +124,11 @@ export function compileRoutes(
         if (process.env.NODE_ENV === 'production') {
           return new Response(null, { status: 500 })
         }
-        return new ErrorResponse(500, error)
+        return new ErrorResponse(500, {
+          ...error,
+          message: error.message ?? 'Internal server error',
+          stack: error.stack,
+        })
       }
 
       if (!process.env.TEST && process.env.NODE_ENV === 'development') {

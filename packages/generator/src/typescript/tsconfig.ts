@@ -16,14 +16,14 @@ export type TsConfigResolution = {
 export type TsConfigCache = ReturnType<typeof createTsConfigCache>
 
 export function createTsConfigCache(fs: JumpgenFS, project: Project) {
-  const resolveTsConfig = (configFilePath: string) => {
+  const resolveTsConfig = (configFilePath: string): TsConfigResolution => {
     return {
       ...project.resolveTsConfig(configFilePath),
       fileName: configFilePath,
     }
   }
 
-  const configFileMap = new Map<string, ReturnType<typeof resolveTsConfig>>()
+  const configFileMap = new Map<string, TsConfigResolution>()
 
   return {
     findUp(fromDirectory: StandardizedFilePath) {

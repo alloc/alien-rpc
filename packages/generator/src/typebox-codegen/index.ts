@@ -691,10 +691,6 @@ function processSourceFile(
     return node.questionToken !== undefined
   }
 
-  function isOptionalParameter(node: ts.ParameterDeclaration) {
-    return node.questionToken !== undefined
-  }
-
   function isExport(
     node:
       | ts.InterfaceDeclaration

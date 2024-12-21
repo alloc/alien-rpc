@@ -3,7 +3,7 @@ import { bodylessMethods } from '@alien-rpc/route'
 import * as jsonQS from '@json-qs/json-qs'
 import ky, { HTTPError } from 'ky'
 import { buildPath } from 'pathic'
-import { isPromise, isString } from 'radashi'
+import { isFunction, isPromise, isString } from 'radashi'
 import jsonFormat from './formats/json.js'
 import responseFormat from './formats/response.js'
 import {
@@ -101,6 +101,10 @@ async function extendHTTPError(error: HTTPError) {
 
 function createRequest(client: Client<any>) {
   let { hooks, prefixUrl = '/' } = client.options
+
+  if (isFunction(hooks)) {
+    hooks = hooks(client)
+  }
 
   hooks ??= {}
   hooks.beforeError = insertHook(hooks.beforeError, extendHTTPError, prepend)

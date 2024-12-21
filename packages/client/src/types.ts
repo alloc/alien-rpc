@@ -80,7 +80,7 @@ export type { InferParams, PathTemplate } from 'pathic'
 export interface ClientOptions<TErrorMode extends ErrorMode = ErrorMode>
   extends Omit<
     import('ky').Options,
-    'method' | 'body' | 'json' | 'searchParams'
+    'method' | 'body' | 'json' | 'searchParams' | 'hooks'
   > {
   /**
    * Control how errors are handled.
@@ -102,11 +102,19 @@ export interface ClientOptions<TErrorMode extends ErrorMode = ErrorMode>
    * @default new Map()
    */
   resultCache?: RouteResultCache | undefined
+  /**
+   * Hooks allow modifications during the request lifecycle. Hook functions
+   * may be async and are run serially. Pass a function to receive the
+   * client instance and customize hooks on a per-instance level.
+   */
+  hooks?: ClientHooks | ((client: Client) => ClientHooks) | undefined
 }
 
 export type ClientHooks = import('ky').Hooks
 
-export interface RequestOptions extends Omit<ClientOptions, 'prefixUrl'> {}
+export interface RequestOptions extends Omit<ClientOptions, 'prefixUrl'> {
+  hooks?: ClientHooks | undefined
+}
 
 export type RequestParams<
   TPathParams extends object,

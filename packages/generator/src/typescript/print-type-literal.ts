@@ -4,228 +4,210 @@ import {
   getTupleElements,
   isInterfaceType,
   isLibSymbol,
-  isObjectLiteral,
-  isTypeAlias,
-  isUndefinedType,
-  iterableToString,
+  isObjectType,
+  isType,
+  isTypeReference,
 } from './utils.js'
+import type { CompilerAPI } from './wrap.js'
 
-export interface PrintTypeLiteralOptions {
-  omitUndefinedLiteral?: boolean
-  /**
-   * Collect referenced types instead of printing them as type literals.
-   */
-  referencedTypes?: Map<ts.Symbol, string>
-  /**
-   * @internal Indicates a symbol that must be printed as a type literal.
-   */
-  currentSymbol?: ts.Symbol
-}
+export type ReferencedTypes = Map<ts.Symbol, string>
 
 export function printTypeLiteralToString(
+  ts: CompilerAPI,
   type: ts.Type,
   typeChecker: ts.TypeChecker,
-  opts: PrintTypeLiteralOptions = {}
-) {
-  return iterableToString(printTypeLiteral(type, typeChecker, opts))
+  referencedTypes?: ReferencedTypes,
+  symbolStack: string[] = []
+): string {
+  if (referencedTypes) {
+    collectReferencedTypes(ts, type, typeChecker, referencedTypes, symbolStack)
+  }
+
+  if (type.aliasSymbol && !symbolStack.includes(type.aliasSymbol.name)) {
+    return type.aliasSymbol.name
+  }
+
+  if (isTypeReference(type)) {
+    const typeArguments = typeChecker.getTypeArguments(type)
+    if (typeArguments.length > 0) {
+      return typeChecker.typeToString(type)
+    }
+  }
+
+  return typeChecker.typeToString(
+    type,
+    undefined,
+    ts.TypeFormatFlags.NoTruncation |
+      ts.TypeFormatFlags.InTypeAlias |
+      ts.TypeFormatFlags.UseStructuralFallback |
+      ts.TypeFormatFlags.AllowUniqueESSymbolType |
+      ts.TypeFormatFlags.WriteArrowStyleSignature |
+      ts.TypeFormatFlags.WriteTypeArgumentsOfSignature
+  )
 }
 
-const cacheGeneratedStrings = <
-  Key extends object,
-  T extends (key: Key, ...args: any[]) => Generator<string>,
->(
-  fn: T,
-  resultCache: WeakMap<Key, string[]> = new WeakMap()
-) =>
-  ((key: Key, ...args: any[]): Generator<string> => {
-    if (resultCache.has(key)) {
-      return (function* () {
-        yield* resultCache.get(key)!
-      })()
+const typeConstraintFileRegex = /\/@?alien-rpc\/.+?\/constraint\.d\.ts$/
+
+export function collectReferencedTypes(
+  ts: CompilerAPI,
+  type: ts.Type,
+  typeChecker: ts.TypeChecker,
+  referencedTypes: ReferencedTypes,
+  symbolStack: string[]
+) {
+  const instanceSymbol = type.aliasSymbol ?? type.symbol
+
+  const declarations = instanceSymbol?.getDeclarations()
+  const declaration = declarations?.[0]
+
+  // Skip type constraints.
+  const declarationFile = declaration?.getSourceFile()
+  if (typeConstraintFileRegex.test(declarationFile?.fileName ?? '')) {
+    return
+  }
+
+  const referencedSymbol =
+    declaration && getDeclarationSymbol(ts, declaration, typeChecker)
+
+  const recursive = !(
+    (instanceSymbol && symbolStack.includes(instanceSymbol.name)) ||
+    (referencedSymbol && symbolStack.includes(referencedSymbol.name))
+  )
+
+  if (recursive) {
+    const symbol = referencedSymbol ?? instanceSymbol
+    const pushed = pushSymbol(symbolStack, symbol)
+
+    for (const nestedType of visitNestedTypes(type, typeChecker)) {
+      collectReferencedTypes(
+        ts,
+        nestedType,
+        typeChecker,
+        referencedTypes,
+        symbolStack
+      )
     }
 
-    const generator = fn(key, ...args)
-    const parts: string[] = []
-
-    return (function* () {
-      for (const value of generator) {
-        parts.push(value)
-        yield value
-      }
-      resultCache.set(key, parts)
-    })()
-  }) as T
-
-/**
- * Convert a given type to its string representation, resolving any type
- * names into type literals (recursively).
- */
-export const printTypeLiteral = cacheGeneratedStrings(
-  function* printTypeLiteral(
-    type: ts.Type,
-    typeChecker: ts.TypeChecker,
-    opts: PrintTypeLiteralOptions = {}
-  ): Generator<string> {
-    if (type.isUnion()) {
-      yield* printUnionLiteral(type, typeChecker, opts)
-    } else if (type.isIntersection()) {
-      yield* printIntersectionLiteral(type, typeChecker, opts)
-    } else if (typeChecker.isTupleType(type)) {
-      yield* printTupleLiteral(type, typeChecker, opts)
-    } else if (typeChecker.isArrayType(type)) {
-      yield* printArrayLiteral(type, typeChecker, opts)
-    } else {
-      const typeSymbol = type.getSymbol()
-      if (!typeSymbol || isLibSymbol(typeSymbol)) {
-        return yield typeChecker.typeToString(type)
-      }
-
-      if (
-        type.aliasSymbol &&
-        opts.referencedTypes &&
-        opts.currentSymbol !== type.aliasSymbol
-      ) {
-        const declarations = type.aliasSymbol.getDeclarations()
-        if (!declarations) {
-          throw new Error('Type alias declaration not found')
+    if (
+      symbol &&
+      symbol === referencedSymbol &&
+      isType(symbol) &&
+      !isLibSymbol(symbol) &&
+      !referencedTypes.has(symbol)
+    ) {
+      let typeString = `export type ${symbol.name} = `
+      if (isInterfaceType(symbol)) {
+        typeString += '{\n'
+        for (const propertySymbol of typeChecker.getPropertiesOfType(type)) {
+          typeString +=
+            '  ' +
+            propertySymbol.name +
+            ': ' +
+            printTypeLiteralToString(
+              ts,
+              typeChecker.getTypeOfSymbol(propertySymbol),
+              typeChecker,
+              referencedTypes,
+              symbolStack
+            ) +
+            '\n'
         }
-
-        const typeAlias = typeChecker.getTypeOfSymbol(
-          type.aliasSymbol
-        ) as ts.TypeReference
-
-        const typeArguments = typeChecker.getTypeArguments(typeAlias)
-        if (typeArguments.length > 0) {
-          // TODO: Support generic type aliases
-          yield* printTypeLiteral(type, typeChecker, opts)
-        } else {
-          yield type.aliasSymbol.name
-
-          if (!opts.referencedTypes.has(type.aliasSymbol)) {
-            opts.referencedTypes.set(
-              type.aliasSymbol,
-              printTypeLiteralToString(type, typeChecker, {
-                ...opts,
-                currentSymbol: type.aliasSymbol,
-              })
-            )
-          }
-        }
-      } else if (isTypeAlias(typeSymbol)) {
-        yield* printTypeLiteral(type, typeChecker, opts)
-      } else if (isObjectLiteral(typeSymbol) || isInterfaceType(typeSymbol)) {
-        yield* printObjectTypeLiteral(type, typeChecker, opts)
+        typeString += '}'
       } else {
-        yield typeChecker.typeToString(type)
+        typeString += printTypeLiteralToString(
+          ts,
+          type,
+          typeChecker,
+          referencedTypes,
+          symbolStack
+        )
+      }
+
+      referencedTypes.set(symbol, typeString)
+    }
+
+    if (pushed) {
+      symbolStack.pop()
+    }
+  }
+}
+
+function* visitNestedTypes(type: ts.Type, typeChecker: ts.TypeChecker) {
+  if (type.isUnion()) {
+    yield* type.types
+  } else if (type.isIntersection()) {
+    yield* type.types
+  } else if (typeChecker.isTupleType(type)) {
+    for (const elementSymbol of getTupleElements(type)) {
+      yield typeChecker.getTypeOfSymbol(elementSymbol)
+    }
+  } else if (typeChecker.isArrayType(type)) {
+    yield getArrayElementType(type)
+  } else {
+    const callSignatures = type.getCallSignatures()
+    if (callSignatures.length > 0) {
+      for (const signature of callSignatures) {
+        for (const parameter of signature.getParameters()) {
+          yield typeChecker.getTypeOfSymbol(parameter)
+        }
+        yield typeChecker.getReturnTypeOfSignature(signature)
+      }
+    } else {
+      const symbol = type.aliasSymbol ?? type.symbol
+
+      if (isTypeReference(type)) {
+        for (const typeArgument of typeChecker.getTypeArguments(type)) {
+          yield typeArgument
+        }
+      }
+
+      if (symbol && !isLibSymbol(symbol) && isObjectType(type)) {
+        for (const propertySymbol of typeChecker.getPropertiesOfType(type)) {
+          yield typeChecker.getTypeOfSymbol(propertySymbol)
+        }
+        const stringIndexType = type.getStringIndexType()
+        if (stringIndexType) {
+          yield stringIndexType
+        }
+        const numberIndexType = type.getNumberIndexType()
+        if (numberIndexType) {
+          yield numberIndexType
+        }
       }
     }
   }
-)
-
-function* printUnionLiteral(
-  type: ts.UnionType,
-  typeChecker: ts.TypeChecker,
-  opts: PrintTypeLiteralOptions
-) {
-  const variants = opts.omitUndefinedLiteral
-    ? type.types.filter(variant => !isUndefinedType(variant))
-    : type.types
-
-  for (let i = 0; i < variants.length; i++) {
-    if (i > 0) {
-      yield ' | '
-    }
-    yield* printTypeLiteral(variants[i], typeChecker, opts)
-  }
 }
 
-function* printIntersectionLiteral(
-  type: ts.IntersectionType,
-  typeChecker: ts.TypeChecker,
-  opts: PrintTypeLiteralOptions
+function getReferencedSymbol(
+  ts: CompilerAPI,
+  symbol: ts.Symbol,
+  typeChecker: ts.TypeChecker
 ) {
-  for (let i = 0; i < type.types.length; i++) {
-    if (i > 0) {
-      yield ' & '
-    }
-    yield* printTypeLiteral(type.types[i], typeChecker, opts)
-  }
+  const declarations = symbol.getDeclarations()
+  const declaration = declarations?.[0]
+  return declaration ? getDeclarationSymbol(ts, declaration, typeChecker) : null
 }
 
-function* printArrayLiteral(
-  type: ts.Type,
-  typeChecker: ts.TypeChecker,
-  opts: PrintTypeLiteralOptions
+function getDeclarationSymbol(
+  ts: CompilerAPI,
+  decl: ts.Declaration,
+  typeChecker: ts.TypeChecker
 ) {
-  yield 'Array<'
-  yield* printTypeLiteral(getArrayElementType(type), typeChecker, opts)
-  yield '>'
+  const id = ts.isInterfaceDeclaration(decl)
+    ? decl.name
+    : decl.forEachChild(child => (ts.isIdentifier(child) ? child : undefined))
+
+  return id && typeChecker.getSymbolAtLocation(id)
 }
 
-function* printTupleLiteral(
-  type: ts.Type,
-  typeChecker: ts.TypeChecker,
-  opts: PrintTypeLiteralOptions
-) {
-  yield '['
-  let i = 0
-  for (const element of getTupleElements(type)) {
-    if (++i > 1) {
-      yield ', '
-    }
-    yield* printTypeLiteral(
-      typeChecker.getTypeOfSymbol(element),
-      typeChecker,
-      opts
-    )
-  }
-  yield ']'
+function isExportedDeclaration(ts: CompilerAPI, node: ts.Declaration) {
+  return (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Export) !== 0
 }
 
-function* printObjectTypeLiteral(
-  type: ts.Type,
-  typeChecker: ts.TypeChecker,
-  opts: PrintTypeLiteralOptions
-) {
-  yield '{ '
-
-  let i = 0
-
-  for (const prop of type.getProperties()) {
-    if (++i > 1) {
-      yield '; '
-    }
-    yield prop.name
-    if (prop.flags & ts.SymbolFlags.Optional) {
-      yield '?'
-    }
-    yield ': '
-    yield* printTypeLiteral(
-      typeChecker.getTypeOfSymbol(prop),
-      typeChecker,
-      opts
-    )
+function pushSymbol(symbolStack: string[], symbol: ts.Symbol | undefined) {
+  if (symbol && symbol.name !== '__type') {
+    symbolStack.push(symbol.name)
+    return true
   }
-
-  const stringIndexType = type.getStringIndexType()
-  if (stringIndexType) {
-    if (++i > 1) {
-      yield '; '
-    }
-    yield '[key: string]: '
-    yield* printTypeLiteral(stringIndexType, typeChecker, opts)
-    yield ']'
-  }
-
-  const numberIndexType = type.getNumberIndexType()
-  if (numberIndexType) {
-    if (++i > 1) {
-      yield '; '
-    }
-    yield '[index: number]: '
-    yield* printTypeLiteral(numberIndexType, typeChecker, opts)
-    yield ']'
-  }
-
-  yield ' }'
+  return false
 }

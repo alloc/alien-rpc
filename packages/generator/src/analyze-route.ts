@@ -2,7 +2,10 @@ import type { RouteMethod, RouteResultFormat } from '@alien-rpc/route'
 import type { ts } from '@ts-morph/common'
 import { parsePathParams } from 'pathic'
 import { debug } from './debug.js'
-import { printTypeLiteralToString } from './typescript/print-type-literal.js'
+import {
+  printTypeLiteralToString,
+  ReferencedTypes,
+} from './typescript/print-type-literal.js'
 import { SupportingTypes } from './typescript/supporting-types.js'
 import {
   getArrayElementType,
@@ -32,7 +35,7 @@ export function analyzeRoute(
   declaration: ts.VariableDeclaration,
   typeChecker: ts.TypeChecker,
   types: SupportingTypes,
-  referencedTypes: Map<ts.Symbol, string>
+  referencedTypes: ReferencedTypes
 ): AnalyzedRoute | null {
   debug(`Analyzing route "${routeName}"`)
 
@@ -97,6 +100,7 @@ export function analyzeRoute(
   }
 
   const resolvedMethod = printTypeLiteralToString(
+    ts,
     typeChecker.getTypeOfSymbol(method),
     typeChecker
   )
@@ -111,6 +115,7 @@ export function analyzeRoute(
   }
 
   let resolvedPathname = printTypeLiteralToString(
+    ts,
     typeChecker.getTypeOfSymbol(path),
     typeChecker
   )
@@ -144,12 +149,10 @@ export function analyzeRoute(
     }
 
     const argumentTypeLiteral = printTypeLiteralToString(
+      ts,
       argumentType,
       typeChecker,
-      {
-        omitUndefinedLiteral: true,
-        referencedTypes,
-      }
+      referencedTypes
     )
 
     resolvedArguments.push(argumentTypeLiteral)
@@ -164,14 +167,15 @@ export function analyzeRoute(
             const propType =
               propSymbol && typeChecker.getTypeOfSymbol(propSymbol)
 
-            return `${prop}: ${propType ? printTypeLiteralToString(propType, typeChecker, { referencedTypes }) : 'unknown'}`
+            return `${prop}: ${propType ? printTypeLiteralToString(ts, propType, typeChecker, referencedTypes) : 'unknown'}`
           })
           .join(', ')} }`
       } else if (typeChecker.isArrayType(argumentType)) {
         const elementType = printTypeLiteralToString(
+          ts,
           getArrayElementType(argumentType),
           typeChecker,
-          { referencedTypes }
+          referencedTypes
         )
         resolvedPathParams = `{ ${pathParams
           .map(param => {
@@ -183,6 +187,7 @@ export function analyzeRoute(
   }
 
   const resolvedResult = resolveResultType(
+    ts,
     handlerResultType,
     typeChecker,
     types,
@@ -244,6 +249,7 @@ function extractDescription(
 }
 
 function resolveResultType(
+  ts: CompilerAPI,
   type: ts.Type,
   typeChecker: ts.TypeChecker,
   types: SupportingTypes,
@@ -263,14 +269,15 @@ function resolveResultType(
   // typebox-codegen has no Type.AsyncGenerator validator
   if (isAsyncGeneratorType(type) && hasTypeArguments(type)) {
     const yieldType = printTypeLiteralToString(
+      ts,
       type.typeArguments[0],
       typeChecker,
-      { referencedTypes }
+      referencedTypes
     )
     return `AsyncIterableIterator<${yieldType}>`
   }
 
-  return printTypeLiteralToString(type, typeChecker, { referencedTypes })
+  return printTypeLiteralToString(ts, type, typeChecker, referencedTypes)
 }
 
 interface TypeArguments {
@@ -309,7 +316,7 @@ function resolveResultFormat(
   if (!isAssignableTo(typeChecker, type, types.RouteResult)) {
     throw new InvalidResponseTypeError(
       'Your route returns an unsupported type: ' +
-        printTypeLiteralToString(type, typeChecker)
+        printTypeLiteralToString(ts, type, typeChecker)
     )
   }
   return 'json'

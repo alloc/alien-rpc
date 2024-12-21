@@ -1,6 +1,7 @@
 import type { ts } from '@ts-morph/common'
 import { AnalyzedRoute, analyzeRoute } from './analyze-route.js'
 import { debug } from './debug.js'
+import { ReferencedTypes } from './typescript/print-type-literal.js'
 import { SupportingTypes } from './typescript/supporting-types.js'
 import { CompilerAPI } from './typescript/wrap.js'
 
@@ -13,7 +14,7 @@ export function analyzeFile(
   types: SupportingTypes
 ) {
   const routes: AnalyzedRoute[] = []
-  const referencedTypes = new Map<ts.Symbol, string>()
+  const referencedTypes: ReferencedTypes = new Map()
 
   ts.forEachChild(sourceFile, node => {
     if (

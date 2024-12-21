@@ -1,5 +1,9 @@
 import { ts } from '@ts-morph/common'
 
+export function isType(symbol: ts.Symbol): boolean {
+  return Boolean(symbol.flags & ts.SymbolFlags.Type)
+}
+
 export function isTypeAlias(symbol: ts.Symbol): boolean {
   return Boolean(symbol.flags & ts.SymbolFlags.TypeAlias)
 }

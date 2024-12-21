@@ -1,6 +1,6 @@
 import { bodylessMethods } from '@alien-rpc/route'
 import { createProject } from '@ts-morph/bootstrap'
-import { FileUtils, injectTypeScriptModule, type ts } from '@ts-morph/common'
+import { FileUtils, injectTypeScriptModule } from '@ts-morph/common'
 import createResolver from 'esm-resolve'
 import { FileChange, jumpgen } from 'jumpgen'
 import path from 'path'
@@ -10,6 +10,7 @@ import { analyzeFile } from './analyze-file.js'
 import { reportDiagnostics } from './diagnostics.js'
 import type { Event, Options, Store } from './generator-types.js'
 import { typeConstraints } from './type-constraints.js'
+import { ReferencedTypes } from './typescript/print-type-literal.js'
 import { createSupportingTypes } from './typescript/supporting-types.js'
 import { createTsConfigCache } from './typescript/tsconfig.js'
 import { wrapTypeScriptModule } from './typescript/wrap.js'
@@ -145,7 +146,7 @@ export default (rawOptions: Options) =>
     const typeChecker = program.getTypeChecker()
     const compilerOptions = program.getCompilerOptions()
     const moduleResolutionHost = project.getModuleResolutionHost()
-    const referencedTypes = new Map<ts.Symbol, string>()
+    const referencedTypes: ReferencedTypes = new Map()
 
     const routes = project
       .getSourceFiles()
@@ -381,9 +382,7 @@ export default (rawOptions: Options) =>
       )
     }
 
-    const clientTypeAliases = Array.from(referencedTypes.entries())
-      .map(([symbol, type]) => `type ${symbol.getName()} = ${type}`)
-      .join('\n')
+    const clientTypeAliases = Array.from(referencedTypes.values()).join('\n')
 
     const serverTypeAliases =
       clientTypeAliases &&
@@ -437,7 +436,7 @@ export default (rawOptions: Options) =>
       const content = sift([
         `import type { ${[...clientTypeImports].sort().join(', ')} } from "${store.clientModuleId}"` +
           imports,
-        clientTypeAliases.replace(/^(type|interface)/gm, 'export $1'),
+        clientTypeAliases,
         ...clientDefinitions,
       ]).join('\n\n')
 

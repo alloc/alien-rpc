@@ -13,7 +13,7 @@ importers:
     dependencies:
       '@sinclair/typebox':
         specifier: ^0.33.17
-        version: 0.34.11
+        version: 0.33.22
       radashi:
         specifier: ^12.3.0
         version: 12.3.0
@@ -114,7 +114,7 @@ importers:
     dependencies:
       '@sinclair/typebox':
         specifier: ^0.33.17
-        version: 0.34.11
+        version: 0.33.22
       '@ts-morph/bootstrap':
         specifier: ^0.25.0
         version: 0.25.0
@@ -143,6 +143,9 @@ importers:
       pathic:
         specifier: workspace:^
         version: link:../pathic
+      radashi:
+        specifier: ^12.3.0
+        version: 12.3.0
 
   packages/pathic: {}
 
@@ -158,7 +161,7 @@ importers:
         version: 1.2.0
       '@sinclair/typebox':
         specifier: ^0.33.17
-        version: 0.34.11
+        version: 0.33.22
     devDependencies:
       '@alien-rpc/route':
         specifier: workspace:^
@@ -591,8 +594,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@sinclair/typebox@0.34.11':
-    resolution: {integrity: sha512-zE9pWGVSG82z+sFO+oUmqmqRVm8Wg5sVhmljYi1fDhLOSphBBy939QmC/qXcKFWqTiRJ6keyG4y75bIoTPRBAw==}
+  '@sinclair/typebox@0.33.22':
+    resolution: {integrity: sha512-auUj4k+f4pyrIVf4GW5UKquSZFHJWri06QgARy9C0t9ZTjJLIuNIrr1yl9bWcJWJ1Gz1vOvYN1D+QPaIlNMVkQ==}
 
   '@ts-morph/bootstrap@0.25.0':
     resolution: {integrity: sha512-aAmcZg+ZJ77xAOH39sHdb36ms0/YOYMoDKjEACGAmKA7zHBeGnyUkVFonT67YgasZC2nvV2hE5TKruG4dXO0aQ==}
@@ -1441,7 +1444,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.24.0':
     optional: true
 
-  '@sinclair/typebox@0.34.11': {}
+  '@sinclair/typebox@0.33.22': {}
 
   '@ts-morph/bootstrap@0.25.0':
     dependencies:

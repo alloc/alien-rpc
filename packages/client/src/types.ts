@@ -77,7 +77,7 @@ export type RoutePagination = {
 
 export type { InferParams, PathTemplate } from 'pathic'
 
-export type ClientOptions = Omit<
+export type ClientOptions<TErrorMode extends ErrorMode = ErrorMode> = Omit<
   import('ky').Options,
   'method' | 'body' | 'json' | 'searchParams'
 > & {
@@ -89,7 +89,7 @@ export type ClientOptions = Omit<
    *
    * @default 'reject'
    */
-  errorMode?: ErrorMode
+  errorMode?: TErrorMode
   /**
    * This cache is checked before sending a `GET` request. It remains empty
    * until you manually call the `Client#setResponse` method.

@@ -33,7 +33,7 @@ interface ClientPrototype<API extends Record<string, Route>> {
 
 export type Client<
   API extends Record<string, Route> = Record<string, Route>,
-  Options extends ClientOptions = ClientOptions,
+  TErrorMode extends ErrorMode = ErrorMode,
 > = ClientPrototype<API> & {
   [TKey in keyof API]: Extract<API[TKey], Route>['callee'] extends (
     ...args: infer TArgs
@@ -42,7 +42,7 @@ export type Client<
         ...args: TArgs
       ) => TResult extends ResponseStream<any>
         ? TResult
-        : Options['errorMode'] extends 'return'
+        : TErrorMode extends 'return'
           ? Promise<[Error, undefined] | [undefined, Awaited<TResult>]>
           : TResult
     : never
@@ -50,8 +50,11 @@ export type Client<
 
 export function defineClient<
   API extends Record<string, Route>,
-  Options extends ClientOptions = ClientOptions,
->(routes: API, options = {} as Options): Client<API, Options> {
+  TErrorMode extends ErrorMode = ErrorMode,
+>(
+  routes: API,
+  options: ClientOptions<TErrorMode> = {}
+): Client<API, TErrorMode> {
   const { errorMode = 'reject', resultCache = new Map(), ...defaults } = options
   const { hooks } = defaults
 
@@ -67,7 +70,7 @@ export function defineClient<
         beforeError: mergeHooks(hooks?.beforeError, extendHTTPError, 'start'),
       },
     })
-  )
+  ) as Client<API, TErrorMode>
 }
 
 async function extendHTTPError(error: HTTPError) {
@@ -79,15 +82,12 @@ async function extendHTTPError(error: HTTPError) {
   return error
 }
 
-function createClientProxy<
-  API extends Record<string, Route>,
-  Options extends ClientOptions,
->(
+function createClientProxy<API extends Record<string, Route>>(
   routes: API,
   errorMode: ErrorMode,
   resultCache: RouteResultCache,
   request: typeof ky
-): Client<API, Options> {
+): Client<API> {
   const client: ClientPrototype<API> = {
     extend: defaults =>
       createClientProxy(

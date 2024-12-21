@@ -1,20 +1,29 @@
 import { Simplify } from 'radashi'
 import { Client, defineClient } from './client.js'
-import { ClientOptions, Route } from './types.js'
+import { ClientOptions, ErrorMode, Route } from './types.js'
 
 export function defineClientFactory<
   API extends Record<string, Route>,
-  TDefaultOptions extends ClientOptions = Record<string, never>,
->(routes: API, defaults: TDefaultOptions = {} as TDefaultOptions) {
-  return <TOptions extends ClientOptions = Record<string, never>>(
-    options?: TOptions
-  ): Client<API, Overwrite<TDefaultOptions, TOptions>> =>
-    defineClient(routes, {
+  TDefaultErrorMode extends ErrorMode = ErrorMode,
+>(routes: API, defaults: ClientOptions<TDefaultErrorMode> = {}) {
+  function factory(): Client<API, TDefaultErrorMode>
+
+  function factory<TErrorMode extends ErrorMode = TDefaultErrorMode>(
+    options: ClientOptions<TErrorMode>
+  ): Client<API, TErrorMode>
+
+  function factory<TErrorMode extends ErrorMode = TDefaultErrorMode>(
+    options?: ClientOptions<TErrorMode>
+  ): Client<API> {
+    return defineClient(routes, {
       ...defaults,
       ...options,
       headers: mergeHeaders(defaults.headers, options?.headers),
       hooks: mergeHooks(defaults.hooks, options?.hooks),
     })
+  }
+
+  return factory
 }
 
 type Overwrite<T, U> =

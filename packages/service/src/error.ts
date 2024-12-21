@@ -1,6 +1,6 @@
 import { isError } from 'radashi'
 
-const kHttpError = Symbol('HttpError')
+const kHttpError = Symbol.for('HttpError')
 
 export abstract class HttpError {
   readonly [kHttpError] = true

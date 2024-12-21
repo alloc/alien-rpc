@@ -34,7 +34,8 @@
   "devDependencies": {
     "@alien-rpc/route": "workspace:^",
     "@types/debug": "^4.1.12",
-    "pathic": "workspace:^"
+    "pathic": "workspace:^",
+    "radashi": "^12.3.0"
   },
   "scripts": {
     "dev": "watchlist src -- pnpm build:dev",

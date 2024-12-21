@@ -19,16 +19,17 @@ import {
 } from './types.js'
 
 interface ClientPrototype<API extends Record<string, Route>> {
-  extend: (defaults: ClientOptions) => Client<API>
-  request: typeof ky
-  getCachedResponse: <P extends RoutePathname<API>>(
+  readonly request: typeof ky
+  readonly options: Readonly<ClientOptions>
+  extend(defaults: ClientOptions): Client<API>
+  getCachedResponse<P extends RoutePathname<API>>(
     path: P
-  ) => CachedRouteResult<Awaited<RouteResponseByPath<API, P>>> | undefined
-  setCachedResponse: <P extends RoutePathname<API>>(
+  ): CachedRouteResult<Awaited<RouteResponseByPath<API, P>>> | undefined
+  setCachedResponse<P extends RoutePathname<API>>(
     path: P,
     response: CachedRouteResult<Awaited<RouteResponseByPath<API, P>>>
-  ) => void
-  unsetCachedResponse: <P extends RoutePathname<API>>(path: P) => void
+  ): void
+  unsetCachedResponse<P extends RoutePathname<API>>(path: P): void
 }
 
 export type Client<
@@ -53,50 +54,28 @@ export function defineClient<
   TErrorMode extends ErrorMode = ErrorMode,
 >(
   routes: API,
-  options: ClientOptions<TErrorMode> = {}
+  options: ClientOptions<TErrorMode> = {},
+  parent?: Client<any> | undefined
 ): Client<API, TErrorMode> {
-  const { errorMode = 'reject', resultCache = new Map(), ...defaults } = options
-  const { hooks } = defaults
+  const {
+    errorMode = parent?.options.errorMode ?? 'reject',
+    resultCache = parent?.options.resultCache ?? new Map(),
+  } = options
 
-  return createClientProxy(
-    routes,
-    errorMode,
-    resultCache,
-    ky.create({
-      ...defaults,
-      prefixUrl: defaults.prefixUrl ?? '/',
-      hooks: {
-        ...hooks,
-        beforeError: mergeHooks(hooks?.beforeError, extendHTTPError, 'start'),
-      },
-    })
-  ) as Client<API, TErrorMode>
-}
+  let request: typeof ky | undefined
 
-async function extendHTTPError(error: HTTPError) {
-  const { request, response } = error
-  if (response.headers.get('Content-Type') === 'application/json') {
-    const errorInfo = await response.json<any>()
-    Object.assign(error, errorInfo)
-  }
-  return error
-}
-
-function createClientProxy<API extends Record<string, Route>>(
-  routes: API,
-  errorMode: ErrorMode,
-  resultCache: RouteResultCache,
-  request: typeof ky
-): Client<API> {
-  const client: ClientPrototype<API> = {
-    extend: defaults =>
-      createClientProxy(
-        routes,
-        defaults.errorMode ?? errorMode,
-        defaults.resultCache ?? resultCache,
-        request.extend(defaults)
-      ),
-    request,
+  const client: Client<API, TErrorMode> = createClientProxy(routes, {
+    options: {
+      ...options,
+      errorMode,
+      resultCache,
+    },
+    get request() {
+      return (request ??= createRequest(client))
+    },
+    extend(options) {
+      return defineClient(routes, options, client)
+    },
     getCachedResponse(path) {
       return resultCache.get(path) as any
     },
@@ -106,16 +85,45 @@ function createClientProxy<API extends Record<string, Route>>(
     unsetCachedResponse(path) {
       resultCache.delete(path)
     },
-  }
+  })
 
+  return client
+}
+
+async function extendHTTPError(error: HTTPError) {
+  const { response } = error
+  if (response.headers.get('Content-Type') === 'application/json') {
+    const errorInfo = await response.json<any>()
+    Object.assign(error, errorInfo)
+  }
+  return error
+}
+
+function createRequest(client: Client<any>) {
+  let { hooks, prefixUrl = '/' } = client.options
+
+  hooks ??= {}
+  hooks.beforeError = insertHook(hooks.beforeError, extendHTTPError, prepend)
+
+  return ky.create({
+    ...client.options,
+    prefixUrl,
+    hooks,
+  })
+}
+
+function createClientProxy<API extends Record<string, Route>>(
+  routes: API,
+  client: ClientPrototype<API>
+): any {
   return new Proxy(client, {
     get(client, key, proxy) {
       if (Object.prototype.hasOwnProperty.call(routes, key)) {
         return createRouteFunction(
           routes[key as keyof API],
-          errorMode,
-          resultCache,
-          request,
+          client.options.errorMode!,
+          client.options.resultCache!,
+          client.request,
           proxy
         )
       }
@@ -123,7 +131,7 @@ function createClientProxy<API extends Record<string, Route>>(
         return client[key as keyof ClientPrototype<API>]
       }
     },
-  }) as any
+  })
 }
 
 function createRouteFunction(
@@ -191,18 +199,16 @@ function createRouteFunction(
   }
 }
 
-function mergeHooks<T>(
+function insertHook<T>(
   hooks: T[] | undefined,
   hook: T | undefined,
-  position: 'start' | 'end'
+  insert: (hooks: T[], hook: T) => T[]
 ) {
-  return hook
-    ? hooks
-      ? position === 'start'
-        ? [hook, ...hooks]
-        : [...hooks, hook]
-      : [hook]
-    : hooks
+  return hook ? (hooks ? insert(hooks, hook) : [hook]) : hooks
+}
+
+function prepend<T>(array: T[], newValue: T) {
+  return [newValue, ...array]
 }
 
 function resolveResultFormat(format: Route['format']): ResultFormatter {

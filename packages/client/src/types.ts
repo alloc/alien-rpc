@@ -77,10 +77,11 @@ export type RoutePagination = {
 
 export type { InferParams, PathTemplate } from 'pathic'
 
-export type ClientOptions<TErrorMode extends ErrorMode = ErrorMode> = Omit<
-  import('ky').Options,
-  'method' | 'body' | 'json' | 'searchParams'
-> & {
+export interface ClientOptions<TErrorMode extends ErrorMode = ErrorMode>
+  extends Omit<
+    import('ky').Options,
+    'method' | 'body' | 'json' | 'searchParams'
+  > {
   /**
    * Control how errors are handled.
    *
@@ -89,7 +90,7 @@ export type ClientOptions<TErrorMode extends ErrorMode = ErrorMode> = Omit<
    *
    * @default 'reject'
    */
-  errorMode?: TErrorMode
+  errorMode?: TErrorMode | undefined
   /**
    * This cache is checked before sending a `GET` request. It remains empty
    * until you manually call the `Client#setResponse` method.
@@ -100,10 +101,12 @@ export type ClientOptions<TErrorMode extends ErrorMode = ErrorMode> = Omit<
    *
    * @default new Map()
    */
-  resultCache?: RouteResultCache
+  resultCache?: RouteResultCache | undefined
 }
 
-export type RequestOptions = Omit<ClientOptions, 'prefixUrl'>
+export type ClientHooks = import('ky').Hooks
+
+export interface RequestOptions extends Omit<ClientOptions, 'prefixUrl'> {}
 
 export type RequestParams<
   TPathParams extends object,
